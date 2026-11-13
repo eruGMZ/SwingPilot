@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema",
+  "$id": "swingpilot-verification-schema",
+  "title": "SwingPilot Verification Report Schema",
+  "description": "Esquema para los reportes del Verificador adversarial. El Verificador no puede aprobar su propio trabajo ni heredar las conclusiones del Merger como evidencia.",
+  "type": "object",
+  "required": [
+    "verification_metadata",
+    "verdict",
+    "checks",
+    "findings"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "verification_metadata": {
+      "type": "object",
+      "required": [
+        "verification_id",
+        "verifier_agent",
+        "verification_date",
+        "contract_version",
+        "documents_verified"
+      ],
+      "properties": {
+        "verification_id": {
+          "type": "string",
+          "description": "Identificador único de esta verificación (ej. VER-001)"
+        },
+        "verifier_agent": {
+          "type": "string",
+          "description": "Identificador del agente verificador (debe ser distinto del Merger)"
+        },
+        "verification_date": {
+          "type": "string",
+          "format": "date"
+        },
+        "contract_version": {
+          "type": "string",
+          "description": "Versión del contrato técnico verificado"
+        },
+        "documents_verified": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Lista de documentos analizados en esta verificación"
+        }
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": ["PASS", "FAIL"],
+      "description": "Veredicto global. PASS solo si todos los checks críticos pasan."
+    },
+    "checks": {
+      "type": "object",
+      "required": [
+        "complete_coverage",
+        "requirement_traceability",
+        "no_invented_requirements",
+        "cross_document_consistency",
+        "no_unresolved_critical_contradictions",
+        "module_requirement_mapping",
+        "function_requirement_mapping",
+        "test_requirement_mapping",
+        "parameter_validity",
+        "interface_contract_integrity"
+      ],
+      "properties": {
+        "complete_coverage": {
+          "$ref": "#/definitions/check_result"
+        },
+        "requirement_traceability": {
+          "$ref": "#/definitions/check_result"
+        },
+        "no_invented_requirements": {
+          "$ref": "#/definitions/check_result"
+        },
+        "cross_document_consistency": {
+          "$ref": "#/definitions/check_result"
+        },
+        "no_unresolved_critical_contradictions": {
+          "$ref": "#/definitions/check_result"
+        },
+        "module_requirement_mapping": {
+          "$ref": "#/definitions/check_result"
+        },
+        "function_requirement_mapping": {
+          "$ref": "#/definitions/check_result"
+        },
+        "test_requirement_mapping": {
+          "$ref": "#/definitions/check_result"
+        },
+        "parameter_validity": {
+          "$ref": "#/definitions/check_result"
+        },
+        "interface_contract_integrity": {
+          "$ref": "#/definitions/check_result"
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/finding"
+      },
+      "description": "Lista de hallazgos. Vacía si el veredicto es PASS."
+    }
+  },
+  "definitions": {
+    "check_result": {
+      "type": "object",
+      "required": ["status", "summary"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["PASS", "FAIL", "WARNING"]
+        },
+        "summary": {
+          "type": "string"
+        },
+        "affected_items": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "finding": {
+      "type": "object",
+      "required": [
+        "finding_id",
+        "affected_id",
+        "source_document",
+        "problem",
+        "evidence",
+        "required_correction"
+      ],
+      "properties": {
+        "finding_id": {
+          "type": "string",
+          "description": "Identificador único del hallazgo (ej. FIND-001)"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+        },
+        "affected_id": {
+          "type": "string",
+          "description": "ID del requisito, módulo o contrato afectado"
+        },
+        "source_document": {
+          "type": "string",
+          "description": "Documento de origen del problema"
+        },
+        "problem": {
+          "type": "string",
+          "description": "Descripción del problema detectado"
+        },
+        "evidence": {
+          "type": "string",
+          "description": "Evidencia concreta del problema"
+        },
+        "required_correction": {
+          "type": "string",
+          "description": "Corrección requerida para resolver el hallazgo"
+        },
+        "resolved": {
+          "type": "boolean",
+          "default": false
+        },
+        "resolution_notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

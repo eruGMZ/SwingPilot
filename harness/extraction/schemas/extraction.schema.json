@@ -1,0 +1,190 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema",
+  "$id": "swingpilot-extraction-schema",
+  "title": "SwingPilot Extraction Output Schema",
+  "description": "Esquema obligatorio para todos los outputs de extractores de documentos. Los extractores deben cumplir este esquema exactamente. Los campos desconocidos se marcan como PENDING, nunca se rellenan por suposición.",
+  "type": "object",
+  "required": [
+    "extraction_metadata",
+    "requirements"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "extraction_metadata": {
+      "type": "object",
+      "required": [
+        "extractor_id",
+        "source_document",
+        "source_version",
+        "source_sha256",
+        "extraction_date",
+        "extractor_agent"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "extractor_id": {
+          "type": "string",
+          "description": "Identificador único del extractor (ej. EXT-001)"
+        },
+        "source_document": {
+          "type": "string",
+          "description": "Nombre del documento analizado"
+        },
+        "source_version": {
+          "type": "string",
+          "description": "Versión del documento analizado"
+        },
+        "source_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Hash SHA-256 del documento analizado"
+        },
+        "source_path": {
+          "type": "string",
+          "description": "Ruta relativa del documento desde la raíz del repositorio"
+        },
+        "extraction_date": {
+          "type": "string",
+          "format": "date",
+          "description": "Fecha de la extracción"
+        },
+        "extractor_agent": {
+          "type": "string",
+          "description": "Identificador del agente que realizó la extracción"
+        },
+        "total_requirements_extracted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "open_issues_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/requirement"
+      }
+    }
+  },
+  "definitions": {
+    "requirement": {
+      "type": "object",
+      "required": [
+        "requirement_id",
+        "source_document",
+        "source_version",
+        "source_section",
+        "source_evidence",
+        "requirement_type",
+        "description",
+        "priority",
+        "dependencies",
+        "constraints",
+        "acceptance_criteria",
+        "open_questions",
+        "contradictions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "requirement_id": {
+          "type": "string",
+          "description": "Identificador único del requisito (ej. REQ-001)",
+          "pattern": "^REQ-[0-9]{3,}$"
+        },
+        "source_document": {
+          "type": "string",
+          "description": "Nombre del documento de origen"
+        },
+        "source_version": {
+          "type": "string",
+          "description": "Versión del documento de origen"
+        },
+        "source_section": {
+          "type": "string",
+          "description": "Sección exacta del documento donde se origina el requisito"
+        },
+        "source_evidence": {
+          "type": "string",
+          "description": "Cita textual o referencia exacta del documento que sustenta el requisito"
+        },
+        "requirement_type": {
+          "type": "string",
+          "enum": [
+            "FUNCTIONAL",
+            "NON_FUNCTIONAL",
+            "CONSTRAINT",
+            "INTERFACE",
+            "DATA",
+            "SECURITY",
+            "RISK_MANAGEMENT",
+            "DERIVED",
+            "PENDING"
+          ],
+          "description": "Tipo de requisito. DERIVED indica que fue inferido de las fuentes. PENDING cuando no puede determinarse."
+        },
+        "description": {
+          "type": "string",
+          "description": "Descripción clara del requisito. No se puede inventar ni suponer."
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "PENDING"],
+          "description": "Prioridad según el documento de origen. PENDING si no está especificada."
+        },
+        "dependencies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Lista de IDs de requisitos de los que depende este"
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Restricciones explícitas del documento de origen"
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Criterios verificables de aceptación. Deben provenir del documento, no inventarse."
+        },
+        "open_questions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Preguntas sin respuesta en la documentación. No se resuelven por suposición."
+        },
+        "contradictions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["contradicting_document", "contradicting_section", "description"],
+            "properties": {
+              "contradicting_document": {"type": "string"},
+              "contradicting_section": {"type": "string"},
+              "description": {"type": "string"}
+            }
+          },
+          "description": "Contradicciones detectadas con otros documentos o secciones"
+        },
+        "is_derived": {
+          "type": "boolean",
+          "default": false,
+          "description": "True si el requisito fue inferido/derivado de las fuentes, no extraído textualmente"
+        },
+        "derivation_rationale": {
+          "type": "string",
+          "description": "Justificación de la derivación, si is_derived es true"
+        }
+      }
+    }
+  }
+}

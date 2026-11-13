@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema",
+  "metadata": {
+    "version": "0.1.0",
+    "phase": "FASE 0",
+    "last_updated": "2026-11-13",
+    "note": "Ningún gate puede aprobarse mediante declaración del agente. G3 y G7 requieren aprobación humana explícita."
+  },
+  "gates": [
+    {
+      "id": "G0",
+      "name": "Integridad y registro documental",
+      "description": "Todos los documentos originales de SwingPilot están inventariados en el manifiesto con SHA-256 verificados, versiones identificadas y sin duplicados ni referencias rotas.",
+      "phase": "FASE 1",
+      "status": "PENDING",
+      "requires_human_approval": false,
+      "approved_by": null,
+      "approved_at": null,
+      "evidence": null
+    },
+    {
+      "id": "G1",
+      "name": "Cobertura de extracción",
+      "description": "Todos los documentos registrados en el manifiesto han sido procesados por extractores independientes. Los outputs de extracción cubren la totalidad del contenido relevante.",
+      "phase": "FASE 1",
+      "status": "PENDING",
+      "requires_human_approval": false,
+      "approved_by": null,
+      "approved_at": null,
+      "evidence": null
+    },
+    {
+      "id": "G2",
+      "name": "Consistencia y trazabilidad del contrato",
+      "description": "El contrato técnico (requirements.md, architecture.md, api_contracts.md, data_flow.md, test_plan.md) ha superado la auditoría del Verificador adversarial. Todos los requisitos tienen trazabilidad documental. No existen contradicciones críticas sin resolver.",
+      "phase": "FASE 1",
+      "status": "PENDING",
+      "requires_human_approval": false,
+      "approved_by": null,
+      "approved_at": null,
+      "evidence": null
+    },
+    {
+      "id": "G3",
+      "name": "Aprobación humana del contrato",
+      "description": "El propietario del proyecto ha revisado y aprobado explícitamente el SWINGPILOT TECHNICAL REQUIREMENTS & ARCHITECTURE CONTRACT. Este gate SOLO puede aprobarse con autorización humana explícita.",
+      "phase": "FASE 1",
+      "status": "PENDING",
+      "requires_human_approval": true,
+      "approved_by": null,
+      "approved_at": null,
+      "evidence": null
+    },
+    {
+      "id": "G4",
+      "name": "Pruebas de implementación",
+      "description": "Todas las funcionalidades implementadas tienen pruebas unitarias y de integración ejecutadas con evidencia registrada.",
+      "phase": "FASE 2",
+      "status": "PENDING",
+      "requires_human_approval": false,
+      "approved_by": null,
+      "approved_at": null,
+      "evidence": null
+    },
+    {
+      "id": "G5",
+      "name": "Integración y regresión",
+      "description": "Las pruebas de integración, aceptación y regresión han sido ejecutadas exitosamente sobre el sistema completo.",
+      "phase": "FASE 2",
+      "status": "PENDING",
+      "requires_human_approval": false,
+      "approved_by": null,
+      "approved_at": null,
+      "evidence": null
+    },
+    {
+      "id": "G6",
+      "name": "Seguridad",
+      "description": "La auditoría de seguridad ha sido completada. Los controles de riesgo, aislamiento Train/OOS, prevención de look-ahead y gestión de credenciales han sido verificados.",
+      "phase": "FASE 2",
+      "status": "PENDING",
+      "requires_human_approval": false,
+      "approved_by": null,
+      "approved_at": null,
+      "evidence": null
+    },
+    {
+      "id": "G7",
+      "name": "Aprobación de release",
+      "description": "El propietario del proyecto ha aprobado la liberación de la versión. Este gate SOLO puede aprobarse con autorización humana explícita. La aprobación no autoriza automáticamente operaciones financieras reales.",
+      "phase": "FASE 2",
+      "status": "PENDING",
+      "requires_human_approval": true,
+      "approved_by": null,
+      "approved_at": null,
+      "evidence": null
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/07/schema",
+  "metadata": {
+    "version": "0.1.0",
+    "phase": "FASE 0",
+    "status": "INITIALIZED_EMPTY",
+    "description": "Inventario de fuentes documentales de SwingPilot. Inicializado vacío en FASE 0. Los documentos se registran en FASE 1 tras su depósito en docs/context/.",
+    "last_updated": "2026-11-13",
+    "note": "No se inventan documentos ni hashes. Este manifiesto se poblará en FASE 1 con los documentos reales que el propietario deposite en docs/context/."
+  },
+  "documents": []
+}
