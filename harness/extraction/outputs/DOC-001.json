@@ -1,0 +1,393 @@
+{
+  "extraction_metadata": {
+    "extractor_id": "EXT-001",
+    "source_document": "DOC-001 — Contexto del propietario y política operativa (SwingPilot)",
+    "source_version": "1.0",
+    "source_sha256": "1e5eafe82d862d2ba3e9bcf3a1b6e5d0d78aaa7b760ceeef6871c47fcffd2903",
+    "source_path": "docs/context/OWNEW_CONTEXT.md",
+    "extraction_date": "2026-11-13",
+    "extractor_agent": "EXT-001-inline",
+    "total_requirements_extracted": 22,
+    "open_issues_count": 1
+  },
+  "requirements": [
+    {
+      "requirement_id": "REQ-1001",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cuál es la situación fiscal y laboral documentada?",
+      "source_evidence": "País de residencia fiscal: México. Régimen que aparece en la CSF: 616 — Sin obligaciones fiscales. Fecha de inicio registrada: 29/06/2021.",
+      "requirement_type": "DATA",
+      "description": "El propietario reside fiscalmente en México con Régimen 616 (Sin obligaciones fiscales) según CSF del 11/11/2026. No ha consultado asesoría fiscal especializada ni general.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [
+        "Fiscalidad de operaciones con criptomonedas no resuelta — requiere validación profesional antes de establecer obligaciones definitivas"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Discrepancia entre Régimen 616 (CSF) y Régimen 601 mencionado en DOC-002 — ver CONF-003"
+      ],
+      "contradictions": [
+        {
+          "contradicting_document": "DOC-002",
+          "contradicting_section": "1. Contexto Fiscal",
+          "description": "DOC-001 indica Régimen 616 (Sin obligaciones fiscales). DOC-002 indica Régimen 601 (Sueldos y Salarios). Estos son regímenes distintos con implicaciones fiscales diferentes. Requiere resolución del propietario. Registrado como CONF-003."
+        }
+      ]
+    },
+    {
+      "requirement_id": "REQ-1002",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cuál es la situación fiscal y laboral documentada? — advertencia fiscal",
+      "source_evidence": "SwingPilot no debe asumir que el propietario está exento de ISR por operar criptomonedas, que las ganancias de trading tienen ISR cero, que existe una exención anual automática aplicable ni que la clasificación fiscal de todas las operaciones está resuelta.",
+      "requirement_type": "CONSTRAINT",
+      "description": "SwingPilot no puede asumir exención fiscal automática. El tratamiento fiscal de las operaciones debe validarse profesionalmente antes de establecer obligaciones, cálculos definitivos o declaraciones.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-1001"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "¿Cuándo se consultará asesoría fiscal? Parámetro pendiente."
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1003",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cómo opera el propietario en el mercado?",
+      "source_evidence": "Estilo: Swing Trading. Horizonte habitual: 2 días a 2 semanas. Mercado inicial: Spot. Orientación: Long-only. Temporalidades de análisis: D1 y H4/H1. Frecuencia máxima de referencia: 8 operaciones mensuales. Exchange: Binance exclusivamente.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Perfil operativo: Swing Trading, horizonte 2 días - 2 semanas, Spot, Long-only, temporalidades D1/H4/H1, máximo 8 operaciones/mes, Binance exclusivamente. Sin frecuencia mínima.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "Sin frecuencia mínima — ausencia de señales válidas es resultado aceptable"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1004",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cuánto capital está autorizado?",
+      "source_evidence": "Capital inicial: $3,000 MXN. Ticket habitual por operación: $500–$5,000 MXN. Ticket extraordinario máximo: $10,000 MXN. Origen del capital: Personal.",
+      "requirement_type": "DATA",
+      "description": "Capital inicial $3,000 MXN de origen personal. Ticket habitual $500-$5,000 MXN, ticket extraordinario máximo $10,000 MXN. El tamaño de posición se calcula por riesgo, no por ticket.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "Capital inicial y tickets no son equivalentes — el tamaño de posición se calcula por riesgo y distancia al stop"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1005",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cuánto capital está autorizado?",
+      "source_evidence": "El sistema no tiene autorización para utilizar capital de WeirdCow, solicitar préstamos o utilizar fondos prestados, incrementar el capital disponible por iniciativa propia ni interpretar el ticket máximo como autorización para arriesgar esa cantidad.",
+      "requirement_type": "CONSTRAINT",
+      "description": "El sistema no puede: usar capital de WeirdCow, solicitar préstamos, incrementar capital por iniciativa propia, ni interpretar ticket máximo como presupuesto de riesgo. Cualquier aportación adicional requiere autorización del propietario.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-1004"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1006",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Qué política de riesgo aplica? — Riesgo máximo por operación",
+      "source_evidence": "Límite máximo: 1.5% del capital de referencia. Con un capital inicial de $3,000 MXN, el presupuesto máximo inicial de pérdida es $45 MXN por operación. El cálculo deberá considerar comisiones y costes de ejecución cuando sea posible.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Riesgo máximo por operación: 1.5% del capital de referencia. Con capital inicial $3,000 MXN: $45 MXN máximo. El cálculo incluye comisiones y costes de ejecución.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-1004"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1007",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Qué política de riesgo aplica? — Drawdown mensual",
+      "source_evidence": "Límite estricto: 5%. El drawdown mensual se medirá respecto al capital de referencia al inicio de cada mes. Con $3,000 MXN: límite inicial $150 MXN. El límite del 5% sustituye cualquier referencia anterior al 6%.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Drawdown mensual máximo: 5% del capital de referencia al inicio del mes. Capital $3,000 MXN: límite $150 MXN. Incluye pérdidas realizadas, flotantes, comisiones y costes. Sustituye cualquier referencia anterior al 6%.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-1004"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1008",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Qué política de riesgo aplica? — Drawdown mensual",
+      "source_evidence": "Al alcanzar el límite: 1. Suspender nuevas operaciones. 2. Invalidar señales pendientes de ejecución. 3. Mantener los registros y análisis. 4. No reanudar operaciones automáticamente. 5. Exigir autorización expresa del propietario para reanudar.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Al alcanzar el límite de drawdown mensual: suspender nuevas operaciones, invalidar señales pendientes, mantener registros, no reanudar automáticamente, exigir autorización expresa del propietario para reanudar.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-1007"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1009",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Qué política de riesgo aplica? — Principio",
+      "source_evidence": "La protección del capital tiene prioridad sobre la generación de oportunidades. Ningún agente puede ampliar los límites de riesgo, ignorar una suspensión o cambiar los parámetros para recuperar pérdidas.",
+      "requirement_type": "CONSTRAINT",
+      "description": "La protección del capital tiene prioridad absoluta sobre la generación de oportunidades. Ningún agente puede ampliar límites de riesgo, ignorar suspensiones o cambiar parámetros para recuperar pérdidas.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-1006",
+        "REQ-1007"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1010",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Qué instrumentos y operaciones están permitidos?",
+      "source_evidence": "Instrumento autorizado: BTC/USDT. Operaciones autorizadas: comprar BTC utilizando USDT; vender BTC a cambio de USDT.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Instrumento autorizado: BTC/USDT únicamente. Operaciones autorizadas: comprar BTC con USDT, vender BTC a cambio de USDT. Otras criptomonedas, conversiones entre criptos, staking, Earn, airdrops: fuera del alcance inicial.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "Sin incorporación de nuevos activos por iniciativa de los agentes"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1011",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Qué instrumentos y operaciones están permitidos? — Restricciones operativas",
+      "source_evidence": "Binance Spot exclusivamente. Sin futuros ni contratos perpetuos. Sin margin. Sin apalancamiento. Sin posiciones short. Sin copy trading. Sin capital prestado. Sin operaciones fuera de los instrumentos autorizados.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Restricciones operativas absolutas: Binance Spot exclusivamente, sin futuros, sin contratos perpetuos, sin margin, sin apalancamiento, sin posiciones short, sin copy trading, sin capital prestado, sin operaciones fuera de BTC/USDT.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-1010"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1012",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Qué puede y no puede hacer SwingPilot?",
+      "source_evidence": "Nivel 1 — Asistido. SwingPilot no puede ejecutar órdenes reales sin autorización individual del propietario. La autorización humana es obligatoria para cada operación real.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Nivel de autonomía 1 (Asistido). La autorización humana individual es obligatoria para cada operación real. SwingPilot puede analizar, generar señales, calcular y recomendar, pero no ejecutar por iniciativa propia.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "SwingPilot no puede: ejecutar órdenes reales sin autorización, comprar/vender por iniciativa, modificar capital, alterar límites de riesgo, reanudar tras suspensión sin autorización, convertir recomendación en orden ejecutable"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1013",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se separa investigación de ejecución?",
+      "source_evidence": "El sistema debe mantener separación entre: 1. Investigación de estrategias. 2. Validación experimental. 3. Generación de señales. 4. Recomendación operativa. 5. Autorización humana. 6. Ejecución real. 7. Registro y evaluación posterior.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Separación obligatoria de 7 etapas: investigación → validación experimental → generación de señales → recomendación operativa → autorización humana → ejecución real → registro y evaluación posterior. Ninguna etapa puede saltar a la siguiente sin completar la anterior.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-1012"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1014",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se separa investigación de ejecución?",
+      "source_evidence": "Las estrategias no se consideran aprobadas por el simple hecho de producir resultados positivos en backtesting. Los agentes deben conservar trazabilidad, documentar supuestos y distinguir evidencia experimental de decisiones aprobadas.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Resultados positivos en backtesting no equivalen a estrategia aprobada. Los agentes deben mantener trazabilidad, documentar supuestos y distinguir evidencia experimental de decisiones aprobadas.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-1013"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1015",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se separa investigación de ejecución?",
+      "source_evidence": "SwingPilot puede investigar distintas familias de estrategias sin heredar automáticamente hipótesis, parámetros o estrategias de otros proyectos.",
+      "requirement_type": "CONSTRAINT",
+      "description": "SwingPilot puede investigar distintas familias de estrategias pero no puede heredar automáticamente hipótesis, parámetros o estrategias de otros proyectos.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-1013"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1016",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Qué cambios exigen autorización expresa del propietario?",
+      "source_evidence": "Incrementar el capital; Incorporar nuevos activos o pares; Incorporar otro exchange; Modificar el riesgo por operación; Modificar el drawdown mensual; Habilitar ejecución automática; Incorporar derivados, margin o apalancamiento; Modificar la política fiscal o contable.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Las siguientes decisiones requieren autorización expresa del propietario: incrementar capital, nuevos activos/pares, nuevo exchange, modificar riesgo/drawdown, habilitar ejecución automática, derivados/margin/apalancamiento, modificar política fiscal/contable. Ningún agente puede interpretar sugerencia o resultado experimental como autorización.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "Ningún agente puede interpretar sugerencia, resultado experimental o recomendación propia como autorización"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1017",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cuál es la regla final del sistema?",
+      "source_evidence": "SwingPilot es un sistema de investigación y apoyo a decisiones de trading bajo control del propietario. La autonomía técnica nunca equivale a autoridad para disponer del capital.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Regla final: SwingPilot es un sistema de investigación y apoyo a decisiones bajo control del propietario. La autonomía técnica no equivale a autoridad sobre el capital.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1018",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Para qué sirve este documento y quién tiene la última palabra?",
+      "source_evidence": "Es la fuente de verdad para los agentes, módulos y componentes de SwingPilot respecto a las decisiones personales y operativas del propietario. Los agentes no pueden modificar estos parámetros por inferencia, optimización o conveniencia técnica; cualquier modificación requiere autorización expresa del propietario.",
+      "requirement_type": "CONSTRAINT",
+      "description": "DOC-001 es la fuente de verdad para parámetros personales y operativos del propietario. Los agentes no pueden modificar estos parámetros por inferencia, optimización o conveniencia técnica. Toda modificación requiere autorización expresa.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1019",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Qué puede y no puede hacer SwingPilot?",
+      "source_evidence": "SwingPilot puede analizar el mercado, investigar y comparar estrategias, detectar oportunidades, generar señales, calcular entradas, salidas y riesgo estimado, presentar recomendaciones y escenarios, monitorear posiciones y condiciones de riesgo, y registrar resultados y evidencias.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Capacidades autorizadas de SwingPilot: analizar mercado, investigar/comparar estrategias, detectar oportunidades, generar señales, calcular entradas/salidas/riesgo, presentar recomendaciones/escenarios, monitorear posiciones/riesgo, registrar resultados/evidencias.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1020",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cómo opera el propietario en el mercado?",
+      "source_evidence": "El propietario no busca operar constantemente: la ausencia de señales válidas es un resultado aceptable. El sistema debe priorizar la calidad de las oportunidades, la preservación del capital y la disciplina operativa sobre la frecuencia de ejecución.",
+      "requirement_type": "CONSTRAINT",
+      "description": "La ausencia de señales válidas es un resultado aceptable. El sistema prioriza calidad de oportunidades, preservación del capital y disciplina operativa sobre frecuencia de ejecución. No operar cuando no hay oportunidades válidas es la decisión correcta.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1021",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cuánto capital está autorizado?",
+      "source_evidence": "Una vez definido el riesgo permitido, el tamaño de cada posición debe calcularse según la distancia al mecanismo de salida y los costes de ejecución.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "El tamaño de posición se calcula a partir del riesgo permitido, la distancia al mecanismo de salida y los costes de ejecución; no a partir del ticket disponible.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-1006"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-1022",
+      "source_document": "DOC-001",
+      "source_version": "1.0",
+      "source_section": "¿Cuánto capital está autorizado?",
+      "source_evidence": "Ticket máximo no es autorización para arriesgar esa cantidad.",
+      "requirement_type": "CONSTRAINT",
+      "description": "El ticket máximo ($10,000 MXN extraordinario) no es autorización para arriesgar esa cantidad. El riesgo sigue limitado al 1.5% del capital.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-1004",
+        "REQ-1006"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    }
+  ]
+}

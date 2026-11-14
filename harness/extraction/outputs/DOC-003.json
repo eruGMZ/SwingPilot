@@ -1,0 +1,1411 @@
+{
+  "extraction_metadata": {
+    "extractor_id": "EXT-003",
+    "source_document": "DOC-003 — Documento de Integración de Inteligencia Artificial",
+    "source_version": "UNKNOWN",
+    "source_sha256": "7deb1d9f1383843a1baaa1be7524b9224ca3047ebb91eec8103b57d36f18957d",
+    "source_path": "docs/policies/AI_INTEGRATION.md",
+    "extraction_date": "2026-11-13",
+    "extractor_agent": "EXTRACTOR-DOC-003 (fork)",
+    "total_requirements_extracted": 75,
+    "open_issues_count": 4
+  },
+  "requirements": [
+    {
+      "requirement_id": "REQ-3001",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D1. Orquestador central y agentes especializados",
+      "source_evidence": "SwingPilot utilizará un AI Orchestrator central que coordinará agentes especializados bajo demanda. No se permitirá una red de agentes autónomos comunicándose libremente y tomando decisiones sin coordinación.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "SwingPilot debe implementar un AI Orchestrator central que coordina agentes especializados bajo demanda. Principio D1 marcado Aprobado.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "No se permite red de agentes autónomos sin coordinación central"
+      ],
+      "acceptance_criteria": [
+        "El Orchestrator puede coordinar una solicitud y recibir respuestas estructuradas, validadas y auditables (criterio de salida Fase 1 de implementación)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3002",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D1. Orquestador central y agentes especializados",
+      "source_evidence": "Responsabilidades del Orchestrator: Recibir solicitudes de análisis. Determinar qué agentes deben participar. Preparar y distribuir el contexto necesario. Administrar identificadores de correlación. Coordinar análisis paralelos y secuenciales. Validar que las respuestas cumplan sus contratos. Enviar los resultados a Decision Synthesis.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "El Orchestrator debe: recibir solicitudes, determinar agentes, preparar/distribuir contexto, administrar correlation_ids, coordinar análisis paralelos y secuenciales, validar respuestas contra contratos, enviar resultados a Decision Synthesis.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3001"
+      ],
+      "constraints": [
+        "El Orchestrator coordina el proceso, pero no inventa señales ni sustituye a los motores deterministas"
+      ],
+      "acceptance_criteria": [
+        "Orchestrator coordina agentes especializados (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3003",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D1. Orquestador central y agentes especializados",
+      "source_evidence": "También deberá registrar las interacciones y resultados, y gestionar errores, tiempos de espera y respuestas incompletas.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "El Orchestrator debe registrar todas las interacciones y resultados, y gestionar explícitamente errores, timeouts y respuestas incompletas.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3001"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3004",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D2. Contratos estructurados, versionados y auditables",
+      "source_evidence": "Toda comunicación entre componentes inteligentes deberá utilizar contratos de entrada y salida estructurados. Formato de referencia: JSON validado mediante esquemas versionados.",
+      "requirement_type": "INTERFACE",
+      "description": "Toda comunicación entre componentes inteligentes debe usar contratos de entrada/salida estructurados en JSON validado mediante esquemas versionados. Principio D2 marcado Aprobado.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "No se aceptará texto libre como único mecanismo de intercambio entre componentes críticos"
+      ],
+      "acceptance_criteria": [
+        "Cada agente tiene contratos de entrada y salida versionados (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3005",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D2. Contratos estructurados, versionados y auditables",
+      "source_evidence": "Los campos obligatorios deberán validarse. Las respuestas deberán incluir su versión de esquema. Los resultados deberán identificar sus fuentes y referencias. Los datos faltantes deberán declararse, nunca inventarse. Las conclusiones deberán diferenciar hechos, inferencias y recomendaciones.",
+      "requirement_type": "INTERFACE",
+      "description": "Cada contrato debe: validar campos obligatorios, incluir versión de esquema, identificar fuentes, declarar datos faltantes (nunca inventarlos), y distinguir hechos de inferencias y recomendaciones.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3004"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3006",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D2. Contratos estructurados, versionados y auditables",
+      "source_evidence": "Los errores deberán representarse de forma estructurada, y los cambios incompatibles requerirán una nueva versión del contrato.",
+      "requirement_type": "INTERFACE",
+      "description": "Los errores se representan estructuralmente. Los cambios incompatibles en contratos requieren nueva versión.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3004"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Prompts, modelos, estrategias y contratos versionados (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3007",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D3. Comunicación orientada a eventos",
+      "source_evidence": "La comunicación entre los componentes de SwingPilot seguirá un modelo orientado a eventos. Los eventos representarán hechos, solicitudes, resultados, decisiones y cambios de estado; el sistema deberá poder reconstruir el ciclo completo de una operación mediante sus eventos relacionados.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Comunicación entre componentes orientada a eventos. El sistema puede reconstruir el ciclo completo de una operación a través de sus eventos. Principio D3 marcado Aprobado.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Resultados pueden reconstruirse históricamente (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3008",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D3. Comunicación orientada a eventos",
+      "source_evidence": "Identificadores únicos de mensajes. Correlación entre eventos de un mismo análisis u operación. Registro de causalidad entre eventos. Timestamps UTC. Identificación de la fuente y el destinatario. Versionado de esquemas. Validación del contenido.",
+      "requirement_type": "INTERFACE",
+      "description": "Cada evento debe tener: ID único, correlation_id, registro de causalidad, timestamps UTC, fuente y destinatario, versión de esquema y validación de contenido.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3007"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Mensajes tienen identificadores de correlación y causalidad (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3009",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D3. Comunicación orientada a eventos",
+      "source_evidence": "idempotencia en operaciones sensibles, registro de estados y errores, y conservación de la secuencia de eventos.",
+      "requirement_type": "NON_FUNCTIONAL",
+      "description": "Las operaciones sensibles deben ser idempotentes. El sistema conserva la secuencia de eventos y registra estados y errores.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3007"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3010",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D4. Proveedor principal de inteligencia artificial",
+      "source_evidence": "Anthropic Claude será el proveedor LLM principal de SwingPilot.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Anthropic Claude es el proveedor LLM principal del runtime de SwingPilot. Principio D4 marcado Aprobado.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3011",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D4. Proveedor principal de inteligencia artificial",
+      "source_evidence": "Claude Pro no constituye una licencia de uso programático de la API. El runtime de producción deberá utilizar Anthropic API mediante una cuenta de Anthropic Console y facturación independiente.",
+      "requirement_type": "CONSTRAINT",
+      "description": "El runtime de producción usa Anthropic API con cuenta y facturación independiente de Claude Pro. Claude Pro es solo para desarrollo y asistencia.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3010"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3012",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "D4. Proveedor principal de inteligencia artificial",
+      "source_evidence": "El sistema deberá utilizar un adaptador de proveedor de IA para evitar acoplar el Orchestrator directamente a la implementación de Anthropic. No se requiere incorporar múltiples proveedores LLM en la primera versión.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "AI Provider Adapter como capa de abstracción entre Orchestrator y Anthropic. No se requieren múltiples proveedores en v1.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3001",
+        "REQ-3010"
+      ],
+      "constraints": [
+        "No múltiples proveedores LLM en v1"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3013",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se organizan agentes y motores? — Market Analyst",
+      "source_evidence": "Responsabilidad: interpretar las condiciones actuales del mercado. Funciones: analizar estructura de precios; identificar tendencias y cambios estructurales; interpretar indicadores técnicos; detectar zonas relevantes de soporte y resistencia; identificar volatilidad y condiciones de liquidez; evaluar coherencia entre temporalidades; identificar posibles rupturas y falsas rupturas.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Market Analyst: interpreta condiciones del mercado — analiza estructura de precios, tendencias, indicadores técnicos, zonas S/R, volatilidad/liquidez, coherencia entre temporalidades, rupturas y falsas rupturas.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3001"
+      ],
+      "constraints": [
+        "No puede autorizar operaciones"
+      ],
+      "acceptance_criteria": [
+        "Entrada: datos de mercado, indicadores, temporalidades y contexto. Salida: análisis estructurado con observaciones, evidencia, confianza, limitaciones y timestamp de los datos"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3014",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se organizan agentes y motores? — Macro Analyst",
+      "source_evidence": "Responsabilidad: evaluar el contexto macroeconómico y los acontecimientos externos relevantes para los activos analizados. Funciones: analizar noticias económicas y financieras; identificar eventos macroeconómicos relevantes; evaluar acontecimientos regulatorios; analizar acontecimientos institucionales; identificar posibles catalizadores de volatilidad; distinguir acontecimientos confirmados de rumores o especulación.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Macro Analyst: evalúa contexto macroeconómico — noticias económicas/financieras, eventos macro, regulatorios, institucionales, catalizadores de volatilidad, distingue confirmados de rumores.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3001"
+      ],
+      "constraints": [
+        "No puede convertir una noticia en una señal de entrada por sí sola"
+      ],
+      "acceptance_criteria": [
+        "Salida: eventos relevantes, impacto potencial, horizonte temporal, fuentes, fecha de publicación y nivel de incertidumbre"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3015",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se organizan agentes y motores? — Strategy Analyst",
+      "source_evidence": "Responsabilidad: analizar y explicar las estrategias candidatas. Funciones: evaluar la lógica de una estrategia; analizar sus condiciones de activación; revisar coherencia entre señal e invalidación; identificar condiciones que debiliten una oportunidad; comparar estrategias cuando exista evidencia suficiente; explicar las razones para descartar una oportunidad. Debe trabajar sobre estrategias formalmente definidas por Strategy Engine o Research.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Strategy Analyst: analiza estrategias candidatas — evalúa lógica, condiciones de activación, coherencia señal/invalidación, condiciones que debiliten la oportunidad, comparación entre estrategias. Trabaja solo sobre estrategias formalmente definidas.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3001"
+      ],
+      "constraints": [
+        "No puede modificar silenciosamente parámetros de estrategias aprobadas",
+        "No puede ejecutar operaciones"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3016",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se organizan agentes y motores? — Risk Analyst",
+      "source_evidence": "Responsabilidad: realizar una evaluación informativa complementaria de los riesgos identificados. Funciones: detectar riesgos no evidentes; señalar inconsistencias entre entrada, stop-loss y objetivo; identificar exposición a acontecimientos externos; evaluar riesgos operativos y de datos; cuestionar supuestos de la propuesta. Su evaluación es consultiva. Risk Analyst no sustituye al Risk Manager determinista y no tiene autoridad para aprobar operaciones.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Risk Analyst: evaluación consultiva de riesgos — detecta riesgos no evidentes, señala inconsistencias, identifica exposición a eventos externos, evalúa riesgos operativos/datos, cuestiona supuestos. Su evaluación es informativa, no vinculante.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3001"
+      ],
+      "constraints": [
+        "Evaluación consultiva únicamente",
+        "No sustituye al Risk Manager determinista",
+        "No tiene autoridad para aprobar operaciones"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3017",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se organizan agentes y motores? — Decision Synthesis",
+      "source_evidence": "Responsabilidad: consolidar los resultados de los agentes. Funciones: integrar los análisis disponibles; identificar coincidencias y contradicciones; preservar desacuerdos relevantes; identificar datos faltantes; evaluar la consistencia de la evidencia; presentar escenarios y argumentos a favor y en contra; generar una propuesta estructurada cuando exista información suficiente.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Decision Synthesis: consolida resultados — integra análisis, identifica coincidencias y contradicciones, preserva desacuerdos, identifica datos faltantes, evalúa consistencia, presenta escenarios, genera propuesta estructurada.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3013",
+        "REQ-3014",
+        "REQ-3015",
+        "REQ-3016"
+      ],
+      "constraints": [
+        "No debe fabricar consenso ni ocultar incertidumbre",
+        "Salida: propuesta de operación o conclusión de no operación"
+      ],
+      "acceptance_criteria": [
+        "Decision Synthesis preserva incertidumbre y desacuerdos (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3018",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se organizan agentes y motores? — Componentes no basados en LLM",
+      "source_evidence": "Los siguientes componentes deben conservar lógica propia, verificable y reproducible: Trading Engine, Market Intelligence, Regime Engine, Strategy Engine, ML Engine, Portfolio Manager, Risk Manager, Execution Engine, Fiscal Ledger, Research & Backtesting, Audit & Governance.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Los componentes no-LLM (Trading Engine, Market Intelligence, Regime Engine, Strategy Engine, ML Engine, Portfolio Manager, Risk Manager, Execution Engine, Fiscal Ledger, Research & Backtesting, Audit & Governance) conservan lógica propia, verificable y reproducible.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "La IA puede interpretar resultados de estos componentes pero no sustituir sus cálculos críticos"
+      ],
+      "acceptance_criteria": [
+        "Strategy Engine y ML Engine diferenciados de los LLM (criterio de aceptación global)",
+        "Risk Manager opera de manera determinista (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3019",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se intercambian mensajes y eventos? — Contrato universal de mensajes",
+      "source_evidence": "Todo evento o mensaje intercambiado deberá contener, como mínimo: message_id (uuid), correlation_id (uuid), causation_id (uuid-or-null), schema_version, source, destination, message_type, timestamp_utc, data_timestamp_utc, asset, timeframe, payload, status.",
+      "requirement_type": "INTERFACE",
+      "description": "Contrato universal de mensajes: todo evento/mensaje debe contener message_id, correlation_id, causation_id, schema_version, source, destination, message_type, timestamp_utc, data_timestamp_utc, asset, timeframe, payload, status.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3004",
+        "REQ-3007",
+        "REQ-3008"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Los valores de los campos son ilustrativos; nombres y esquemas definitivos se registran en el catálogo de eventos del sistema"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3020",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se intercambian mensajes y eventos? — Requisitos de contratos especializados",
+      "source_evidence": "Cada contrato deberá documentar nombre e identificador, versión, propósito, productor autorizado, consumidores autorizados, campos obligatorios, campos opcionales, tipos de datos, enumeraciones permitidas, reglas de validación, manejo de errores, ejemplos válidos y compatibilidad con versiones anteriores.",
+      "requirement_type": "INTERFACE",
+      "description": "Cada contrato especializado debe documentar: nombre, versión, propósito, productor autorizado, consumidores autorizados, campos obligatorios/opcionales, tipos de datos, enumeraciones, reglas de validación, manejo de errores, ejemplos válidos y compatibilidad con versiones anteriores.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3004"
+      ],
+      "constraints": [
+        "No se permitirá que un agente agregue campos críticos no reconocidos interpretados como instrucciones ejecutables"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3021",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se intercambian mensajes y eventos? — Catálogo de eventos principales",
+      "source_evidence": "El catálogo inicial deberá contemplar eventos equivalentes a: ANALYSIS_REQUESTED, MARKET_ANALYSIS_COMPLETED, MACRO_ANALYSIS_COMPLETED, ML_INFERENCE_COMPLETED, REGIME_CLASSIFIED, STRATEGY_CANDIDATE, DECISION_SYNTHESIS_COMPLETED, TRADE_PROPOSAL, RISK_APPROVED, RISK_REJECTED, RISK_REQUIRES_REVIEW, ORDER_SUBMITTED, ORDER_PARTIALLY_FILLED, ORDER_FILLED, ORDER_CANCELLED, ORDER_REJECTED.",
+      "requirement_type": "INTERFACE",
+      "description": "Catálogo inicial de 16 tipos de eventos del sistema. Los nombres y esquemas definitivos deben registrarse en el catálogo de eventos.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3007",
+        "REQ-3019"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Los nombres de eventos son referencias de partida; nombres definitivos se establecen en el catálogo del sistema"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3022",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuál es el flujo integral de decisión? — Fase 1: Captura y preparación de datos",
+      "source_evidence": "Trading Engine y Market Intelligence obtienen y preparan los datos necesarios. Como resultado, deberán validar integridad y consistencia; identificar temporalidad y activo; registrar fuente y timestamp; detectar datos faltantes, duplicados u obsoletos; y mantener separación entre tiempo de mercado y tiempo de procesamiento.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase 1 del flujo de decisión: Trading Engine y Market Intelligence validan integridad, identifican temporalidad/activo, registran fuente/timestamp, detectan datos faltantes/duplicados/obsoletos, mantienen separación entre tiempo de mercado y tiempo de procesamiento.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3018"
+      ],
+      "constraints": [
+        "Si los datos no cumplen las condiciones mínimas, el análisis no debe producir una propuesta ejecutable"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3023",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuál es el flujo integral de decisión? — Fase 2: Análisis paralelo",
+      "source_evidence": "El Orchestrator distribuye el contexto necesario a Market Analyst, Macro Analyst, ML Engine y Regime Engine. Los resultados se relacionan mediante un mismo correlation_id. Cada componente deberá entregar su resultado o un estado explícito de error, indisponibilidad o insuficiencia de información.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase 2: Orchestrator distribuye contexto a Market Analyst, Macro Analyst, ML Engine y Regime Engine. Todos los resultados comparten correlation_id. Cada componente entrega resultado o estado explícito (error, indisponibilidad, insuficiencia).",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3002",
+        "REQ-3013",
+        "REQ-3014"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3024",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuál es el flujo integral de decisión? — Fase 3: Evaluación de estrategias",
+      "source_evidence": "Strategy Engine evalúa las estrategias disponibles, por ejemplo Trend Following, Momentum, Mean Reversion, Breakout, Volatility-Based y ML-Based. Estas familias son referencias de investigación, no estrategias automáticamente habilitadas para producción. Una estrategia deberá tener una definición versionada, condiciones de entrada y salida, reglas de invalidación y evidencia experimental correspondiente.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase 3: Strategy Engine evalúa estrategias candidatas. Las familias (Trend Following, Momentum, Mean Reversion, Breakout, Volatility-Based, ML-Based) son referencias de investigación, no habilitadas automáticamente. Cada estrategia requiere definición versionada, condiciones entrada/salida, reglas de invalidación y evidencia experimental.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3018"
+      ],
+      "constraints": [
+        "Estrategias candidatas se representan mediante STRATEGY_CANDIDATE",
+        "Estrategias no automáticamente habilitadas para producción"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3025",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuál es el flujo integral de decisión? — Fase 4: Síntesis de decisión",
+      "source_evidence": "Decision Synthesis recibe los análisis y resultados de estrategia y debe determinar si existe información suficiente para generar una propuesta, solicitar información adicional, descartar la oportunidad o indicar que existe desacuerdo entre fuentes. Cuando exista una propuesta, deberá generar TRADE_PROPOSAL. La propuesta no es una orden ni una autorización.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase 4: Decision Synthesis determina si generar propuesta, solicitar info adicional, descartar oportunidad o indicar desacuerdo. Cuando hay propuesta, genera TRADE_PROPOSAL. La propuesta NO es una orden ni autorización.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3017"
+      ],
+      "constraints": [
+        "TRADE_PROPOSAL no es una orden ni una autorización"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3026",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuál es el flujo integral de decisión? — Fase 5: Validación determinista de riesgo",
+      "source_evidence": "Risk Manager recibe la propuesta y ejecuta sus propias validaciones. Como mínimo deberá verificar: Capital disponible, Riesgo monetario y porcentual, Stop-loss y distancia de invalidación, Exposición agregada, Posiciones simultáneas, Límite mensual de operaciones ejecutadas, Instrumentos permitidos. Y además: liquidez y condiciones de ejecución; integridad y vigencia de datos; versión de la estrategia; duplicidad de propuestas u órdenes; consistencia de cantidades y límites operativos.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase 5: Risk Manager valida la propuesta de forma determinista. Verifica mínimamente: capital disponible, riesgo monetario/porcentual, stop-loss, exposición agregada, posiciones simultáneas, límite mensual, instrumentos permitidos, liquidez, integridad de datos, versión de estrategia, duplicidad, consistencia de cantidades.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3018",
+        "REQ-3025"
+      ],
+      "constraints": [
+        "Resultados posibles: RISK_APPROVED, RISK_REJECTED, RISK_REQUIRES_REVIEW",
+        "Ausencia de respuesta ≠ aprobación"
+      ],
+      "acceptance_criteria": [
+        "Risk Manager opera de manera determinista (criterio de aceptación global)",
+        "No existe ejecución sin autorización válida (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3027",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuál es el flujo integral de decisión? — Fase 6: Autorización y ejecución",
+      "source_evidence": "Una autorización deberá estar vinculada a propuesta original, identificador de autorización, instrumento, cantidad máxima autorizada, límites de precio o condiciones de ejecución, vigencia, versión de las reglas de riesgo y estado de autorización. Execution Engine únicamente aceptará autorizaciones válidas.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase 6: Las autorizaciones deben contener propuesta original, ID de autorización, instrumento, cantidad máxima, límites de precio, vigencia, versión de reglas de riesgo y estado. Execution Engine solo acepta autorizaciones válidas.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3026"
+      ],
+      "constraints": [
+        "Si la autorización expira, se revoca o deja de cumplir condiciones, no puede usarse para ejecutar"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3028",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuál es el flujo integral de decisión? — Fase 6: Autorización y ejecución",
+      "source_evidence": "El Execution Engine deberá reconciliar las órdenes enviadas con las ejecuciones reales reportadas por Binance. Las ejecuciones parciales deberán tratarse como eventos independientes y no como operaciones completas hasta que corresponda.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Execution Engine reconcilia órdenes enviadas con ejecuciones reportadas por Binance. Las ejecuciones parciales son eventos independientes.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3027"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Binance puede reconciliar órdenes y ejecuciones (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3029",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuál es el flujo integral de decisión? — Fase 7: Registro y retroalimentación",
+      "source_evidence": "El ciclo deberá conservar datos utilizados, análisis de cada agente, versiones de prompts y modelos, contratos y esquemas utilizados, propuestas generadas, decisiones de Risk Manager, autorizaciones, órdenes y ejecuciones, comisiones, resultado de la operación y evaluación posterior.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase 7: Registro completo del ciclo — datos, análisis por agente, versiones de prompts/modelos, contratos/esquemas, propuestas, decisiones Risk Manager, autorizaciones, órdenes/ejecuciones, comisiones, resultado y evaluación posterior.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3028"
+      ],
+      "constraints": [
+        "No alterar retrospectivamente los resultados originales"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3030",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Quién tiene autoridad sobre qué?",
+      "source_evidence": "tabla de autoridad: Interpretar mercado → Agentes de IA; Aprobar o rechazar técnicamente una operación → Risk Manager determinista; Enviar órdenes autorizadas → Execution Engine; Decidir aportaciones y retiros de capital → Operador humano; Decidir asignación del presupuesto → Operador humano; Cambiar el modo operativo → Operador autorizado; Modificar políticas críticas → Operador autorizado.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Tabla de autoridad del sistema: interpretación de mercado→IA, aprobación técnica→Risk Manager determinista, envío de órdenes→Execution Engine, capital/presupuesto→operador humano, cambio de modo/políticas críticas→operador autorizado.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3031",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Quién tiene autoridad sobre qué?",
+      "source_evidence": "Los agentes no podrán cambiar límites de riesgo, modificar el capital configurado, autorizarse a sí mismos, modificar las reglas de ejecución, eludir validaciones, ejecutar herramientas financieras fuera de sus permisos, transformar una recomendación en una orden ejecutable sin aprobación humana, ni alterar registros históricos.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Prohibiciones absolutas para todos los agentes: no cambiar límites de riesgo, capital configurado, autorizarse a sí mismos, modificar reglas de ejecución, eludir validaciones, operar fuera de permisos, convertir recomendación en orden, ni alterar registros históricos.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3030"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Agentes no tienen autoridad de ejecución (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3032",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué pasa cuando algo falla o no es confiable?",
+      "source_evidence": "Risk Manager indisponible → Bloquear nuevas operaciones; Datos obsoletos → Bloquear nuevas propuestas ejecutables; Datos inconsistentes → Bloquear o solicitar revisión; Agente sin respuesta → Registrar indisponibilidad; no asumir aprobación; Claude API indisponible → No generar decisiones artificiales ni eludir controles; Contrato inválido → Rechazar el mensaje; Autorización expirada → Impedir ejecución; Binance indisponible → No asumir el estado de una orden; reconciliar; Límite mensual alcanzado → Rechazar nuevas operaciones; Duplicidad detectada → Evitar doble ejecución; Inconsistencia de ejecución → Suspender nuevas operaciones afectadas y reconciliar.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Comportamiento conservador ante 11 condiciones de fallo: Risk Manager indisponible (bloquear), datos obsoletos/inconsistentes (bloquear/revisar), agente sin respuesta (registrar, no asumir aprobación), Claude API indisponible (no eludir controles), contrato inválido (rechazar), autorización expirada (impedir), Binance indisponible (reconciliar), límite mensual (rechazar), duplicidad (evitar), inconsistencia de ejecución (suspender y reconciliar).",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3026",
+        "REQ-3027"
+      ],
+      "constraints": [
+        "La recuperación debe ser explícita y auditable",
+        "No repetir acciones financieras sin verificar estado previo"
+      ],
+      "acceptance_criteria": [
+        "Condiciones de fail-safe probadas (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3033",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué modos operativos existen?",
+      "source_evidence": "SwingPilot deberá distinguir tres modos; el cambio entre modos deberá estar protegido, registrado y asociado a una autorización humana. No se permitirá que un agente LLM cambie por sí mismo de Research o Paper Trading a Live Trading.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "SwingPilot tiene tres modos operativos: Research, Paper Trading, Live Trading. El cambio de modo está protegido, registrado y requiere autorización humana. Los agentes LLM no pueden cambiar de Research/Paper a Live.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "Ningún agente LLM puede cambiar a Live Trading por sí solo"
+      ],
+      "acceptance_criteria": [
+        "Research, Paper Trading y Live Trading separados (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3034",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué modos operativos existen?",
+      "source_evidence": "Research: Investigación y experimentación; evaluación de hipótesis; análisis de mercado; backtesting; evaluación de modelos ML; sin ejecución de órdenes reales.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Modo Research: sin ejecución de órdenes reales. Permite investigación, experimentación, backtesting y evaluación de modelos ML.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3033"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3035",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué modos operativos existen?",
+      "source_evidence": "Paper Trading: Simulación de propuestas y operaciones; validación del flujo completo; evaluación de riesgo; simulación de ejecución; medición de desempeño sin comprometer capital real.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Modo Paper Trading: simula propuestas y operaciones, valida flujo completo, evalúa riesgo, simula ejecución y mide desempeño sin capital real.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3033"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "El ciclo completo puede probarse sin comprometer capital real (criterio de salida Fase 5 de implementación)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3036",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué modos operativos existen?",
+      "source_evidence": "Live Trading: Operaciones reales en Binance; requiere autorización explícita del operador; requiere controles de riesgo activos; requiere credenciales y permisos apropiados; requiere reconciliación de órdenes y ejecuciones.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Modo Live Trading: operaciones reales en Binance. Requiere autorización explícita del operador, controles de riesgo activos, credenciales apropiadas y reconciliación de órdenes/ejecuciones.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3033"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Autorización explícita del operador y cumplimiento de todos los criterios de aceptación de producción (criterio de salida Fase 6 de implementación)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3037",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se integra cada tecnología? — Anthropic Claude",
+      "source_evidence": "Responsabilidad: razonamiento lingüístico, interpretación contextual, análisis especializado y síntesis. Requisitos: utilizar Anthropic API para inferencia del runtime; mantener API keys fuera del código fuente (usar .env); aplicar límites de consumo y monitoreo de costes; registrar modelo y versión utilizados; controlar tiempos de espera y errores; validar todas las respuestas; no asumir que una respuesta válida en lenguaje natural es una respuesta válida operativamente.",
+      "requirement_type": "SECURITY",
+      "description": "Integración Anthropic Claude: usar API para inferencia, API keys en .env (no en código fuente), aplicar límites de consumo, monitorear costes, registrar modelo/versión, controlar timeouts, validar respuestas, no asumir que respuesta NL es operativamente válida.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3010",
+        "REQ-3011"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Costes de IA medibles (criterio de aceptación global)",
+        "Prompts, modelos, estrategias y contratos versionados (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3038",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se integra cada tecnología? — AI Provider Adapter",
+      "source_evidence": "Responsabilidades: normalizar solicitudes y respuestas; administrar configuración del proveedor; gestionar errores y límites; controlar tiempos de espera; registrar metadatos; permitir futuras sustituciones del proveedor sin reescribir los agentes.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "AI Provider Adapter: normaliza solicitudes/respuestas, administra configuración, gestiona errores y límites, controla timeouts, registra metadatos, permite sustitución futura del proveedor sin reescribir agentes.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3012"
+      ],
+      "constraints": [
+        "No se requiere implementar múltiples proveedores ni fallback automático en la primera versión"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3039",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se integra cada tecnología? — Python y Machine Learning",
+      "source_evidence": "Python será la base para los modelos cuantitativos. Tecnologías de referencia: pandas, NumPy, scikit-learn, XGBoost, y PyTorch únicamente si existe una justificación experimental. Los modelos deberán tener identificador y versión; datos de entrenamiento identificados; métricas de evaluación; separación temporal Train/Validation/Test; evidencia de backtesting; registro de inferencias; y política de actualización y despliegue. La salida de ML no debe tratarse como certeza ni como autorización.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Python para modelos cuantitativos (pandas, NumPy, scikit-learn, XGBoost, PyTorch si justificado). Los modelos requieren ID/versión, datos de entrenamiento identificados, métricas, separación Train/Validation/Test, evidencia backtesting, registro de inferencias y política de actualización. Salida ML ≠ certeza ni autorización.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [
+        "Salida de ML no es certeza ni autorización"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3040",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se integra cada tecnología? — Binance",
+      "source_evidence": "Responsabilidad: obtener datos de mercado; consultar balances y posiciones cuando corresponda; enviar órdenes autorizadas; consultar estado de órdenes; recuperar ejecuciones y comisiones; reconciliar eventos. Las credenciales deberán utilizar permisos mínimos. Los componentes de IA no recibirán credenciales de ejecución directa.",
+      "requirement_type": "SECURITY",
+      "description": "Integración Binance: obtener datos de mercado, consultar balances, enviar órdenes autorizadas, consultar estado de órdenes, recuperar ejecuciones/comisiones, reconciliar. Credenciales con permisos mínimos. Componentes IA sin credenciales de ejecución directa.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3027"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3041",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cómo se integra cada tecnología? — Telegram",
+      "source_evidence": "Telegram será la interfaz de interacción y notificación. Podrá mostrar estado del sistema, análisis de mercado, propuestas de operación, justificaciones y riesgos, alertas, estado de órdenes, resultados de operaciones y solicitudes de intervención humana. Las acciones críticas deberán estar sujetas a autorización, identidad, permisos y validaciones del backend. Telegram no será una fuente de autoridad independiente: el backend será quien valide cada acción.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Telegram es la interfaz de interacción y notificación. Muestra estado del sistema, análisis, propuestas, alertas, órdenes, resultados y solicitudes de intervención. Las acciones críticas requieren autorización/identidad/permisos del backend. Telegram no es fuente de autoridad independiente.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [
+        "Backend valida cada acción; Telegram no tiene autoridad propia"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3042",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué exige seguridad, privacidad y gobernanza?",
+      "source_evidence": "1. Gestión segura de secretos y credenciales. 2. Separación entre permisos de lectura, análisis y ejecución. 3. Autenticación y autorización de acciones. 4. Validación de entradas y salidas. 5. Protección contra prompt injection y contenido externo malicioso. 6. No permitir que instrucciones contenidas en noticias, documentos o respuestas de herramientas modifiquen las políticas del sistema.",
+      "requirement_type": "SECURITY",
+      "description": "Requisitos de seguridad (1-6): gestión segura de secretos, separación de permisos read/análisis/ejecución, autenticación/autorización, validación de entradas/salidas, protección contra prompt injection, prohibición de que contenido externo modifique políticas.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Existen pruebas de seguridad e integridad operativa (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3043",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué exige seguridad, privacidad y gobernanza?",
+      "source_evidence": "7. Registro de cambios en configuraciones críticas. 8. Registro de versiones de prompts, modelos y contratos. 9. Protección de datos sensibles. 10. Auditoría de las acciones realizadas por cada componente. Los agentes deben recibir únicamente el contexto y las herramientas necesarias para cumplir su función. Las noticias, páginas web y datos externos deben tratarse como información no confiable, nunca como instrucciones para el sistema.",
+      "requirement_type": "SECURITY",
+      "description": "Requisitos de seguridad (7-10): registro de cambios en configs críticas, versiones de prompts/modelos/contratos, protección de datos sensibles, auditoría por componente. Agentes reciben contexto mínimo necesario. Datos externos son información no confiable, nunca instrucciones.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3042"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3044",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué debe poder reconstruir la observabilidad y auditoría?",
+      "source_evidence": "Origen y participantes: ¿Qué información provocó el análisis? ¿Qué agentes participaron? ¿Qué modelo y versión utilizaron? ¿Qué información recibió cada agente? ¿Qué resultados generaron? ¿Qué desacuerdos existieron?",
+      "requirement_type": "NON_FUNCTIONAL",
+      "description": "Observabilidad origen: el sistema puede responder qué info provocó el análisis, qué agentes participaron, qué modelo/versión usaron, qué info recibió cada agente, qué resultados generaron y qué desacuerdos existieron.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3029"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3045",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué debe poder reconstruir la observabilidad y auditoría?",
+      "source_evidence": "Propuesta, riesgo y ejecución: ¿Qué estrategia produjo la propuesta? ¿Qué versión de estrategia estaba activa? ¿Qué reglas de riesgo se evaluaron? ¿Por qué se aprobó o rechazó? ¿Qué autorización permitió ejecutar? ¿Qué ocurrió realmente en Binance? ¿Cuál fue el resultado neto?",
+      "requirement_type": "NON_FUNCTIONAL",
+      "description": "Observabilidad ejecución: el sistema puede responder qué estrategia/versión produjo la propuesta, qué reglas de riesgo se evaluaron, por qué se aprobó/rechazó, qué autorización permitió ejecutar, qué ocurrió en Binance y cuál fue el resultado neto.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3044"
+      ],
+      "constraints": [
+        "Registros históricos no se sobrescriben para aparentar que una decisión usó información no disponible en ese momento"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3046",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué debe poder reconstruir la observabilidad y auditoría?",
+      "source_evidence": "La trazabilidad deberá conectar todos los eventos mediante identificadores de correlación y causalidad. Los registros históricos no deberán sobrescribirse para aparentar que una decisión anterior utilizó información que no estaba disponible en ese momento.",
+      "requirement_type": "NON_FUNCTIONAL",
+      "description": "Trazabilidad completa mediante correlation_id y causation_id. Registros históricos inmutables — no se sobrescriben para aparentar uso de información retrospectiva.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3008"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Resultados pueden reconstruirse históricamente (criterio de aceptación global)"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3047",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué requisitos no funcionales aplican?",
+      "source_evidence": "Modularidad: Agentes y proveedores desacoplados. Validación: Contratos JSON verificables. Versionado: Prompts, modelos, esquemas y estrategias versionados. Auditoría: Reconstrucción del ciclo completo. Seguridad: Permisos mínimos y separación de autoridad. Disponibilidad: Manejo explícito de fallos externos. Idempotencia: Protección contra acciones duplicadas. Consistencia: Validación de datos y estados. Escalabilidad: Incorporación futura de agentes sin rediseño integral. Costes: Medición de consumo de Anthropic API. Reproducibilidad: Registro del contexto y versiones de cada análisis.",
+      "requirement_type": "NON_FUNCTIONAL",
+      "description": "11 requisitos no funcionales: Modularidad (agentes/proveedores desacoplados), Validación (contratos JSON verificables), Versionado (prompts/modelos/esquemas/estrategias), Auditoría (ciclo completo reconstruible), Seguridad (permisos mínimos), Disponibilidad (manejo explícito de fallos), Idempotencia (sin duplicados), Consistencia (validación datos/estados), Escalabilidad (nuevos agentes sin rediseño), Costes (medición API), Reproducibilidad (registro contexto/versiones).",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Tiempos máximos de respuesta, límites de consumo, políticas de reintento y objetivos de disponibilidad deben establecerse mediante decisiones y pruebas, no valores arbitrarios"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3048",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿En qué fases se implementa la integración? — Fase 1",
+      "source_evidence": "Fase 1 — Fundamentos de integración: Crear AI Provider Adapter. Integrar Anthropic API. Implementar AI Orchestrator. Definir contratos universales. Crear catálogo inicial de eventos. Implementar validación y trazabilidad. Criterio de salida: el Orchestrator puede coordinar una solicitud y recibir respuestas estructuradas, validadas y auditables.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase de implementación 1 — Fundamentos: AI Provider Adapter, integración Anthropic API, AI Orchestrator, contratos universales, catálogo de eventos, validación y trazabilidad. Criterio: Orchestrator coordina solicitud y recibe respuestas estructuradas, validadas y auditables.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3001",
+        "REQ-3004",
+        "REQ-3007",
+        "REQ-3010",
+        "REQ-3012"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Orchestrator puede coordinar una solicitud y recibir respuestas estructuradas, validadas y auditables"
+      ],
+      "open_questions": [],
+      "contradictions": [],
+      "is_derived": false
+    },
+    {
+      "requirement_id": "REQ-3049",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿En qué fases se implementa la integración? — Fase 2",
+      "source_evidence": "Fase 2 — Agentes especializados: Market Analyst, Macro Analyst, Strategy Analyst, Risk Analyst, Decision Synthesis. Criterio de salida: los agentes pueden trabajar coordinadamente, conservar sus resultados y expresar desacuerdos sin producir autorizaciones financieras.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase de implementación 2 — Agentes especializados: Market Analyst, Macro Analyst, Strategy Analyst, Risk Analyst, Decision Synthesis. Criterio: agentes coordinados, conservan resultados, expresan desacuerdos sin producir autorizaciones financieras.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3013",
+        "REQ-3014",
+        "REQ-3015",
+        "REQ-3016",
+        "REQ-3017"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Agentes coordinados, resultados conservados, desacuerdos expresados sin autorizar financieramente"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3050",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿En qué fases se implementa la integración? — Fase 3",
+      "source_evidence": "Fase 3 — Integración cuantitativa: ML Engine, Regime Engine, Strategy Engine, normalizar propuestas, validar consistencia. Criterio: propuestas relacionadas con estrategias, inferencias y evidencia reproducible.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase de implementación 3 — Cuantitativa: ML Engine, Regime Engine, Strategy Engine conectados, propuestas normalizadas, consistencia análisis/cuantitativo. Criterio: propuestas relacionables con estrategias, inferencias y evidencia reproducible.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3018",
+        "REQ-3024"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3051",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿En qué fases se implementa la integración? — Fase 4",
+      "source_evidence": "Fase 4 — Integración con riesgo: Decision Synthesis + Risk Manager, validaciones deterministas, autorizaciones con vigencia, bloqueos y fail-safe. Criterio: ninguna propuesta llega a ejecución sin autorización válida del Risk Manager.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase de implementación 4 — Riesgo: Decision Synthesis conectado con Risk Manager, validaciones deterministas, autorizaciones con vigencia, fail-safe. Criterio: ninguna propuesta llega a ejecución sin autorización válida del Risk Manager.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3025",
+        "REQ-3026"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Ninguna propuesta puede llegar a ejecución sin una autorización válida del Risk Manager"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3052",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿En qué fases se implementa la integración? — Fase 5",
+      "source_evidence": "Fase 5 — Paper Trading: Execution Engine modo simulado, validar eventos de órdenes, simular ejecuciones parciales, reconciliación, trazabilidad y resultados. Criterio: ciclo completo sin capital real.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase de implementación 5 — Paper Trading: Execution Engine modo simulado, eventos de órdenes validados, ejecuciones parciales simuladas, reconciliación. Criterio: ciclo completo sin capital real.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3035"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "El ciclo completo puede probarse sin comprometer capital real"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3053",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿En qué fases se implementa la integración? — Fase 6",
+      "source_evidence": "Fase 6 — Live Trading: revisión integral de seguridad, permisos de Binance, reconciliación, aprobación humana del cambio de modo, pruebas controladas. Criterio: autorización explícita del operador y cumplimiento de todos los criterios de aceptación de producción.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fase de implementación 6 — Live Trading: revisión integral de seguridad, permisos Binance, reconciliación, aprobación humana del cambio de modo, pruebas controladas. Criterio: autorización operador + criterios de aceptación de producción.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3036"
+      ],
+      "constraints": [
+        "No se debe avanzar a fase siguiente por haber completado tareas de desarrollo; se requiere evidencia verificable"
+      ],
+      "acceptance_criteria": [
+        "Autorización explícita del operador y cumplimiento de todos los criterios de aceptación de producción"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3054",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "El Orchestrator coordine agentes especializados.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "[AC-01] El Orchestrator coordina agentes especializados.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3002"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "El Orchestrator coordina agentes especializados"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3055",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Cada agente tenga contratos de entrada y salida versionados.",
+      "requirement_type": "INTERFACE",
+      "description": "[AC-02] Cada agente tiene contratos de entrada y salida versionados.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3004"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3056",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Los mensajes tengan identificadores de correlación y causalidad.",
+      "requirement_type": "INTERFACE",
+      "description": "[AC-03] Los mensajes tienen identificadores de correlación y causalidad.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3008"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3057",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Los resultados puedan reconstruirse históricamente.",
+      "requirement_type": "NON_FUNCTIONAL",
+      "description": "[AC-04] Los resultados pueden reconstruirse históricamente.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3046"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3058",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Los agentes no tengan autoridad de ejecución.",
+      "requirement_type": "CONSTRAINT",
+      "description": "[AC-05] Los agentes no tienen autoridad de ejecución.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3031"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3059",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Decision Synthesis preserve incertidumbre y desacuerdos.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "[AC-06] Decision Synthesis preserva incertidumbre y desacuerdos.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3017"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3060",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Strategy Engine y ML Engine permanezcan diferenciados de los LLM.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "[AC-07] Strategy Engine y ML Engine diferenciados de los LLM.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3018"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3061",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Risk Manager opere de manera determinista.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "[AC-08] Risk Manager opera de manera determinista.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3026"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3062",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "No exista ejecución sin autorización válida.",
+      "requirement_type": "CONSTRAINT",
+      "description": "[AC-09] No existe ejecución sin autorización válida.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3027"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3063",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "La asignación de capital permanezca bajo autoridad humana.",
+      "requirement_type": "CONSTRAINT",
+      "description": "[AC-10] La asignación de capital permanece bajo autoridad humana.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3030"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3064",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Las condiciones de fail-safe hayan sido probadas.",
+      "requirement_type": "NON_FUNCTIONAL",
+      "description": "[AC-11] Las condiciones de fail-safe han sido probadas.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3032"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3065",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Binance pueda reconciliar órdenes y ejecuciones.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "[AC-12] Binance puede reconciliar órdenes y ejecuciones.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3028"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3066",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Research, Paper Trading y Live Trading estén separados.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "[AC-13] Research, Paper Trading y Live Trading están separados.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3033"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3067",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Los costes de IA puedan medirse.",
+      "requirement_type": "NON_FUNCTIONAL",
+      "description": "[AC-14] Los costes de IA son medibles.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-3037"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3068",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Los prompts, modelos, estrategias y contratos estén versionados.",
+      "requirement_type": "NON_FUNCTIONAL",
+      "description": "[AC-15] Prompts, modelos, estrategias y contratos están versionados.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3006"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3069",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuándo se considera terminada la integración de IA? — Criterios de aceptación global",
+      "source_evidence": "Existan pruebas de seguridad y de integridad operativa.",
+      "requirement_type": "NON_FUNCTIONAL",
+      "description": "[AC-16] Existen pruebas de seguridad e integridad operativa.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3042"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3070",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué decisiones no quedan delegadas a la IA?",
+      "source_evidence": "Aportar o retirar capital; Definir el presupuesto total del sistema; Decidir la asignación de recursos financieros; Aprobar cambios de límites de riesgo; Habilitar Live Trading; Autorizar cambios críticos de configuración; Aprobar nuevas políticas financieras.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Decisiones no delegables a la IA (requieren operador humano): aportar/retirar capital, definir presupuesto total, asignar recursos financieros, aprobar cambios de límites de riesgo, habilitar Live Trading, autorizar cambios críticos de configuración, aprobar nuevas políticas financieras.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3030"
+      ],
+      "constraints": [
+        "Mecanismos explícitos de registro y autorización requeridos para estas decisiones"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3071",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿En qué contexto opera SwingPilot? — Instrumentos y temporalidades",
+      "source_evidence": "Activo prioritario: BTC/USDT; Activo secundario: ETH/USDT; Estilo operativo: Swing Trading; Temporalidades: H1, H4 y 1D; Contexto de mercado: 1D; Estructura y señal: H4; Evaluación de entrada: H1.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Contexto operativo: activo prioritario BTC/USDT, activo secundario ETH/USDT, Swing Trading, temporalidades H1/H4/1D con roles diferenciados (1D=contexto, H4=estructura/señal, H1=evaluación de entrada). Temporalidades complementarias, no reglas rígidas.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [
+        "Duración de operación depende de estrategia, invalidación, condiciones de mercado y reglas de salida"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3072",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿En qué contexto opera SwingPilot? — Límites operativos",
+      "source_evidence": "Máximo de referencia: 8 operaciones ejecutadas por mes. No existe obligación de operar ni de alcanzar una cantidad mínima. Riesgo objetivo por operación: 1–2% del capital, sujeto a las restricciones agregadas. Tickets habituales de referencia: $500–$5,000 MXN. Ticket extraordinario de referencia: hasta $10,000 MXN.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Límites operativos de referencia: 8 operaciones/mes máximo, sin mínimo obligatorio, riesgo objetivo 1-2% del capital, tickets habituales $500-$5,000 MXN, ticket extraordinario hasta $10,000 MXN. Son parámetros de referencia; configuración, modificación y aprobación corresponden al operador.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [
+        "Parámetros de referencia; configuración, modificación y aprobación corresponden al operador"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": [
+        {
+          "contradicting_document": "DOC-003",
+          "contradicting_section": "¿En qué contexto opera SwingPilot? — Límites operativos",
+          "description": "DOC-003 indica riesgo objetivo '1-2% del capital'. OWNEW_CONTEXT.md (DOC-001) establece 'Límite máximo: 1.5% del capital de referencia'. RISK_POLICY.md (DOC-005) fija '1.5% del equity actual'. Estos tres valores son consistentes solo si '1-2%' en DOC-003 es rango orientativo y 1.5% es el límite máximo aprobado. Requiere confirmación de que DOC-003 es subordinado a RISK_POLICY en este parámetro."
+        }
+      ]
+    },
+    {
+      "requirement_id": "REQ-3073",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Quién decide sobre el capital?",
+      "source_evidence": "SwingPilot no decide cuánto capital debe aportar, retirar, reservar o comprometer el operador. La IA no puede incrementar el capital disponible, recomendar una aportación como si fuera una autorización, transferir fondos, modificar el presupuesto operativo, aumentar automáticamente el tamaño de una posición ni interpretar una oportunidad de mercado como autorización para utilizar más capital.",
+      "requirement_type": "CONSTRAINT",
+      "description": "SwingPilot no decide sobre capital del operador. La IA no puede: incrementar capital disponible, recomendar aportación como autorización, transferir fondos, modificar presupuesto operativo, aumentar automáticamente el tamaño de posición, interpretar oportunidad de mercado como autorización de capital.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-3070"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3074",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Cuál es la declaración arquitectónica final?",
+      "source_evidence": "SwingPilot utilizará inteligencia artificial como una capa de análisis, interpretación y síntesis de información, coordinada por un Orchestrator central y respaldada por componentes cuantitativos y deterministas. Anthropic Claude será el proveedor LLM principal. Python y los motores cuantitativos conservarán las funciones de cálculo, clasificación y evaluación reproducible. Risk Manager será la autoridad técnica para aprobar o rechazar operaciones, y Execution Engine únicamente ejecutará autorizaciones válidas. El operador humano conservará la autoridad financiera sobre el capital, el presupuesto y la habilitación de operación real. Principio rector: la IA puede identificar oportunidades y justificar propuestas; nunca puede convertir por sí sola una propuesta en una decisión financiera autorizada ni en una operación ejecutada.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Declaración arquitectónica final: IA como capa de análisis/síntesis + Orchestrator + componentes cuantitativos/deterministas. Claude=LLM principal, Python=cálculo, Risk Manager=autoridad técnica, Execution Engine=solo autorizaciones válidas, operador=autoridad financiera. Principio rector: IA no convierte propuesta en decisión financiera ni operación ejecutada por sí sola.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-3075",
+      "source_document": "DOC-003",
+      "source_version": "UNKNOWN",
+      "source_section": "¿Qué queda fuera de esta especificación?",
+      "source_evidence": "Este documento no determina el motor de base de datos, la estructura física de despliegue, el proveedor de infraestructura cloud, el broker o exchange alternativo, los valores definitivos de latencia, los límites definitivos de consumo API, los parámetros definitivos de cada estrategia, la selección definitiva de modelos ML, la política fiscal definitiva ni el presupuesto de capital del operador. Tampoco implica que todos los agentes deban ejecutarse como procesos independientes.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Fuera del alcance de DOC-003: motor de BD, despliegue físico, proveedor cloud, exchange alternativo, latencia definitiva, límites definitivos API, parámetros definitivos de estrategias, selección definitiva de modelos ML, política fiscal definitiva, presupuesto del operador. Los agentes no deben necesariamente ejecutarse como procesos independientes.",
+      "priority": "LOW",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    }
+  ]
+}

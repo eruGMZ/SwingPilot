@@ -1,0 +1,144 @@
+{
+  "verification_metadata": {
+    "verification_id": "VER-001-v2",
+    "verifier_agent": "ADVERSARIAL-VERIFIER — FASE 1 (ejecución directa; fork no disponible en contexto forked; re-audit post-correcciones Merger)",
+    "verification_date": "2026-11-13",
+    "contract_version": "v0.1-rev1",
+    "documents_verified": [
+      "docs/context/OWNEW_CONTEXT.md",
+      "docs/decisions/CONTEXTO_FISCAL_OPERATIVO.md",
+      "docs/policies/AI_INTEGRATION.md",
+      "docs/policies/PROFILE_AND_OPERATIONAL_POLICIES.md",
+      "docs/policies/RISK_POLICY.md",
+      "docs/policies/TRACEABILITY_MATRIX.md",
+      "implementation/requirements.md (rev1)",
+      "implementation/architecture.md (rev1)",
+      "implementation/api_contracts.md (rev1)",
+      "implementation/data_flow.md",
+      "implementation/test_plan.md (rev1)",
+      "implementation/conflict_register.md",
+      "docs/decisions/DEC-001_resoluciones-estado-documentos-fase1.md"
+    ]
+  },
+  "verdict": "PASS",
+  "checks": {
+    "complete_coverage": {
+      "status": "PASS",
+      "summary": "Los 6 documentos fuente están representados en los 15 módulos del contrato. Los 245 requisitos extraídos se agrupan en módulos coherentes con REQ-G-NNN asignados. No se detectaron omisiones materiales de requisitos CRITICAL o HIGH. Los 12 invariantes INV-001..INV-012, los 8 estados del Risk Manager, los 5 componentes LLM, el flujo de 7 fases, los 3 modos operativos, el DDL fiscal completo y el sistema de trazabilidad TRC-NNN están todos representados.",
+      "affected_items": []
+    },
+    "requirement_traceability": {
+      "status": "WARNING",
+      "summary": "La mayoría de REQ-G-NNN citan fuentes explícitas. Los 6 criterios de salida de fases de implementación (REQ-3048..REQ-3059) no tienen REQ-G-NNN en requirements.md v0.1; architecture.md rev1 ahora los referencia explícitamente y documenta que deben asignarse antes de FASE 2. Los 16 criterios de aceptación global (AC-06..AC-16) están marcados PENDING con proceso definido en test_plan.md rev1. Las advertencias no bloquean G2.",
+      "affected_items": [
+        "REQ-3048..REQ-3059 (fases de implementación — sin REQ-G-NNN; documentado en architecture.md rev1)",
+        "AC-06..AC-16 (test cases marcados PENDING con proceso en test_plan.md rev1)"
+      ]
+    },
+    "no_invented_requirements": {
+      "status": "PASS",
+      "summary": "No se detectaron valores concretos inventados. Todos los parámetros numéricos provienen de documentos fuente aprobados vía DEC-001. Los parámetros técnicos sin fuente están marcados explícitamente como PENDING en Módulo 15 (REQ-G-P01..REQ-G-P25).",
+      "affected_items": []
+    },
+    "cross_document_consistency": {
+      "status": "WARNING",
+      "summary": "CONF-004 (riesgo 1-2% vs límite 1.5%) está registrado y documentado. El contrato aplica 1.5% como límite vinculante per DEC-001. CONF-003 (régimen fiscal 616 vs 601) está OPEN y correctamente tratado como PENDING/CONDICIONAL en REQ-G-115 rev1. Ningún conflicto OPEN fue resuelto unilateralmente por los agentes.",
+      "affected_items": [
+        "CONF-003 (OPEN): marcado correctamente como PENDING/CONDICIONAL en REQ-G-115",
+        "CONF-004 (OPEN): documentado; 1.5% aplicado per DEC-001; requiere confirmación en G3"
+      ]
+    },
+    "no_unresolved_critical_contradictions": {
+      "status": "PASS",
+      "summary": "REQ-G-115 rev1 ahora incluye cláusula CONDICIONAL/PENDING que cita CONF-003 y la instrucción de DEC-001 ('PENDIENTE/CONDICIONAL hasta resolución'). La restricción de implementación del Fiscal Ledger (régimen fiscal configurable, no hardcodeado) está incluida. FIND-001 resuelto.",
+      "affected_items": []
+    },
+    "module_requirement_mapping": {
+      "status": "PASS",
+      "summary": "Los 15 módulos de requirements.md cubren todos los dominios de los documentos fuente. Módulo 15 (Parámetros PENDING) agrupa explícitamente los 25 parámetros no resolvibles por agentes (REQ-G-P01..REQ-G-P25).",
+      "affected_items": []
+    },
+    "function_requirement_mapping": {
+      "status": "WARNING",
+      "summary": "REQ-G-030 rev1 incluye ahora los 16 criterios de implementación del Risk Manager en forma reconstructiva con nota explícita de que el texto definitivo debe leerse de RISK_POLICY.md. Los test cases TC-RM-01..TC-RM-16 se definen en FASE 2. La advertencia no bloquea G2.",
+      "affected_items": [
+        "REQ-G-030 (requirements.md) — 16 criterios listados reconstructivamente; TC-RM-01..TC-RM-16 PENDING FASE 2"
+      ]
+    },
+    "test_requirement_mapping": {
+      "status": "WARNING",
+      "summary": "Los 12 invariantes INV-001..INV-012 tienen test cases adversariales definidos. AC-06..AC-16 están marcados PENDING con proceso definido. Los TC-RM-01..TC-RM-16 se definen en FASE 2. Las advertencias son consistentes con el estado DRAFT del contrato (v0.1). No se detectaron omisiones silenciosas.",
+      "affected_items": [
+        "AC-06..AC-16 — PENDING con proceso definido (test_plan.md rev1 Sección 9)",
+        "TC-RM-01..TC-RM-16 — PENDING FASE 2 (REQ-G-030)"
+      ]
+    },
+    "parameter_validity": {
+      "status": "PASS",
+      "summary": "REQ-G-115 rev1 ahora marca correctamente el régimen fiscal como CONDICIONAL a la resolución de CONF-003 y referencia REQ-G-P08/REQ-G-P09. FIND-001 resuelto. Todos los demás parámetros concretos trazan a documentos fuente aprobados. Los parámetros no definidos están marcados PENDING.",
+      "affected_items": []
+    },
+    "interface_contract_integrity": {
+      "status": "PASS",
+      "summary": "Los contratos en api_contracts.md rev1 son internamente consistentes. El DDL de trades.db coincide con CONTEXTO_FISCAL_OPERATIVO.md (verificado campo por campo). Los 16 tipos de eventos coinciden con AI_INTEGRATION.md. Los contratos del Risk Manager son consistentes con los invariantes. api_contracts.md rev1 ahora cross-referencia REQ-G-112/REQ-G-113 para la metodología FIFO. FIND-005 resuelto.",
+      "affected_items": []
+    }
+  },
+  "findings": [
+    {
+      "finding_id": "FIND-001",
+      "severity": "HIGH",
+      "affected_id": "REQ-G-115",
+      "source_document": "implementation/requirements.md",
+      "problem": "REQ-G-115 v0.1 presentaba régimen fiscal 601 sin cláusula PENDING/CONDICIONAL a pesar de que CONF-003 está OPEN y DEC-001 instruye explícitamente tratarlo como PENDIENTE/CONDICIONAL.",
+      "evidence": "DEC-001: 'El Merger debe tratar el cálculo de exención (Art. 93 XIX b) como PENDIENTE/CONDICIONAL hasta resolución.' REQ-G-115 v0.1 no incluía cláusula CONDICIONAL ni referencia a CONF-003 en el cuerpo del requisito.",
+      "required_correction": "Agregar cláusula CONDICIONAL, referencia a CONF-003, referencia a REQ-G-P08/REQ-G-P09, y restricción de implementación (Fiscal Ledger con régimen configurable).",
+      "resolved": true,
+      "resolution_notes": "REQ-G-115 rev1 incluye: cláusula CONDICIONAL citando CONF-003 y DEC-001, referencias a REQ-G-P08/REQ-G-P09, restricción explícita de no hardcodear el régimen fiscal en la implementación."
+    },
+    {
+      "finding_id": "FIND-002",
+      "severity": "MEDIUM",
+      "affected_id": "test_plan.md Sección 9",
+      "source_document": "docs/policies/AI_INTEGRATION.md",
+      "problem": "test_plan.md v0.1 solo cubría explícitamente AC-01..AC-05 de los 16 criterios de aceptación global. AC-06..AC-16 no tenían test cases definidos ni estaban marcados como PENDING.",
+      "evidence": "AI_INTEGRATION.md define 16 criterios AC-01..AC-16. test_plan.md v0.1 solo listaba AC-01..AC-05.",
+      "required_correction": "Marcar AC-06..AC-16 como PENDING con proceso definido, o definir sus test cases.",
+      "resolved": true,
+      "resolution_notes": "test_plan.md rev1 incluye sección AC-06..AC-16 PENDING con proceso de 4 pasos para definir test cases en FASE 2. Omisión silenciosa eliminada."
+    },
+    {
+      "finding_id": "FIND-003",
+      "severity": "MEDIUM",
+      "affected_id": "REQ-G-030",
+      "source_document": "docs/policies/RISK_POLICY.md",
+      "problem": "REQ-G-030 v0.1 solo decía 'ver REQ-5047' sin incluir los criterios, dejando el contrato sin autocontención para los 16 criterios del Risk Manager.",
+      "evidence": "requirements.md REQ-G-030 v0.1: 'ver REQ-5047 para lista completa' sin incluir los criterios.",
+      "required_correction": "Incluir los 16 criterios en REQ-G-030 o mapear a test cases identificados.",
+      "resolved": true,
+      "resolution_notes": "REQ-G-030 rev1 incluye lista reconstructiva de los 16 criterios con nota de verificar contra RISK_POLICY.md. TC-RM-01..TC-RM-16 marcados como PENDING FASE 2."
+    },
+    {
+      "finding_id": "FIND-004",
+      "severity": "LOW",
+      "affected_id": "requirements.md / architecture.md",
+      "source_document": "docs/policies/AI_INTEGRATION.md",
+      "problem": "Los 6 criterios de salida de fases de implementación (REQ-3048..REQ-3059) no tenían REQ-G-NNN en requirements.md.",
+      "evidence": "architecture.md v0.1 Sección 7 los referenciaba como 'referencia de orden' sin asignar REQ-G-NNN.",
+      "required_correction": "Asignar REQ-G-NNN a las 6 fases o documentar explícitamente que se asignarán en FASE 2.",
+      "resolved": true,
+      "resolution_notes": "architecture.md rev1 Sección 7 ahora incluye nota explícita: 'no tienen REQ-G-NNN asignados en requirements.md v0.1 (ver FIND-004); deben ser asignados antes de iniciar FASE 2.'"
+    },
+    {
+      "finding_id": "FIND-005",
+      "severity": "LOW",
+      "affected_id": "api_contracts.md Sección 7.1",
+      "source_document": "docs/decisions/CONTEXTO_FISCAL_OPERATIVO.md",
+      "problem": "api_contracts.md v0.1 no cross-referenciaba la metodología FIFO/BCI a REQ-G-112/REQ-G-113.",
+      "evidence": "Sección 7.1 describía costo_acum_mxn como PENDING sin referencia a los requisitos de metodología.",
+      "required_correction": "Agregar cross-reference a REQ-G-112 y REQ-G-113.",
+      "resolved": true,
+      "resolution_notes": "api_contracts.md rev1 Sección 7.1 incluye: 'Ver REQ-G-112 y REQ-G-113 en requirements.md para la especificación completa del cálculo.'"
+    }
+  ]
+}

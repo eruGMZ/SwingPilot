@@ -1,0 +1,757 @@
+{
+  "extraction_metadata": {
+    "extractor_id": "EXT-005",
+    "source_document": "DOC-005 — Política de Gestión de Riesgo (SwingPilot)",
+    "source_version": "1.0",
+    "source_sha256": "c56a14dbc33f69aa18d6ee4b5fc5581e3d9adb778c477c071e87b5138bbfcd8a",
+    "source_path": "docs/policies/RISK_POLICY.md",
+    "extraction_date": "2026-11-13",
+    "extractor_agent": "EXT-005-inline",
+    "total_requirements_extracted": 42,
+    "open_issues_count": 2
+  },
+  "requirements": [
+    {
+      "requirement_id": "REQ-5001",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Para qué existe esta política?",
+      "source_evidence": "ninguna estrategia, agente de inteligencia artificial, módulo de ejecución o componente externo puede modificar, ignorar o sobrepasar los límites establecidos en esta política. La gestión de riesgo tiene prioridad sobre cualquier objetivo de rentabilidad.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Principio fundamental: ninguna estrategia, agente IA, módulo de ejecución o componente externo puede modificar, ignorar o sobrepasar los límites de esta política. La gestión de riesgo tiene prioridad absoluta sobre la rentabilidad.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5002",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Qué parámetros están aprobados?",
+      "source_evidence": "Capital inicial: $3,000 MXN. Riesgo máximo por operación: 1.5% del equity actual. Presupuesto inicial por operación: $45 MXN. Drawdown mensual máximo: 5%. Pérdida mensual inicial: $150 MXN. Binance Spot, BTC/USDT, Long-only. Sin apalancamiento. Posiciones simultáneas: 1. Promediado: Prohibido. Autorización: Nivel 1. Frecuencia máxima: 8 ops/mes. Pérdidas consecutivas preventivas: 3.",
+      "requirement_type": "DATA",
+      "description": "Parámetros de riesgo aprobados: capital inicial $3,000 MXN, riesgo máximo 1.5% equity actual ($45 MXN inicial), drawdown máximo 5% ($150 MXN), Binance Spot BTC/USDT long-only, sin apalancamiento, 1 posición simultánea máx, sin promediar, Nivel 1 (aprobación humana), 8 ops/mes máx, suspensión tras 3 pérdidas consecutivas.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "Estos valores no pueden ser modificados por agentes autónomos ni configuraciones particulares de estrategias"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5003",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Qué manda sobre el resto del sistema? — Orden de precedencia",
+      "source_evidence": "1. RISK_POLICY.md. 2. Configuración global de riesgo autorizada. 3. Contrato técnico del sistema. 4. Políticas particulares de cada estrategia. 5. Instrucciones de los agentes de IA. 6. Solicitudes de ejecución.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Jerarquía de precedencia: 1) RISK_POLICY.md, 2) Configuración global de riesgo, 3) Contrato técnico, 4) Políticas de estrategia, 5) Instrucciones de agentes IA, 6) Solicitudes de ejecución. Una instrucción de menor jerarquía nunca puede invalidar una restricción de mayor jerarquía.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5001"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5004",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Qué manda sobre el resto del sistema? — Fail-Closed",
+      "source_evidence": "Cuando SwingPilot no pueda verificar una condición necesaria para determinar el riesgo de una operación, deberá adoptar el comportamiento restrictivo. Ejemplos: equity desconocido (bloquear); riesgo incalculable (rechazar); estado de posición desconocido (impedir entradas); mecanismo de salida no verificable (rechazar); discrepancia con Binance (bloquear hasta reconciliar); estado de bloqueo mensual desconocido (impedir entradas). La ausencia de información no constituye autorización para operar.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Principio Fail-Closed: cuando no se puede verificar una condición de riesgo, adoptar comportamiento restrictivo. Casos: equity desconocido→bloquear, riesgo incalculable→rechazar, posición desconocida→impedir, salida no verificable→rechazar, discrepancia Binance→bloquear hasta reconciliar, estado bloqueo mensual desconocido→impedir.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5001"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5005",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se define el capital y el equity? — Equity actual",
+      "source_evidence": "Equity_t = Cash_t + MarketValue_t. Para BTC/USDT: Equity_USDT = USDT_disponible + BTC_total × Precio_BTC. Equity_MXN = Equity_USDT × FX_USDT/MXN.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fórmula de equity: Equity_t = Cash_t + MarketValue_t. Para BTC/USDT: Equity_USDT = USDT_disponible + BTC_total × Precio_BTC. Conversión: Equity_MXN = Equity_USDT × FX_USDT/MXN. Solo se contabilizan activos atribuibles a SwingPilot; no se duplican fondos bloqueados en órdenes.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "Solo activos atribuibles a SwingPilot; no se duplican fondos en órdenes abiertas; no se contabilizan activos externos a la subcuenta operativa"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Fuente de FX USDT/MXN por definir en configuración técnica",
+        "Antigüedad máxima permitida del tipo de cambio por definir"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5006",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se define el capital y el equity? — Actualización del equity",
+      "source_evidence": "El equity deberá recalcularse: antes de presentar una operación para autorización; inmediatamente antes de ejecutar una orden; después de cerrar una posición; después de reconciliar saldos con Binance; y cuando se detecten cambios relevantes en una posición abierta. No se utilizará un equity histórico para autorizar una operación nueva.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "El equity se recalcula en 5 momentos: antes de presentar autorización, antes de ejecutar, después de cerrar posición, después de reconciliar con Binance, ante cambios relevantes en posición abierta. Prohibido usar equity histórico para autorizar operación nueva.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5005"
+      ],
+      "constraints": [
+        "No usar equity histórico para autorizar operación nueva"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5007",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuál es el presupuesto de riesgo por operación?",
+      "source_evidence": "RiskBudget_t = Equity_t × 0.015. RiskEffective = PriceRisk + Fees + Slippage + OtherCosts. Condición: RiskEffective ≤ RiskBudget_t.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Presupuesto de riesgo dinámico: RiskBudget_t = Equity_t × 0.015. RiskEffective incluye: pérdida estimada por movimiento adverso + comisión entrada + comisión salida + reserva slippage + otros costes directos. RiskEffective ≤ RiskBudget_t es condición obligatoria. Los costes no pueden contabilizarse fuera del 1.5%.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5005",
+        "REQ-5006"
+      ],
+      "constraints": [
+        "Presupuesto se reduce dinámicamente si el equity disminuye",
+        "Costes no pueden contabilizarse fuera del límite del 1.5%"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5008",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se calcula el tamaño de posición? — Fórmula general",
+      "source_evidence": "Q = (RiskBudget - FixedCosts) / ((Pe-Ps)+Ce+Cs+S). Q=BTC, Pe=precio entrada, Ps=precio stop, Ce=coste entrada/ud, Cs=coste salida/ud, S=slippage/ud, FixedCosts=costes fijos estimados.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Fórmula de position sizing: Q = (RiskBudget - FixedCosts) / ((Pe-Ps)+Ce+Cs+S). Variables: Q=cantidad BTC, Pe=precio entrada, Ps=precio stop/salida, Ce=coste entrada por unidad, Cs=coste salida por unidad, S=reserva slippage por unidad, FixedCosts=costes fijos estimados, RiskBudget=presupuesto disponible. Los costes variables en misma unidad que el movimiento de precio.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5007"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Comisión efectiva de Binance: obtener de la cuenta",
+        "Reserva de slippage: configuración técnica conservadora"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5009",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se calcula el tamaño de posición? — Restricciones de ejecución",
+      "source_evidence": "Redondear hacia abajo conforme al stepSize del mercado; respetar minQty y minNotional; verificar saldo suficiente; recalcular riesgo después del redondeo; rechazar cantidad cuyo riesgo efectivo supere el presupuesto. Si el tamaño mínimo de Binance excede el presupuesto de riesgo, SwingPilot no ejecuta. No aumentar presupuesto para satisfacer mínimos del exchange.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Restricciones de position sizing: redondear hacia abajo por stepSize, respetar minQty y minNotional de Binance, verificar saldo, recalcular riesgo post-redondeo. Si el tamaño mínimo del exchange supera el presupuesto de riesgo → no ejecutar. No aumentar presupuesto para satisfacer mínimos.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5008"
+      ],
+      "constraints": [
+        "No aumentar presupuesto para satisfacer mínimos del exchange"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Precisión de cantidades y precios: obtener de filtros del mercado en Binance"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5010",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se calcula el tamaño de posición? — Prohibición de sizing discrecional",
+      "source_evidence": "Ningún agente podrá incrementar la cantidad calculada argumentando mayor confianza en la señal, alta probabilidad de éxito, oportunidad excepcional, recuperación de pérdidas anteriores, objetivo de rentabilidad mensual o recomendación de otro agente. El position sizing debe ser determinista y reproducible.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Prohibición absoluta de sizing discrecional. Ningún agente puede incrementar la cantidad calculada por confianza, probabilidad, oportunidad excepcional, recuperación de pérdidas, objetivo mensual o recomendación de otro agente. El position sizing es determinista y reproducible.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5008"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5011",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Qué exige un stop o mecanismo de salida?",
+      "source_evidence": "Toda operación deberá contar con un mecanismo de salida definido antes de su autorización humana. Una operación será rechazada cuando no tenga mecanismo de salida; el mecanismo no sea verificable; no permita estimar el riesgo; dependa exclusivamente de una decisión discrecional futura; o no exista un procedimiento de contingencia ante fallos.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Mecanismo de salida obligatorio antes de la autorización humana. Se admiten stop-loss convencional y alternativas cuantificables y verificables. Una operación se rechaza si: no tiene mecanismo de salida, el mecanismo no es verificable, no permite estimar riesgo, depende de decisión discrecional futura, no tiene contingencia ante fallos.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "Mecanismo de salida debe definir: condición exacta de activación, precio/criterio de ejecución, método de detección, mecanismo de envío de orden, comportamiento ante errores, riesgo estimado"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5012",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuánta exposición simultánea se permite?",
+      "source_evidence": "SwingPilot podrá mantener una sola posición abierta simultáneamente. La restricción se aplica globalmente, no por estrategia o agente. Una orden de entrada pendiente deberá considerarse una exposición potencial.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Máximo 1 posición abierta simultánea, restricción global (no por estrategia o agente). Una orden pendiente se considera exposición potencial — no se puede autorizar otra entrada mientras exista orden activa. No: acumular entradas independientes, dividir operaciones para eludir límites, entradas simultáneas por diferentes agentes, nueva entrada con posición pendiente de reconciliación.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5013",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuánta exposición simultánea se permite? — Apalancamiento",
+      "source_evidence": "Quedan prohibidos Margin Trading, Futures, Perpetual Contracts, préstamos de activos para incrementar exposición, posiciones Short y cualquier mecanismo de apalancamiento.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Prohibiciones absolutas: Margin Trading, Futures, Perpetual Contracts, préstamos de activos, posiciones Short, cualquier mecanismo de apalancamiento. Exclusivamente Binance Spot.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5014",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo entran comisiones, slippage y otros costes?",
+      "source_evidence": "Las comisiones y costes estimados deberán formar parte del presupuesto de riesgo. No se permitirá calcular el position sizing utilizando únicamente la diferencia entre entrada y salida. No se asumirán comisiones promocionales ni descuentos por uso de BNB sin verificar que estén efectivamente disponibles.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Las comisiones y costes forman parte del presupuesto de riesgo — no opcional. No se puede calcular position sizing solo con diferencia entrada-salida. No se asumen comisiones promocionales ni descuentos BNB sin verificar disponibilidad efectiva.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5007"
+      ],
+      "constraints": [
+        "Si los costes no pueden calcularse razonablemente: bloquear nueva entrada, registrar motivo, solicitar actualización de configuración"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5015",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo funciona el drawdown mensual?",
+      "source_evidence": "MonthlyLossLimit = 3000 × 0.05 = $150 MXN. MonthlyBaseline = Equity_{inicio de mes}. MonthlyLoss = MonthlyBaseline - CurrentEquity. MonthlyDrawdown = (MonthlyBaseline - CurrentEquity) / MonthlyBaseline × 100.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Drawdown mensual: MonthlyBaseline = equity al inicio del mes calendario (congelado). MonthlyLoss = MonthlyBaseline - CurrentEquity. MonthlyDrawdown = MonthlyLoss/MonthlyBaseline×100. Incluye pérdidas realizadas y no realizadas. Primer periodo: referencia $3,000 MXN si ese es el equity efectivo al iniciar.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5005"
+      ],
+      "constraints": [
+        "La medición incorpora pérdidas realizadas Y no realizadas"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5016",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo funciona el drawdown mensual? — Condición de bloqueo",
+      "source_evidence": "MonthlyDrawdown ≥ 5%: 1. Bloquear nuevas entradas. 2. Cancelar órdenes de entrada pendientes. 3. Mantener mecanismos de salida de posiciones abiertas. 4. Registrar el evento de bloqueo. 5. Solicitar revisión y autorización humana antes de reanudar entradas.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Al alcanzar MonthlyDrawdown ≥ 5%: bloquear nuevas entradas, cancelar órdenes pendientes, mantener mecanismos de salida de posiciones abiertas, registrar evento de bloqueo, solicitar autorización humana para reanudar. No obliga al cierre inmediato de posiciones abiertas. No se puede ampliar posiciones ni incrementar riesgo.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5015"
+      ],
+      "constraints": [
+        "El cambio de mes no es autorización automática para reanudar — bloqueos preventivos pendientes deben resolverse"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5017",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Qué pasa tras tres pérdidas seguidas?",
+      "source_evidence": "LossStreak ≥ 3: suspender nuevas entradas; registrar secuencia; generar evento de revisión; solicitar evaluación humana; mantener protección de posición abierta. El bloqueo no tiene duración automática. Requiere: revisión humana, verificación estrategia, revisión eventos de ejecución, autorización humana explícita.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Al detectar LossStreak ≥ 3 (tres pérdidas consecutivas): suspender nuevas entradas, registrar secuencia, generar evento de revisión, solicitar evaluación humana. El bloqueo no tiene duración automática. Liberación requiere revisión humana, verificación de estrategia, revisión de ejecuciones y autorización explícita.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "Nueva operación no puede ejecutarse solo porque haya transcurrido tiempo"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5018",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Qué pasa tras tres pérdidas seguidas? — Operación perdedora y reinicio",
+      "source_evidence": "Una operación se considerará perdedora cuando su resultado neto realizado sea negativo después de comisiones y costes atribuibles. El contador se reiniciará cuando una operación cerrada registre resultado neto positivo. Resultado exactamente igual a cero no incrementa ni reinicia el contador.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Definición de operación perdedora: resultado neto realizado negativo después de comisiones y costes. El contador de racha se reinicia con resultado neto positivo. Resultado = 0 no incrementa ni reinicia el contador.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-5017"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5019",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Se puede modificar el stop después de entrar?",
+      "source_evidence": "Modificaciones permitidas: solo para reducir riesgo, proteger capital, proteger beneficios, trailing stop, mejorar nivel sin ampliar la pérdida máxima inicialmente autorizada. Restricción absoluta para Long: P_stop_nuevo ≥ P_stop_inicial.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Modificaciones de stop post-entrada solo para: reducir riesgo, proteger capital, proteger beneficios, trailing stop, mejorar nivel sin ampliar pérdida máxima. Restricción absoluta para Long: nuevo stop ≥ stop inicial. Prohibido: alejar stop para evitar pérdida, incrementar riesgo inicial, eliminar mecanismo sin sustituto, cambiar stop para justificar operación que excedería presupuesto, ampliar discrecionalmente el riesgo.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5011"
+      ],
+      "constraints": [
+        "Toda modificación queda registrada y es verificable"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5020",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuál es el límite de operaciones al mes?",
+      "source_evidence": "MonthlyTradeCount ≤ 8. El contador considera operaciones completadas, no mensajes de señal ni intentos de análisis. Una operación parcialmente ejecutada que se cierre = 1 operación. Entradas canceladas sin ejecución = no se contabilizan como completadas, pero sí como eventos.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Máximo 8 operaciones completadas por mes calendario. Contador por operaciones completadas (no señales ni análisis). Entrada parcial que luego se cierra = 1 operación. Entrada cancelada sin ejecución = 0 operaciones pero sí evento registrado. Al alcanzar 8: bloquear nuevas entradas, gestionar posiciones abiertas, solo salidas y protección, autorización humana para cambiar la política.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "Este límite no es objetivo de actividad — no operar para consumir cuota"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5021",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se protegen posiciones abiertas bajo bloqueo?",
+      "source_evidence": "Las restricciones de nuevas entradas no deberán interferir con las acciones necesarias para reducir o cerrar el riesgo existente. La protección de una posición abierta tiene prioridad sobre la suspensión de nuevas entradas.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Las restricciones de nuevas entradas no interfieren con la gestión de posiciones existentes. Acciones de protección siempre disponibles bajo bloqueo: ejecutar stop-loss, mecanismo alternativo de salida, cerrar parcial/total para reducir exposición, cancelar órdenes pendientes, reconciliar estado de órdenes, contingencia ante fallos. No se puede abrir nueva posición bajo pretexto de proteger la existente.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5016",
+        "REQ-5017"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5022",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo funciona la autorización humana?",
+      "source_evidence": "Nivel 1: aprobación humana individual. Ninguna entrada puede ejecutarse sin autorización válida. Antes de solicitar aprobación, la operación deberá superar todas las restricciones de riesgo.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Nivel 1 de autonomía: aprobación humana individual obligatoria por cada operación. Antes de solicitar aprobación, la operación debe superar TODAS las restricciones de riesgo. El usuario no debe recibir solicitudes de aprobación para operaciones que ya incumplan la política.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5023",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo funciona la autorización humana? — Alcance",
+      "source_evidence": "Una operación autorizada por el usuario deberá rechazarse si, en el momento de ejecución: el equity cambió de forma relevante; el riesgo efectivo excede el presupuesto; existe otra posición abierta; se alcanzó el drawdown mensual; se activó una suspensión preventiva; se alcanzó el límite de operaciones; o la orden no cumple las restricciones del mercado. La operación deberá recalcularse y requerir nueva autorización cuando sus parámetros hayan cambiado materialmente.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Una autorización humana puede invalidarse en el momento de ejecución si: cambio relevante de equity, riesgo efectivo supera presupuesto, existe posición abierta, drawdown mensual alcanzado, suspensión activa, límite mensual alcanzado, orden no cumple restricciones del mercado. En esos casos, recalcular y pedir nueva autorización.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5022"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5024",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo funciona la autorización humana? — Prohibición de excepciones autónomas",
+      "source_evidence": "Ningún agente podrá crear excepciones a esta política. La modificación de un límite requiere una revisión documental y una aprobación humana explícita. Los agentes podrán proponer cambios, pero no implementarlos por iniciativa propia.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Ningún agente puede crear excepciones a la política de riesgo. La modificación de cualquier límite requiere revisión documental y aprobación humana explícita. Los agentes pueden proponer cambios, no implementarlos por iniciativa propia.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5001"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5025",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Qué se registra para auditoría? — Eventos obligatorios",
+      "source_evidence": "Eventos obligatorios: actualización del equity, cálculo del presupuesto de riesgo, cálculo del tamaño de posición, validación de operación, rechazo de operación, autorización humana, ejecución de orden, modificación del stop-loss, cierre de posición, pérdida realizada, actualización del drawdown, activación de bloqueo, liberación de bloqueo, errores de sincronización con Binance.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "14 eventos de auditoría obligatorios en el Risk Manager: actualización equity, cálculo presupuesto, cálculo position sizing, validación de operación, rechazo de operación, autorización humana, ejecución de orden, modificación de stop-loss, cierre de posición, pérdida realizada, actualización drawdown, activación de bloqueo, liberación de bloqueo, errores de sincronización con Binance.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5026",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Qué se registra para auditoría? — Información mínima por evento",
+      "source_evidence": "Campos mínimos: event_id, timestamp, event_type, operation_id, equity, risk_budget, effective_risk, position_size, decision (APPROVED/REJECTED/BLOCKED), reason, actor, policy_version.",
+      "requirement_type": "DATA",
+      "description": "Esquema mínimo de registro de evento de riesgo: event_id (ID único), timestamp, event_type, operation_id (operación relacionada), equity (usado), risk_budget (calculado), effective_risk (estimado), position_size (calculado), decision (APPROVED/REJECTED/BLOCKED), reason (motivo), actor (componente), policy_version (versión de política aplicada).",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-5025"
+      ],
+      "constraints": [
+        "Los registros de riesgo no son modificables retroactivamente por agentes de ejecución",
+        "Las correcciones generan nuevos eventos que preservan el historial original"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5027",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿En qué estados puede estar el Risk Manager?",
+      "source_evidence": "ACTIVE (sin bloqueos, nuevas entradas bajo validación y aprobación), POSITION_OPEN (posición abierta, bloqueadas), LOSS_STREAK_LOCK (3 pérdidas, bloqueadas), MONTHLY_DRAWDOWN_LOCK (drawdown ≥ 5%, bloqueadas), MONTHLY_TRADE_LIMIT_LOCK (8 ops, bloqueadas), DATA_UNAVAILABLE (datos críticos no verificables, bloqueadas), EXCHANGE_DESYNC (estado local ≠ exchange, bloqueadas), MANUAL_REVIEW (revisión humana requerida, bloqueadas).",
+      "requirement_type": "FUNCTIONAL",
+      "description": "8 estados del Risk Manager: ACTIVE, POSITION_OPEN, LOSS_STREAK_LOCK, MONTHLY_DRAWDOWN_LOCK, MONTHLY_TRADE_LIMIT_LOCK, DATA_UNAVAILABLE, EXCHANGE_DESYNC, MANUAL_REVIEW. Los estados de bloqueo pueden coexistir. La liberación de uno no elimina automáticamente otros activos. Las salidas y protecciones permanecen disponibles.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5028",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-001",
+      "source_evidence": "INV-001 — Riesgo máximo: RiskEffective ≤ Equity × 0.015",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-001: RiskEffective ≤ Equity × 0.015. El riesgo efectivo de cada operación no puede exceder el 1.5% del equity actual.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5007"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [
+        "Criterio de implementación 1 y 2: equity calculado correctamente y presupuesto actualizado con equity actual"
+      ],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5029",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-002",
+      "source_evidence": "INV-002 — Drawdown mensual: MonthlyDrawdown < 0.05 para permitir nuevas entradas.",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-002: MonthlyDrawdown < 5% para permitir nuevas entradas. Al alcanzar o superar el 5%, bloqueo obligatorio.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5015",
+        "REQ-5016"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5030",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-003",
+      "source_evidence": "INV-003 — Posición única: OpenPositions ≤ 1",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-003: OpenPositions ≤ 1. Solo una posición abierta simultánea.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5012"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5031",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-004",
+      "source_evidence": "INV-004 — Sin apalancamiento: Leverage = 1. Operativa exclusivamente Spot, sin financiación externa.",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-004: Leverage = 1. Operativa exclusivamente Spot, sin financiación externa.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5013"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5032",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-005",
+      "source_evidence": "INV-005 — Long-only: No se permiten operaciones Short.",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-005: Long-only. No se permiten operaciones Short.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5033",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-006",
+      "source_evidence": "INV-006 — Sin promediado a la baja: No se permite aumentar la exposición de una posición perdedora mediante nuevas entradas.",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-006: Prohibido el promediado a la baja. No se puede aumentar la exposición de una posición perdedora mediante nuevas entradas.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5034",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-007",
+      "source_evidence": "INV-007 — Salida definida: Toda operación requiere un mecanismo de salida verificable antes de su autorización.",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-007: Toda operación requiere mecanismo de salida verificable antes de la autorización humana.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5011"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5035",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-008",
+      "source_evidence": "INV-008 — Aprobación humana: Ninguna nueva operación se ejecuta sin autorización individual válida.",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-008: Ninguna nueva operación se ejecuta sin autorización individual válida del propietario.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5022"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5036",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-009",
+      "source_evidence": "INV-009 — Riesgo de stop invariable: No se permite ampliar la pérdida máxima inicialmente autorizada mediante modificaciones del stop.",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-009: No se puede ampliar la pérdida máxima inicialmente autorizada mediante modificaciones del stop. Para Long: P_stop_nuevo ≥ P_stop_inicial.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5019"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5037",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-010",
+      "source_evidence": "INV-010 — Frecuencia: MonthlyTradeCount ≤ 8.",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-010: MonthlyTradeCount ≤ 8 operaciones completadas por mes.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5020"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5038",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-011",
+      "source_evidence": "INV-011 — Racha de pérdidas: Tres pérdidas consecutivas activan suspensión preventiva.",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-011: LossStreak ≥ 3 activa suspensión preventiva con bloqueo de nuevas entradas.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5017"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5039",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuáles son los invariantes de riesgo? — INV-012",
+      "source_evidence": "INV-012 — Fail-Closed: La imposibilidad de verificar una condición de riesgo bloquea nuevas entradas.",
+      "requirement_type": "CONSTRAINT",
+      "description": "INV-012: Fail-Closed. La imposibilidad de verificar cualquier condición de riesgo bloquea nuevas entradas. La ausencia de información no es autorización para operar.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5004"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5040",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cuándo se considera bien implementada esta política?",
+      "source_evidence": "16 criterios de aceptación de implementación: equity correcto, 1.5% dinámico, position sizing con costes/slippage, redondeo no excede presupuesto, no dos posiciones simultáneas, rechaza sin mecanismo de salida, rechaza promediado, drawdown con realizadas y no realizadas, bloqueo al 5%, suspensión tras 3 pérdidas, bloqueos con autorizaciones, stops no amplían riesgo, límite 8 mensual, sin aprobación sin humano, fail-closed ante errores de datos, todos los eventos registrados y auditables.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "16 criterios de aceptación técnica de la política de riesgo (todos requieren pruebas automatizadas y evidencia de validación): equity correcto, presupuesto 1.5% dinámico, position sizing con precio+costes+slippage, redondeo no supera presupuesto, 1 posición máx, rechazo sin salida, rechazo promediado, drawdown incluye no realizadas, bloqueo al 5%, suspensión tras 3 pérdidas, bloqueos con autorizaciones, stops no amplían riesgo, límite 8 mensual, no ejecución sin aprobación humana, fail-closed ante datos/sincronización, todos los eventos auditables.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-5028",
+        "REQ-5029",
+        "REQ-5030",
+        "REQ-5031",
+        "REQ-5032",
+        "REQ-5033",
+        "REQ-5034",
+        "REQ-5035",
+        "REQ-5036",
+        "REQ-5037",
+        "REQ-5038",
+        "REQ-5039"
+      ],
+      "constraints": [
+        "Cada criterio deberá contar con pruebas automatizadas y evidencia de validación"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5041",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Qué falta definir a nivel técnico?",
+      "source_evidence": "Parámetros de implementación por definir: Fuente de conversión USDT/MXN, antigüedad máxima del tipo de cambio, comisión efectiva de Binance, reserva de slippage, tolerancia de desviación de precio, precisión de cantidades y precios, frecuencia de reconciliación, mecanismo de aprobación humana, procedimiento de recuperación ante fallos.",
+      "requirement_type": "PENDING",
+      "description": "Parámetros técnicos pendientes de definición en contrato técnico: fuente FX USDT/MXN, antigüedad máxima del tipo de cambio, comisión Binance (obtener de cuenta), reserva de slippage (configuración conservadora), tolerancia de desviación de precio, precisión de cantidades/precios (filtros de mercado), frecuencia de reconciliación, persistencia de bloqueos (obligatoria), mecanismo de aprobación humana, procedimiento de recuperación. Estos parámetros no pueden configurarse para superar los límites aprobados.",
+      "priority": "PENDING",
+      "dependencies": [],
+      "constraints": [
+        "No pueden configurarse para superar los límites aprobados"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Todos los parámetros de esta lista quedan PENDING para el contrato técnico"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-5042",
+      "source_document": "DOC-005",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se cambia esta política?",
+      "source_evidence": "Toda modificación deberá incluir identificador del cambio, versión anterior, versión propuesta, motivo, impacto sobre el riesgo, componentes afectados, pruebas requeridas y aprobación humana explícita. No puede aplicarse retroactivamente.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Cualquier modificación de RISK_POLICY requiere: identificador de cambio, versión anterior y propuesta, motivo, impacto sobre riesgo, componentes afectados, pruebas requeridas y aprobación humana explícita. No puede aplicarse retroactivamente sin procedimiento de migración y reconciliación documentado.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    }
+  ]
+}

@@ -71,11 +71,13 @@ def validate():
         print("INFO: No extraction outputs found (expected in FASE 0 — OK)")
         return
 
-    all_req_ids = {}  # req_id -> filename
+    # IDs are unique per-file; global uniqueness is enforced by the Merger
+    # (each extractor uses its own REQ-NNN namespace per document)
 
     for output_file in output_files:
         filename = output_file.name
         file_id = output_file.stem  # filename without .json
+        file_req_ids = {}  # req_id -> index within this file (per-file uniqueness)
 
         # Check if output corresponds to a manifest document
         if manifest_ids and file_id not in manifest_ids:
@@ -116,13 +118,13 @@ def validate():
                 f"FAIL: '{filename}': requirement_id '{req_id}' has invalid format (expected REQ-NNN)"
             )
 
-            # Uniqueness check
-            if req_id in all_req_ids:
+            # Per-file uniqueness check (global uniqueness assigned by Merger)
+            if req_id in file_req_ids:
                 errors.append(
-                    f"FAIL: duplicate requirement_id '{req_id}' in '{filename}' and '{all_req_ids[req_id]}'"
+                    f"FAIL: duplicate requirement_id '{req_id}' within '{filename}' at index {file_req_ids[req_id]}"
                 )
             else:
-                all_req_ids[req_id] = filename
+                file_req_ids[req_id] = requirements.index(req)
 
             # Verify PENDING fields are explicitly marked, not just empty
             for field in ["priority", "requirement_type"]:

@@ -1,0 +1,550 @@
+{
+  "extraction_metadata": {
+    "extractor_id": "EXT-006",
+    "source_document": "DOC-006 — Matriz de Trazabilidad y Verificación (SwingPilot)",
+    "source_version": "1.0",
+    "source_sha256": "ac7e065791ea1c8c31695720aaec2918e5d93e2e1e893ce44d0ebae5281f9d9b",
+    "source_path": "docs/policies/TRACEABILITY_MATRIX.md",
+    "extraction_date": "2026-11-13",
+    "extractor_agent": "EXT-006-inline",
+    "total_requirements_extracted": 32,
+    "open_issues_count": 1
+  },
+  "requirements": [
+    {
+      "requirement_id": "REQ-6001",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Para qué sirve la matriz?",
+      "source_evidence": "La matriz debe permitir demostrar que cada requisito, política, decisión arquitectónica, contrato, control de seguridad y criterio de aceptación: 1. Tiene un origen documental identificable. 2. Cuenta con identificador único. 3. Está relacionado con los componentes responsables. 4. Tiene un método de verificación apropiado. 5. Cuenta con evidencia verificable de cumplimiento. 6. Tiene las aprobaciones requeridas según su criticidad.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "La Matriz de Trazabilidad demuestra correspondencia entre lo especificado, lo implementado y lo efectivamente verificado. Permite demostrar para cada elemento: origen documental identificable, ID único, componentes responsables, método de verificación, evidencia verificable de cumplimiento y aprobaciones según criticidad.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6002",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué abarca?",
+      "source_evidence": "Categorías: requisitos funcionales, no funcionales, políticas, arquitectura, contratos API, seguridad, criterios de aceptación, implementación, verificación, evidencias.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Cobertura de la matriz: requisitos funcionales, requisitos no funcionales, políticas (restricciones y reglas operativas), arquitectura (decisiones, componentes, responsabilidades, restricciones), contratos API (interfaces, estructuras, operaciones), seguridad (amenazas, controles, mitigaciones, pruebas), criterios de aceptación, implementación (módulos, servicios, clases), verificación (casos de prueba, inspecciones), evidencias.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-6001"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6003",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué principios son obligatorios? — Trazabilidad integral",
+      "source_evidence": "Todo elemento aplicable debe tener una referencia de origen y relaciones suficientes para recorrer su ciclo de vida.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Principio: trazabilidad integral. Todo elemento aplicable debe tener referencia de origen y relaciones suficientes para recorrer su ciclo de vida completo.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6004",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué principios son obligatorios? — Trazabilidad bidireccional",
+      "source_evidence": "La relación debe poder recorrerse en ambas direcciones: desde un requisito hasta su implementación, pruebas y evidencias; desde un componente hasta los requisitos que justifican su existencia; desde una prueba hasta los elementos que verifica; y desde una política hasta los controles que la hacen cumplir.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Trazabilidad bidireccional obligatoria: desde requisito→implementación→pruebas→evidencias, desde componente→requisitos que lo justifican, desde prueba→elementos que verifica, desde política→controles que la hacen cumplir.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-6003"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6005",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué principios son obligatorios? — Evidencia objetiva",
+      "source_evidence": "La existencia de documentación o código no demuestra por sí sola el cumplimiento. Un elemento solamente puede declararse VERIFIED cuando existe evidencia adecuada a su naturaleza y esta satisface sus criterios de verificación.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Evidencia objetiva: la existencia de documentación o código no demuestra cumplimiento. Un elemento puede declararse VERIFIED solo cuando existe evidencia adecuada a su naturaleza que satisface sus criterios de verificación.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6006",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué principios son obligatorios? — Separación de responsabilidades",
+      "source_evidence": "La implementación y la verificación deben distinguirse. Los agentes no podrán aprobar unilateralmente elementos críticos que ellos mismos hayan implementado.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Separación entre implementación y verificación. Los agentes no pueden aprobar unilateralmente elementos críticos que ellos mismos implementaron.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6007",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué principios son obligatorios? — Fail-Closed documental",
+      "source_evidence": "Cuando falte información necesaria para demostrar cumplimiento, el elemento no podrá considerarse verificado. La ausencia de evidencia no equivale a cumplimiento.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Fail-Closed documental: cuando falta información para demostrar cumplimiento, el elemento no puede considerarse verificado. Ausencia de evidencia ≠ cumplimiento.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6008",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se identifican los elementos? — Identificador TRC-NNN",
+      "source_evidence": "Cada registro tendrá un identificador único con el formato TRC-NNN. El identificador será estable durante toda la vida del elemento. No deberá reutilizarse un identificador eliminado, reemplazado o declarado obsoleto.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Formato de identificador de trazabilidad: TRC-NNN (TRC-001, TRC-002, etc.). El identificador es estable durante toda la vida del elemento. Los identificadores eliminados o declarados obsoletos no se reutilizan.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Reglas técnicas de generación y reserva de identificadores: pendiente de definición en integración técnica"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6009",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se identifican los elementos? — Identificadores de origen",
+      "source_evidence": "La matriz conservará los identificadores originales cuando existan. No se permitirá utilizar referencias ambiguas como 'documentación general' cuando sea posible identificar una sección concreta.",
+      "requirement_type": "CONSTRAINT",
+      "description": "La matriz conserva los identificadores originales cuando existen (ej. RISK-001, REQ-001, ARCH-001). Cada elemento registra: documento de origen, sección específica, versión del documento fuente e identificador original. Prohibidas las referencias ambiguas tipo 'documentación general' cuando existe sección concreta.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-6008"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6010",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué campos tiene cada registro?",
+      "source_evidence": "25 campos mínimos: trace_id, source_id, source_document, source_section, source_version, element_type, description, priority, criticality, responsible_component, implementation_reference, verification_method, verification_criteria, test_references, evidence_references, dependencies, related_elements, conflicts, status, implemented_by, verified_by, approved_by, last_verified, change_reference, notes.",
+      "requirement_type": "DATA",
+      "description": "Esquema de registro en la Matriz de Trazabilidad: 25 campos mínimos: trace_id (TRC-NNN), source_id (ID original), source_document, source_section, source_version, element_type, description, priority, criticality (C1/C2/C3), responsible_component, implementation_reference, verification_method, verification_criteria, test_references, evidence_references, dependencies, related_elements, conflicts, status (8 estados), implemented_by, verified_by, approved_by, last_verified, change_reference, notes.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-6008"
+      ],
+      "constraints": [
+        "Campos no aplicables pueden marcarse como NA con justificación"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Taxonomía completa de tipos de elementos: pendiente de definición en integración técnica"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6011",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se clasifica la criticidad?",
+      "source_evidence": "C1: Crítico — verificación independiente y aprobación humana obligatoria. C2: Alto — verificación independiente. C3: Ordinario — verificación automatizada o por agente. Candidatos C1: límites y restricciones RISK_POLICY, autorización de operaciones, gestión de órdenes y posiciones, controles de seguridad sobre credenciales, mecanismos de bloqueo y protección, integridad de registros críticos.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Tres niveles de criticidad: C1=Crítico (verificación independiente + aprobación humana obligatoria), C2=Alto (verificación independiente), C3=Ordinario (verificación automatizada o por agente). Candidatos C1: límites RISK_POLICY, autorización de operaciones, gestión de órdenes y posiciones, controles de seguridad sobre credenciales, mecanismos de bloqueo y protección, integridad de registros críticos.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "La clasificación no puede reducir controles exigidos por una política aprobada"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Esquema definitivo de clasificación de criticidad: pendiente de validación en integración técnica"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6012",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué evidencia exige cada naturaleza de elemento?",
+      "source_evidence": "Requisito funcional: implementación + pruebas + resultados. Requisito no funcional: métricas + pruebas + resultados medibles. Política de riesgo: reglas implementadas + pruebas de invariantes. Decisión arquitectónica: registro de decisión + arquitectura. Contrato API: especificación + pruebas de contrato. Control de seguridad: análisis amenazas + controles + pruebas. Criterio de aceptación: evidencia objetiva de cumplimiento.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Tipos de evidencia requerida según naturaleza del elemento: funcional (implementación+pruebas+resultados), no funcional (métricas+pruebas+medibles), política de riesgo (reglas implementadas+pruebas de invariantes), decisión arquitectónica (registro de decisión+arquitectura), contrato API (especificación+pruebas de contrato), control de seguridad (análisis amenazas+controles+pruebas), criterio de aceptación (evidencia objetiva de cumplimiento).",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-6005"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6013",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué evidencia exige cada naturaleza de elemento? — Requisitos de evidencia",
+      "source_evidence": "Toda evidencia debe permitir identificar: qué se verificó, contra qué criterio, cómo se realizó, qué resultado se obtuvo, cuándo, quién realizó la verificación, qué versión de la implementación o documento se verificó.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Requisitos mínimos de una evidencia válida: debe poder identificarse qué se verificó, contra qué criterio, cómo se realizó la verificación, resultado obtenido, cuándo se obtuvo, quién la realizó y qué versión del elemento se verificó.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-6005"
+      ],
+      "constraints": [
+        "Una evidencia pierde validez cuando un cambio afecta materialmente el elemento verificado"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6014",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué estados y transiciones existen?",
+      "source_evidence": "Estados: NOT_STARTED, IN_PROGRESS, IMPLEMENTED, VERIFICATION_PENDING, VERIFIED, FAILED, BLOCKED, NOT_APPLICABLE.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "8 estados de trazabilidad: NOT_STARTED (no iniciado), IN_PROGRESS (en análisis o desarrollo), IMPLEMENTED (implementación identificada), VERIFICATION_PENDING (esperando verificación), VERIFIED (cumplimiento demostrado con evidencia), FAILED (verificación detectó incumplimiento), BLOCKED (dependencia o impedimento), NOT_APPLICABLE (justificadamente no aplica).",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6015",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué estados y transiciones existen? — Reglas de transición",
+      "source_evidence": "NOT_STARTED→IN_PROGRESS; IN_PROGRESS→IMPLEMENTED; IMPLEMENTED→VERIFICATION_PENDING; VERIFICATION_PENDING→VERIFIED o FAILED; BLOCKED puede regresar al estado correspondiente; FAILED requiere corrección y nueva verificación antes de VERIFIED; NOT_APPLICABLE requiere justificación y aprobación humana.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Reglas de transición de estados: NOT_STARTED→IN_PROGRESS→IMPLEMENTED→VERIFICATION_PENDING→VERIFIED|FAILED. BLOCKED regresa al estado correspondiente al resolverse su causa. FAILED requiere corrección y nueva verificación antes de poder alcanzar VERIFIED. NOT_APPLICABLE requiere justificación y aprobación humana. Las transiciones conservan historial.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-6014"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6016",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué estados y transiciones existen? — Restricciones",
+      "source_evidence": "1. IMPLEMENTED nunca equivale a VERIFIED. 2. BLOCKED no equivale a cumplimiento. 3. FAILED no podrá ocultarse mediante cambio directo de estado. 4. NOT_APPLICABLE no puede usarse para eliminar requisitos incómodos. 5. Ningún agente puede declarar verificado un elemento crítico sin cumplir su procedimiento de aprobación.",
+      "requirement_type": "CONSTRAINT",
+      "description": "5 restricciones de estados: (1) IMPLEMENTED ≠ VERIFIED, (2) BLOCKED ≠ cumplimiento, (3) FAILED no puede ocultarse con cambio directo de estado, (4) NOT_APPLICABLE no se usa para eliminar requisitos incómodos o pendientes, (5) ningún agente puede declarar VERIFIED un elemento crítico sin cumplir su procedimiento de aprobación.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-6014",
+        "REQ-6015"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6017",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se modelan relaciones, dependencias y conflictos? — Dependencias",
+      "source_evidence": "Cada dependencia deberá identificar el elemento del que depende, el elemento dependiente, la naturaleza de la dependencia, la condición necesaria para resolverla y el estado de cumplimiento.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Registro de dependencias: cada una identifica elemento-del-que-depende, elemento-dependiente, naturaleza de la dependencia, condición para resolverla y estado de cumplimiento.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6018",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se modelan relaciones, dependencias y conflictos? — Conflictos",
+      "source_evidence": "Cuando dos elementos sean incompatibles o presenten contradicciones, la matriz deberá registrar: identificadores involucrados, naturaleza del conflicto, documentos afectados, impacto potencial y resolución aprobada o estado pendiente. Los agentes no podrán resolver unilateralmente conflictos que alteren políticas o decisiones aprobadas.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Registro de conflictos en la matriz: identificadores involucrados, naturaleza del conflicto, documentos afectados, impacto potencial y resolución aprobada (o estado pendiente). Los agentes no pueden resolver unilateralmente conflictos que alteren políticas o decisiones aprobadas.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6019",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se modelan relaciones, dependencias y conflictos? — Elementos huérfanos",
+      "source_evidence": "La auditoría deberá detectar: requisitos sin componente responsable; componentes sin requisito o justificación; pruebas sin elementos que verifiquen; requisitos sin pruebas o método de verificación; evidencias sin referencia a un elemento; y dependencias sin resolución.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Detección de elementos huérfanos: requisitos sin componente responsable, componentes sin requisito/justificación, pruebas sin elementos a verificar, requisitos sin pruebas/método de verificación, evidencias sin referencia a elemento, dependencias sin resolución. Los elementos huérfanos deben justificarse o corregirse.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6020",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cuándo se considera completa la cobertura?",
+      "source_evidence": "Cobertura completa solo cuando todos los elementos aplicables: 1. Están identificados. 2. Tienen origen documental. 3. Están relacionados. 4. Tienen componente responsable. 5. Cuentan con implementación identificada. 6. Tienen método de verificación. 7. Disponen de evidencia satisfactoria. 8. Cuentan con aprobaciones según criticidad. 9. No mantienen dependencias críticas pendientes.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "9 condiciones para cobertura completa de trazabilidad: todos los elementos aplicables identificados, con origen documental, relacionados con elementos correspondientes, con componente responsable, con implementación identificada, con método de verificación, con evidencia satisfactoria, con aprobaciones según criticidad, sin dependencias críticas pendientes.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-6005",
+        "REQ-6011"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6021",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cuándo se considera completa la cobertura? — Condiciones de exclusión",
+      "source_evidence": "No se podrá declarar cobertura completa si existen: elementos críticos en BLOCKED o FAILED; elementos aplicables sin evidencia; aprobaciones humanas obligatorias pendientes; conflictos críticos sin resolución; o dependencias críticas sin satisfacer.",
+      "requirement_type": "CONSTRAINT",
+      "description": "5 condiciones que impiden declarar cobertura completa: elementos críticos en BLOCKED o FAILED, elementos aplicables sin evidencia, aprobaciones humanas obligatorias pendientes, conflictos críticos sin resolución, dependencias críticas sin satisfacer. Los NOT_APPLICABLE se excluyen solo después de justificación y aprobación humana.",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-6020"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6022",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cuándo se considera completa la cobertura? — Relación con Harness Engineering",
+      "source_evidence": "Fase 0: registrar fuentes, versiones, integridad. Fase 1: identificar elementos, preservar referencias. Fase 2: relacionar requisitos, políticas, arquitectura, contratos. Fase 3: identificar contradicciones, omisiones, dependencias. Fase 4: comprobar evidencia y aprobaciones. Fase 5: vincular registros con componentes y cambios de código. Fase 6: consolidar resultados de pruebas. Fase 7: confirmar cumplimiento de gates de liberación.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "La Matriz de Trazabilidad se usa transversalmente en todas las fases de Harness Engineering: Fase 0 (fuentes+versiones+integridad), Fase 1 (identificar elementos+preservar referencias), Fase 2 (relacionar requisitos/políticas/arquitectura/contratos), Fase 3 (contradicciones/omisiones/dependencias), Fase 4 (evidencia+aprobaciones), Fase 5 (componentes+cambios de código), Fase 6 (pruebas+cobertura), Fase 7 (gates de liberación). La matriz no reemplaza los gates; proporciona evidencia para evaluarlos.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [
+        "La matriz no reemplaza los gates; proporciona evidencia para su evaluación"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6023",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se gestionan los cambios y su impacto?",
+      "source_evidence": "Procedimiento de 10 pasos: 1. Identificar elemento modificado. 2. Registrar doc/componente/implementación afectada. 3. Identificar registros relacionados y dependientes. 4. Evaluar impacto sobre requisitos/políticas/arquitectura. 5. Identificar pruebas que deben repetirse. 6. Determinar evidencias que pierden vigencia. 7. Identificar aprobaciones que deben renovarse. 8. Actualizar registros afectados. 9. Registrar referencia del cambio. 10. Verificar que no queden impactos pendientes antes de cerrar.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Procedimiento de gestión de cambios en 10 pasos: identificar elemento modificado, registrar afectados, identificar registros relacionados, evaluar impacto en requisitos/políticas/arquitectura, identificar pruebas a repetir, determinar evidencias que pierden vigencia, identificar aprobaciones a renovar, actualizar registros, registrar referencia del cambio, verificar sin impactos pendientes antes de cerrar.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [
+        "Un cambio que afecte una política o decisión aprobada requiere decisión humana explícita y registro de cambios"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6024",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cómo se gestionan los cambios y su impacto? — Historial",
+      "source_evidence": "La matriz deberá conservar el historial de cambios de estado, relaciones, criterios, evidencias, responsables, aprobaciones y rechazos, y revisiones de impacto. No se permitirá sobrescribir el historial para ocultar incumplimientos anteriores.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Historial inmutable de la matriz: conserva cambios de estado, relaciones, criterios, evidencias, responsables, aprobaciones/rechazos y revisiones de impacto. Prohibido sobrescribir el historial para ocultar incumplimientos anteriores.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Mecanismo de registro histórico y control de versiones: pendiente de definición en integración técnica"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6025",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cuándo y cómo se audita la matriz?",
+      "source_evidence": "Dos disparadores de auditoría: 1. Por hitos: al completar cada fase o gate de Harness Engineering. 2. Por cambios críticos: cuando existan cambios que afecten políticas de riesgo, seguridad, arquitectura, ejecución, autorizaciones o controles críticos.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Auditoría de la matriz con dos disparadores obligatorios: (1) por hitos — al completar cada fase o gate de Harness Engineering; (2) por cambios críticos — cuando haya cambios en políticas de riesgo, seguridad, arquitectura, ejecución, autorizaciones o controles críticos.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6026",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cuándo y cómo se audita la matriz? — Criterios",
+      "source_evidence": "Cada auditoría debe revisar: 1. Integridad de identificadores y referencias. 2. Coherencia con versiones vigentes de documentos fuente. 3. Cobertura bidireccional. 4. Existencia de elementos huérfanos. 5. Relaciones y dependencias. 6. Conflictos abiertos. 7. Estados de trazabilidad. 8. Vigencia de evidencias. 9. Autoridad de verificación. 10. Aprobaciones correspondientes. 11. Impactos de cambios pendientes. 12. Cumplimiento de criterios de cobertura.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "12 criterios mínimos de auditoría de la Matriz: integridad de IDs y referencias, coherencia con documentos fuente vigentes, cobertura bidireccional, elementos huérfanos, relaciones y dependencias, conflictos abiertos, estados de trazabilidad, vigencia de evidencias, autoridad de verificación, aprobaciones correspondientes, impactos de cambios pendientes, cumplimiento de criterios de cobertura.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-6025"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6027",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cuándo y cómo se audita la matriz? — Resultado",
+      "source_evidence": "La auditoría deberá generar un registro que contenga: fecha, alcance, versión de la matriz, elementos revisados, hallazgos, incumplimientos, dependencias pendientes, evidencias examinadas, acciones correctivas, responsable, resultado y aprobación.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "El resultado de cada auditoría de la Matriz genera un registro con: fecha, alcance, versión de la matriz, elementos revisados, hallazgos, incumplimientos, dependencias pendientes, evidencias examinadas, acciones correctivas, responsable, resultado y aprobación. Un resultado satisfactorio no sustituye la aprobación humana de elementos que la requieren.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-6025"
+      ],
+      "constraints": [
+        "Un resultado satisfactorio de auditoría no sustituye aprobación humana de elementos que la requieren"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6028",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Quién es responsable de qué?",
+      "source_evidence": "Propietario: aprobar políticas, decisiones críticas y excepciones. Agente de análisis: identificar y relacionar elementos documentales. Agente de implementación: vincular requisitos con componentes y cambios. Agente de verificación: ejecutar o revisar pruebas y evidencias. Agente auditor: detectar inconsistencias, omisiones y conflictos. Responsable de documentación: mantener integridad, referencias e historial.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Separación de responsabilidades en la Matriz: Propietario (aprobar políticas, decisiones críticas, excepciones), Agente de análisis (identificar y relacionar elementos documentales), Agente de implementación (vincular requisitos con componentes y cambios), Agente de verificación (ejecutar/revisar pruebas y evidencias), Agente auditor (detectar inconsistencias, omisiones, conflictos), Responsable de documentación (mantener integridad, referencias e historial).",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-6006"
+      ],
+      "constraints": [
+        "Se conservan las separaciones de autoridad exigidas por la criticidad"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6029",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿En qué formato se mantiene la matriz?",
+      "source_evidence": "La matriz podrá mantenerse en Markdown mediante una tabla principal y secciones complementarias. Si el volumen vuelve inmanejable una tabla única, podrán utilizarse archivos auxiliares o vistas por módulo, manteniendo un identificador y una fuente de verdad consistentes.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "La Matriz puede mantenerse en Markdown con tabla principal y secciones complementarias. Para volúmenes grandes: archivos auxiliares o vistas por módulo, con un identificador único y fuente de verdad consistente.",
+      "priority": "MEDIUM",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Formato definitivo de almacenamiento: pendiente de definición en integración técnica",
+        "Convenciones de referencias a código, commits, PR y pruebas: pendiente de definición"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6030",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Cuándo se aprueba este documento? — Criterios de aceptación",
+      "source_evidence": "TMA-001 a TMA-012: alcance integral, identificación, granularidad, evidencia diferenciada, 8 estados y restricciones, autoridad según criticidad, trazabilidad bidireccional y dependencias, cobertura completa, análisis de impacto e historial, auditorías por hitos y cambios, consistencia con políticas, distinguir NA de pendientes.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "12 criterios de aceptación del documento TRACEABILITY_MATRIX.md (TMA-001 a TMA-012): alcance integral (todas las categorías), identificación (IDs propios + originales), granularidad (individual y modular), evidencia diferenciada por naturaleza, 8 estados con restricciones, autoridad según criticidad, trazabilidad bidireccional, cobertura completa con condiciones, análisis de impacto con historial, auditorías por hitos y cambios críticos, no contradice políticas aprobadas, distingue NA de pendientes.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6031",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué falta definir a nivel técnico?",
+      "source_evidence": "Pendientes: esquema definitivo de clasificación de criticidad, taxonomía completa de tipos de elementos, reglas técnicas de generación y reserva de identificadores, formato definitivo de almacenamiento, convenciones de referencias a código/commits/PR/pruebas, mecanismo de registro histórico y control de versiones, cálculo automatizado de cobertura, integración con gates de Harness Engineering, procedimiento de reconciliación de referencias obsoletas, criterios de independencia de agentes verificadores.",
+      "requirement_type": "PENDING",
+      "description": "10 parámetros técnicos pendientes de definición en integración técnica: esquema definitivo de criticidad, taxonomía de tipos de elementos, reglas de generación de IDs, formato de almacenamiento, convenciones de referencias a código/commits/PR/pruebas, mecanismo de historial y control de versiones, cálculo automatizado de cobertura, integración con gates de Harness Engineering, reconciliación de referencias obsoletas, criterios de independencia de agentes verificadores.",
+      "priority": "PENDING",
+      "dependencies": [],
+      "constraints": [
+        "Estos pendientes no autorizan a los agentes a inventar reglas ni a asumir decisiones del propietario"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-6032",
+      "source_document": "DOC-006",
+      "source_version": "1.0",
+      "source_section": "¿Qué abarca? — Granularidad",
+      "source_evidence": "Nivel individual: cada requisito, política, decisión o control tendrá su propio registro. No se permitirá agrupar requisitos independientes cuando ello impida verificar su cumplimiento individual. Nivel modular: los registros pueden agruparse por módulo para evaluar cobertura total. La agrupación modular no sustituye la trazabilidad individual.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Granularidad híbrida: nivel individual (cada requisito, política, decisión o control tiene su propio registro — no se agrupan si eso impide verificarlos individualmente) y nivel modular (agrupación para evaluar cobertura total por módulo — no sustituye la trazabilidad individual).",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    }
+  ]
+}

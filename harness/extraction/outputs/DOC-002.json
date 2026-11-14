@@ -1,0 +1,296 @@
+{
+  "extraction_metadata": {
+    "extractor_id": "EXT-002",
+    "source_document": "DOC-002 — Documento Fiscal – Trading Cripto (Asalariado)",
+    "source_version": "UNKNOWN",
+    "source_sha256": "98801c4ddf721852ed552a9da7da5dac59bfc757cc3e6133f24bcefdab7bdab6",
+    "source_path": "docs/decisions/CONTEXTO_FISCAL_OPERATIVO.md",
+    "extraction_date": "2026-11-13",
+    "extractor_agent": "EXT-002-inline",
+    "total_requirements_extracted": 15,
+    "open_issues_count": 2
+  },
+  "requirements": [
+    {
+      "requirement_id": "REQ-2001",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "1. Contexto Fiscal",
+      "source_evidence": "Régimen: Sueldos y Salarios (clave 601). Ingreso principal: Salario full-time. Actividad secundaria: Swing trading cripto.",
+      "requirement_type": "DATA",
+      "description": "Según DOC-002, el propietario opera bajo Régimen 601 (Sueldos y Salarios) con ingreso principal laboral y trading cripto como actividad secundaria.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "DOC-001 indica Régimen 616, DOC-002 indica Régimen 601 — CONF-003 registrado. Requiere resolución del propietario antes de calcular obligaciones fiscales definitivas."
+      ],
+      "contradictions": [
+        {
+          "contradicting_document": "DOC-001",
+          "contradicting_section": "¿Cuál es la situación fiscal y laboral documentada?",
+          "description": "DOC-001 registra Régimen 616 (Sin obligaciones fiscales) según CSF. DOC-002 indica Régimen 601 (Sueldos y Salarios). La aplicación de la exención Art. 93 XIX b) en DOC-002 depende de que sea correcto el Régimen 601. Con Régimen 616, la situación fiscal sería diferente. Registrado como CONF-003."
+        }
+      ]
+    },
+    {
+      "requirement_id": "REQ-2002",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "1. Contexto Fiscal",
+      "source_evidence": "Exención aplicable: Art. 93, XIX, b) LISR → $128,383.92 MXN/año (2026). ISR a cargo: $0 (bajo exención).",
+      "requirement_type": "DATA",
+      "description": "Exención fiscal aplicable bajo Art. 93 XIX b) LISR: $128,383.92 MXN/año (2026). Bajo este régimen y si las ganancias de trading no superan la exención, ISR = $0. Válido condicionalmente a que el Régimen 601 sea el correcto (ver CONF-003).",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-2001"
+      ],
+      "constraints": [
+        "Validez condicionada a resolución de CONF-003 (régimen fiscal correcto)"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "¿Aplica la exención si el régimen es 616 y no 601?"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2003",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "1. Contexto Fiscal",
+      "source_evidence": "Obligación: Declaración anual (abril), sección 'Enajenación de bienes'.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Obligación de presentar declaración anual en abril en la sección 'Enajenación de bienes', incluso cuando el ISR sea $0. Omitir la declaración (aun siendo exenta) conlleva multa de $2,050 a $25,360 MXN.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-2002"
+      ],
+      "constraints": [
+        "No declarar aunque sea exento = multa $2,050 a $25,360 MXN"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2004",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "1. Contexto Fiscal",
+      "source_evidence": "Método de costo: FIFO. Tipo de cambio: BCI (Banco de México) del día de operación.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Método de valoración de inventario: FIFO. El tipo de cambio USDT/MXN debe obtenerse del BCI (Banco de México) del día de cada operación. El método FIFO debe ser consistente durante todo el año fiscal — no cambiar a promedio a mitad de ejercicio.",
+      "priority": "CRITICAL",
+      "dependencies": [],
+      "constraints": [
+        "Método FIFO consistente durante todo el año fiscal — no cambiar a mitad de ejercicio"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "Fuente técnica definitiva para BCI por definir en contrato técnico"
+      ],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2005",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "3. Esquema de Base de Datos",
+      "source_evidence": "Motor: SQLite (suficiente para <1000 filas/año). Archivo: trades.db.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "El Fiscal Ledger usa SQLite como motor de base de datos con archivo trades.db. SQLite es suficiente para el volumen estimado (<1000 filas/año). Si el capital crece y los tickets superan $50,000 MXN, reevaluar riesgo de PFAE.",
+      "priority": "HIGH",
+      "dependencies": [],
+      "constraints": [
+        "Reevaluar régimen PFAE si tickets superan $50,000 MXN"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2006",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "3. Esquema de Base de Datos",
+      "source_evidence": "CREATE TABLE trades (id, fecha_utc, fecha_mxn, activo, accion CHECK IN ('BUY','SELL'), cantidad, precio_usdt, monto_usdt, tc_mxn_usd, monto_mxn, comisiones_mxn, costo_acum_mxn, ganancia_mxn, metodo_costo DEFAULT 'FIFO', exchange DEFAULT 'Binance', order_id UNIQUE NOT NULL)",
+      "requirement_type": "DATA",
+      "description": "Esquema de la tabla 'trades' en SQLite: id (PK autoincrement), fecha_utc (timestamp), fecha_mxn (date), activo (varchar 10), accion (varchar 4, CHECK BUY/SELL), cantidad (decimal 18,8), precio_usdt (decimal 18,6), monto_usdt (decimal 18,4), tc_mxn_usd (decimal 10,6), monto_mxn (decimal 18,4), comisiones_mxn (decimal 10,4 default 0), costo_acum_mxn (decimal 18,4), ganancia_mxn (decimal 18,4), metodo_costo (varchar 10 default FIFO), exchange (varchar 20 default Binance), order_id (varchar 64 UNIQUE NOT NULL).",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-2005"
+      ],
+      "constraints": [
+        "order_id debe ser único — trazabilidad con Binance",
+        "accion restringido a BUY/SELL"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2007",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "3. Esquema de Base de Datos",
+      "source_evidence": "CREATE VIEW resumen_anual: anio, ganancia_neta_mxn, total_vendas, trades_ganancia, trades_perdida FROM trades WHERE accion = 'SELL' GROUP BY año.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Vista 'resumen_anual' en SQLite: agrupa SELL por año, calcula ganancia_neta_mxn, conteo total, ganadores y perdedores. Usada para la declaración anual SAT.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-2006"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2008",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "3. Esquema de Base de Datos",
+      "source_evidence": "CREATE VIEW posicion_abierta: activo, cantidad_neta (SUM BUY - SUM SELL), costo_acumulado_mxn HAVING cantidad_neta > 0.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Vista 'posicion_abierta' en SQLite: calcula cantidad_neta (BTC comprado - BTC vendido) y costo_acumulado_mxn por activo, filtrando donde cantidad_neta > 0. Permite conocer posición actual y costo base.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-2006"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2009",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "4. Campos Críticos (auditoría SAT)",
+      "source_evidence": "fecha_utc + fecha_mxn: Fecha del evento fiscal. activo: Bien enajenado. accion: Adquisición vs enajenación. cantidad + precio_usdt: Base para cálculo. tc_mxn_usd: Conversión a moneda funcional. comisiones_mxn: Reducen precio de venta. costo_acum_mxn: Costo de adquisición FIFO. ganancia_mxn: Resultado fiscal. order_id: Trazabilidad Binance. metodo_costo: Consistencia del método.",
+      "requirement_type": "DATA",
+      "description": "10 campos críticos para auditoría SAT: fecha_utc/fecha_mxn (evento fiscal), activo (bien enajenado), accion (adquisición/enajenación), cantidad+precio_usdt (base de cálculo), tc_mxn_usd (conversión moneda funcional), comisiones_mxn (reducen precio de venta), costo_acum_mxn (costo FIFO), ganancia_mxn (resultado fiscal), order_id (trazabilidad Binance), metodo_costo (consistencia).",
+      "priority": "CRITICAL",
+      "dependencies": [
+        "REQ-2006"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2010",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "5. Obligaciones Anuales",
+      "source_evidence": "Exportar CSV de Binance (enero), Cargar datos a trades.db (enero), Verificar resumen_anual (febrero), Presentar declaración anual 15 feb – 30 abril en sat.gob.mx → Anual PF, Reportar en 'Enajenación de bienes'.",
+      "requirement_type": "FUNCTIONAL",
+      "description": "Procedimiento de obligaciones anuales: exportar CSV de Binance en enero, cargar a trades.db, verificar resumen_anual en febrero, presentar declaración anual 15 feb - 30 abril en sat.gob.mx sección Anual PF, declarar en 'Enajenación de bienes'. El Fiscal Ledger debe facilitar este flujo.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-2006",
+        "REQ-2007"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2011",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "6. Notas",
+      "source_evidence": "Binance reporta al SAT vía CARF desde 2023.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Binance reporta operaciones al SAT de México vía CARF desde 2023. El Fiscal Ledger debe registrar todos los trades con suficiente detalle para cuadrar con los reportes de Binance al SAT.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-2009"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2012",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "6. Notas",
+      "source_evidence": "Cada swap (BTC→ETH) es un evento fiscal, no solo SELL→USDT, NO aplicar jamas.",
+      "requirement_type": "CONSTRAINT",
+      "description": "Cada conversión entre criptoactivos (swap) es un evento fiscal independiente, no solo la conversión a USDT. Sin embargo, DOC-001 indica que las conversiones entre criptoactivos quedan FUERA del alcance inicial de SwingPilot. El Fiscal Ledger no debe registrar swaps ya que el sistema solo opera BTC/USDT.",
+      "priority": "HIGH",
+      "dependencies": [
+        "REQ-2006"
+      ],
+      "constraints": [
+        "Solo aplica a operaciones BTC/USDT — swaps no son parte del alcance inicial"
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2013",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "1. Contexto Fiscal",
+      "source_evidence": "Frecuencia máxima: 8 trades/mes (variable, no fijo). Ticket por trade: $500 – $5,000 MXN (hasta $10,000 extraordinariamente).",
+      "requirement_type": "DATA",
+      "description": "Parámetros operativos en contexto fiscal: máximo 8 trades/mes (variable), ticket $500-$5,000 MXN (hasta $10,000 extraordinariamente). Consistente con DOC-001.",
+      "priority": "MEDIUM",
+      "dependencies": [],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": []
+    },
+    {
+      "requirement_id": "REQ-2014",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "2. Preferencias de Operación",
+      "source_evidence": "Gestión de riesgo: 1–2% del capital por trade.",
+      "requirement_type": "DATA",
+      "description": "DOC-002 menciona gestión de riesgo '1-2% del capital por trade'. CONF-002 resolvió que el límite vinculante es 1.5% per DOC-001 y DOC-005. El rango '1-2%' en DOC-002 es orientativo; 1.5% es el límite máximo aprobado.",
+      "priority": "MEDIUM",
+      "dependencies": [],
+      "constraints": [
+        "Límite máximo vinculante: 1.5% según DOC-001 y DOC-005. El '1-2%' de DOC-002 es orientativo."
+      ],
+      "acceptance_criteria": [],
+      "open_questions": [],
+      "contradictions": [
+        {
+          "contradicting_document": "DOC-001",
+          "contradicting_section": "¿Qué política de riesgo aplica?",
+          "description": "DOC-002 indica '1-2% del capital por trade'. DOC-001 y DOC-005 establecen '1.5% del equity actual' como límite máximo. CONF-002 resolvió que el límite vinculante es 1.5%. El rango de DOC-002 es orientativo."
+        }
+      ]
+    },
+    {
+      "requirement_id": "REQ-2015",
+      "source_document": "DOC-002",
+      "source_version": "UNKNOWN",
+      "source_section": "6. Notas",
+      "source_evidence": "Si el capital crece y los tickets suben a >$50,000 MXN, reevaluar riesgo de PFAE.",
+      "requirement_type": "DERIVED",
+      "description": "Umbral de revisión fiscal: si el capital crece y los tickets superan $50,000 MXN, debe reevaluarse el riesgo de inscripción como PFAE (Persona Física con Actividad Empresarial). El sistema debe tener un mecanismo de alerta o registro cuando este umbral se aproxime.",
+      "priority": "MEDIUM",
+      "dependencies": [
+        "REQ-2005"
+      ],
+      "constraints": [],
+      "acceptance_criteria": [],
+      "open_questions": [
+        "¿A qué exactamente se refiere '$50,000 MXN'? ¿Por operación o acumulado anual? Por definir con asesoría fiscal."
+      ],
+      "contradictions": []
+    }
+  ]
+}
