@@ -2,22 +2,15 @@
 
 ## Cierre de sesión 2026-11-18 — siguiente acción
 
-- Decisiones: DEC-001..DEC-010. Change requests CR-001..CR-009 aprobadas y aplicadas. Todo con commit (2026-11-18).
-- **CR-006 APROBADA y aplicada** el 2026-11-18 (DEC-009: Haiku 5.5 en 4 agentes, Sonnet 5.5 en Decision Synthesis; Messages API sin herramientas; sin caching; controles de costo; REQ-G-095, REQ-G-096).
-- **CR-005 APROBADA y aplicada** el 2026-11-18 (DEC-008: estados de la operación, recuperación por estado, autorización de 30 min, cierre protector; REQ-G-037..039).
-- Feedback externo (puntos A–F) atendido vía CR-003 y CR-004. Documento externo `error-handling.md` revisado: estructura adoptada en CR-005, 10 puntos no adoptados (CR-005 §F).
-- Producción en Laptop B (Linux Mint 22, siempre encendida); desarrollo e investigación en Laptop A; vigilancia con servicio externo (DEC-007).
-- Todos los parámetros PENDING resueltos salvo P08 (contador, diferido por el propietario).
-- P24: adición retirada el 2026-11-18; queda "ninguno adicional".
-- G3 PENDING por decisión del propietario. FASE 2 bloqueada.
-- Cambios hasta CR-006 con commit (2026-11-18).
-- Paquete de revisión de G3: `harness/gates/G3_resumen_contrato.md` (hallazgos H1–H6; opciones A/B/C).
-- Opción A elegida para G3. **CR-007 APROBADA y aplicada** el 2026-11-18 (contrato v0.2; TC-AC-01..16).
-- VER-003: PASS_WITH_FINDINGS, sin críticos. **CR-008 APROBADA y aplicada** (DEC-010: Q28 A, Q29 A); contrato v0.3..
-- Verificación de cierre de CR-008: PASS_WITH_FINDINGS (solo BAJA); C-03 aplicado en CR-009.
-- Siguiente acción autorizada: decisión del propietario sobre G3 ("APRUEBO EL CONTRATO TÉCNICO v1.0").
+- **G3 = PASS** (2026-11-18): el propietario aprobó el contrato técnico ("APRUEBO EL CONTRATO TÉCNICO v1.0"). Contrato v1.0 en `implementation/`.
+- Decisiones: DEC-001..DEC-010. Change requests CR-001..CR-010 aprobadas y aplicadas (CR-010: FASE 1 COMPLETADA en AGENTS.md). Verificación: G2 (2026-11-13) y VER-003 (re-verificación y cierre).
+- Producción en Laptop B; desarrollo e investigación en Laptop A; vigilancia con servicio externo (DEC-007). IA: Haiku 5.5 en 4 agentes, Sonnet 5.5 en Decision Synthesis (DEC-009).
+- Pendiente diferido: REQ-G-P08 (validación fiscal con contador); bloquea cálculos fiscales, no FASE 2.
+- Cambios al contrato desde ahora: solo con solicitud de cambio aprobada y versionado (v1.x).
+- **FASE 2 BLOQUEADA** hasta la frase exacta "AUTORIZO INICIO DE FASE 2". Código funcional creado: NINGUNO.
+- Siguiente acción autorizada: esperar autorización de FASE 2. Al iniciarla: poblar `feature_list.json` desde el contrato aprobado, empezando por la Fase 1 de implementación (Fundamentos de integración, architecture.md §7).
 
-> Actualizado: 2026-11-18 — FASE 1: G2 PASS; conflictos CONF-001..005 resueltos; CR-001..006 aplicadas; G3 PENDING (decisión del propietario)
+> Actualizado: 2026-11-18 — FASE 1 completa: G0..G3 PASS; contrato v1.0 aprobado; FASE 2 pendiente de autorización
 
 ---
 
@@ -28,7 +21,7 @@
 | G0 | Integridad y registro documental | **PASS** | No |
 | G1 | Cobertura de extracción | **PASS** | No |
 | G2 | Consistencia y trazabilidad | **PASS** | No |
-| G3 | Aprobación humana del contrato | **PENDING** | **SÍ — BLOQUEANTE** |
+| G3 | Aprobación humana del contrato | **PASS** (propietario, 2026-11-18) | SÍ |
 | G4 | Pruebas de implementación | PENDING | No |
 | G5 | Integración y regresión | PENDING | No |
 | G6 | Seguridad | PENDING | No |
@@ -36,23 +29,9 @@
 
 ---
 
-## Próxima Acción Requerida: G3
+## Próxima Acción Requerida: autorización de FASE 2
 
-**G3 solo puede aprobarse con autorización humana explícita del propietario.**
-
-El contrato técnico está listo para revisión. Documentos a revisar:
-- [implementation/requirements.md](implementation/requirements.md) — 224 requisitos consolidados, 12 invariantes, 8 estados Risk Manager
-- [implementation/architecture.md](implementation/architecture.md) — 15 componentes, flujo de decisión 7 fases
-- [implementation/api_contracts.md](implementation/api_contracts.md) — contratos de mensajes, Binance, Anthropic, Telegram, trades.db
-- [implementation/data_flow.md](implementation/data_flow.md) — flujos principal, bloqueo, investigación, fiscal, Fail-Closed
-- [implementation/test_plan.md](implementation/test_plan.md) — 16 AC + 16 RM criterios, plan por fase
-
-**Para aprobar G3, el propietario debe responder explícitamente** (ejemplos aceptables):
-- "APRUEBO EL CONTRATO TÉCNICO v1.0"
-- "G3 aprobado — proceder a FASE 2"
-- "El contrato está bien, autorizo FASE 2"
-
-**Tras G3:** Se habilita FASE 2 — implementación incremental con evidencia por criterio de aceptación.
+G3 aprobado el 2026-11-18. FASE 2 requiere la frase exacta del propietario: **"AUTORIZO INICIO DE FASE 2"**. Paquete de revisión de G3: `harness/gates/G3_resumen_contrato.md`.
 
 ---
 
@@ -126,10 +105,10 @@ implementation/conflict_register.md — CONF-001, CONF-002 resueltos
 
 ## Reglas para el Próximo Agente
 
-1. **G3 solo puede aprobarse con autorización humana explícita** — no auto-aprueben
+1. G3 aprobado por el propietario (2026-11-18); G7 solo con autorización humana explícita
 2. Si el propietario aprueba G3, marcar gate_status.json con `approved_by: "propietario"`, `approved_at: "fecha"` y `evidence: "texto de la aprobación"`
-3. FASE 2 está BLOQUEADA hasta G3
+3. FASE 2 está BLOQUEADA hasta "AUTORIZO INICIO DE FASE 2"
 4. Los archivos en `docs/` son SOLO LECTURA — fuentes documentales del propietario
 5. Los archivos en `src/` están vacíos — correctamente, hasta FASE 2
 6. Los parámetros PENDING no se rellenan por suposición — solo con información real del propietario o del sistema Binance
-7. No crear código funcional de SwingPilot hasta G3 aprobado
+7. No crear código funcional de SwingPilot hasta la autorización de FASE 2

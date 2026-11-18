@@ -1,8 +1,8 @@
-# SwingPilot — Data Flow v0.3
+# SwingPilot — Data Flow v1.0
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v0.3 — DRAFT — verificado en G2 (2026-11-13) y re-verificado en VER-003 (2026-11-18); incorpora CR-001..CR-008; pendiente de verificación de cierre y aprobación humana (G3)
+**Estado:** v1.0 — APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); incorpora CR-001..CR-009. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 

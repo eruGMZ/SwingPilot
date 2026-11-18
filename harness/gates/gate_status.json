@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "0.2.0",
+    "version": "0.3.0",
     "phase": "FASE 1",
-    "last_updated": "2026-11-13",
+    "last_updated": "2026-11-18",
     "note": "Ningún gate puede aprobarse mediante declaración del agente. G3 y G7 requieren aprobación humana explícita."
   },
   "gates": [
@@ -45,11 +45,11 @@
       "name": "Aprobación humana del contrato",
       "description": "El propietario del proyecto ha revisado y aprobado explícitamente el SWINGPILOT TECHNICAL REQUIREMENTS & ARCHITECTURE CONTRACT. Este gate SOLO puede aprobarse con autorización humana explícita.",
       "phase": "FASE 1",
-      "status": "PENDING",
+      "status": "PASS",
       "requires_human_approval": true,
-      "approved_by": null,
-      "approved_at": null,
-      "evidence": null
+      "approved_by": "propietario",
+      "approved_at": "2026-11-18",
+      "evidence": "Aprobación explícita del propietario: \"APRUEBO EL CONTRATO TÉCNICO v1.0\" (2026-11-18). Contrato aprobado: implementation/requirements.md, architecture.md, api_contracts.md, data_flow.md, test_plan.md (v1.0; commit base e9e83fa), con DEC-001..DEC-010 y CR-001..CR-009 aplicadas. Verificación previa: G2 (2026-11-13), VER-003 re-verificación adversarial y cierre de CR-008. Pendiente diferido: REQ-G-P08 (validación fiscal con contador). No autoriza FASE 2 ni Live Trading."
     },
     {
       "id": "G4",

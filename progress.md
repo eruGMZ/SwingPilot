@@ -535,3 +535,29 @@
 **Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
 
 **Siguiente acción autorizada:** decisión del propietario sobre G3. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-18 | FASE 1 — G3 | Aprobación humana del contrato técnico | PASS
+
+**Actividad:** El propietario aprobó el contrato técnico: "APRUEBO EL CONTRATO TÉCNICO v1.0". G3 = PASS (approved_by: propietario; 2026-11-18). Los 5 documentos del contrato pasan a v1.0 APROBADO (CR-001..CR-009 incorporadas). Desde ahora, todo cambio al contrato requiere solicitud de cambio aprobada y versionado.
+
+**Archivos:** `harness/gates/gate_status.json` (G3 PASS, v0.3.0), `harness/manifest.json` (v0.5.0, estado G3_PASS), encabezados de `implementation/*.md` (v1.0), `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
+
+**Pendientes:** REQ-G-P08 (validación fiscal con contador, diferido). G3 no aprueba TRACEABILITY_MATRIX como documento (DEC-001) ni autoriza Live Trading.
+
+**Estado de fases:** FASE 1 completa. FASE 2 BLOQUEADA hasta "AUTORIZO INICIO DE FASE 2". Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-18 | FASE 1 | CR-010: estado de FASE 1 en AGENTS.md | COMPLETADO
+
+**Actividad:** Con aprobación del propietario, la tabla de fases de `AGENTS.md` marca FASE 1 como COMPLETADA (G0..G3 PASS). Sin otros cambios; FASE 2 sigue BLOQUEADA. Commit del cierre de FASE 1.
+
+**Archivos:** `AGENTS.md`, `harness/change_requests/CR-010_agents-estado-fase-1.md` (nuevo).
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
+
+**Siguiente acción autorizada:** esperar "AUTORIZO INICIO DE FASE 2". Código funcional creado: NINGUNO.
