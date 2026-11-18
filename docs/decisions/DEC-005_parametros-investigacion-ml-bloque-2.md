@@ -23,11 +23,11 @@
 | Q12 | P21 Reentrenamiento | Solo por degradación detectada o en revisión semestral. Nunca automático. |
 | Q12 | P22 Umbrales de drift | Expectancy en vivo de los últimos 20 trades por debajo del límite inferior del IC de OOS, o PSI > 0.25 en variables de entrada. Al dispararse: modelo suspendido, no se opera (Fail-Closed). |
 | Q12 | P23 Versionado y promoción | Cada modelo con hash de datos + código + parámetros. Promoción a producción solo tras HUMAN_REVIEW → APPROVED. |
-| Q13 | P24 Límites adicionales del Risk Manager | Ninguno adicional, salvo: si se alcanza el drawdown mensual de 5% dos meses consecutivos, se requiere revisión del propietario antes de reanudar. |
+| Q13 | P24 Límites adicionales del Risk Manager | **Ninguno adicional.** (La adición original —revisión tras dos meses consecutivos en drawdown de 5%— fue retirada por el propietario el 2026-11-18 por redundante; ver Notas.) |
 
 ## Notas
 
 - Todos los umbrales se miden en OOS y netos de costos, salvo que se indique otra cosa.
 - Justificación de P24: con 1.5% por operación, tres pérdidas suman ~4.4%; el presupuesto de riesgo restante bajo el 5% mensual ya bloquea una cuarta. Límites adicionales serían redundantes.
-- **Aclaración (2026-11-17, detectada por el asistente tras la decisión):** la justificación de P24 omitió que el contrato ya incluye un bloqueo por 3 pérdidas consecutivas (INV-011, LOSS_STREAK_LOCK) y que el bloqueo por drawdown mensual no se libera automáticamente con el cambio de mes (REQ-G-030, criterio 9). Por tanto, la adición "revisión tras 2 meses consecutivos en DD 5%" es probablemente redundante. La decisión de P24 no se modifica; queda pendiente de que el propietario confirme si la mantiene o la retira.
+- **Aclaración (2026-11-17, detectada por el asistente tras la decisión):** la justificación de P24 omitió que el contrato ya incluye un bloqueo por 3 pérdidas consecutivas (INV-011, LOSS_STREAK_LOCK) y que el bloqueo por drawdown mensual no se libera automáticamente con el cambio de mes (REQ-G-030, criterio 9). Por tanto, la adición "revisión tras 2 meses consecutivos en DD 5%" es probablemente redundante. **Resolución (2026-11-18):** el propietario retiró la adición ("si P24 hace mucho ruido, retíralo"). P24 queda como ninguno adicional; INV-011 y REQ-G-030 (criterio 9) ya cubren el caso.
 - No resuelve: P07, P18, P25 ni el procedimiento de recuperación ante fallos (bloque 3). P08 sigue diferido.

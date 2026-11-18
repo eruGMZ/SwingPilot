@@ -279,6 +279,86 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Procedimiento: Intentar UPDATE o DELETE sobre registros de audit_events
 - Expected: La operación falla o está prohibida por el sistema
 
+### TC-SEC-005 — Clave de Binance con permiso de retiro (REQ-G-093, CR-003)
+- Input: clave de API con permiso de retiro habilitado
+- Expected: el sistema no arranca en modo Live; evento de auditoría registrado
+
+### TC-SEC-006 — Token de Telegram protegido (REQ-G-033)
+- Procedimiento: análisis estático del código fuente y búsqueda del token en registros generados
+- Expected: el token no aparece en código ni registros
+
+### TC-SEC-007 — Aprobación desde remitente no autorizado (REQ-G-033)
+- Input: mensaje de aprobación desde un usuario de Telegram distinto al propietario
+- Expected: sin efecto; UNAUTHORIZED_APPROVAL_ATTEMPT registrado
+
+---
+
+## 8.1 Pruebas de Persistencia y Reinicio (C1 — REQ-G-032, CR-003)
+
+### TC-REC-001 — Caída tras autorización y antes del envío
+- Input: autorización humana válida; el proceso se detiene antes de enviar la orden; reinicio
+- Expected: AUTHORIZATION_INVALIDATED; no se envía orden; se requiere nueva autorización
+
+### TC-REC-002 — Caída tras el envío y antes de la confirmación
+- Input: orden enviada a Binance; el proceso se detiene antes de recibir confirmación; reinicio
+- Expected: la orden se localiza por identificador de cliente y se adopta su estado; no hay orden duplicada
+
+### TC-REC-003 — Fallo de escritura del estado
+- Input: el almacenamiento durable rechaza la escritura previa al envío
+- Expected: la orden no se envía (Fail-Closed)
+
+## 8.2 Pruebas de Datos de Mercado (C1 — REQ-G-070, CR-003)
+
+### TC-DATA-001 — Vela en formación excluida
+- Input: respuesta de Binance que incluye la vela H4 en formación
+- Expected: la vela se excluye del análisis
+
+### TC-DATA-002 — Falta la última vela cerrada
+- Input: no está disponible la última vela H4 cerrada esperada
+- Expected: DATA_UNAVAILABLE; no se genera propuesta
+
+## 8.3 Pruebas de Flujo de Decisión (C1 — CR-004)
+
+### TC-FLOW-001 — Sin candidato no hay llamadas a LLM
+- Input: el Strategy Engine no produce STRATEGY_CANDIDATE
+- Expected: NO_SETUP; cero llamadas a LLM registradas en el ciclo
+
+### TC-FLOW-002 — Rechazo del Risk Manager no invoca al Risk Analyst
+- Input: TRADE_PROPOSAL con RISK_REJECTED
+- Expected: no hay llamada al Risk Analyst; fin del ciclo
+
+### TC-FLOW-003 — Evaluación del Risk Analyst visible al propietario
+- Input: TRADE_PROPOSAL con RISK_APPROVED
+- Expected: el mensaje de Telegram incluye la evaluación del Risk Analyst junto con la propuesta
+
+## 8.4 Pruebas de Reintentos y Fallo de Agentes (C1 — REQ-G-034)
+
+### TC-LLM-001 — Error transitorio
+- Input: primera llamada a un agente falla por error de red
+- Expected: 1 reintento; si vuelve a fallar, ciclo sin propuesta y estado registrado
+
+### TC-LLM-002 — Respuesta fuera de contrato JSON
+- Input: un agente responde con JSON inválido
+- Expected: 1 reintento; si vuelve a fallar, ciclo sin propuesta
+
+### TC-LLM-003 — Tope mensual alcanzado
+- Input: gasto mensual de IA en el tope (REQ-G-P18)
+- Expected: ninguna llamada a LLM; ciclo sin propuesta
+
+## 8.5 Pruebas Operativas (C2 — REQ-G-035, REQ-G-036)
+
+### TC-OPS-001 — Sin latido
+- Input: SwingPilot deja de emitir latidos durante 30 min
+- Expected: el servicio externo alerta al propietario
+
+### TC-OPS-002 — Reinicio automático
+- Input: el proceso de SwingPilot termina inesperadamente
+- Expected: se reinicia automáticamente y entra en modo seguro
+
+### TC-OPS-003 — Cambio de IP pública
+- Input: la IP pública difiere de la registrada en Binance
+- Expected: PUBLIC_IP_CHANGED; Fail-Closed y aviso por Telegram antes de cualquier orden
+
 ---
 
 ## 9. Pruebas de Criterios de Aceptación Global (AI_INTEGRATION.md, AC-01..AC-16)

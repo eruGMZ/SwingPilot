@@ -60,6 +60,15 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
 | STOP_ORDER_PLACED | Execution Engine | Portfolio Manager / Audit | Stop colocado en Binance tras compra ejecutada (REQ-G-031) |
 | STOP_ORDER_REPLACED | Execution Engine | Portfolio Manager / Audit | Stop cancelado y reemplazado en Binance por modificación permitida (REQ-G-027) |
 | STOP_ORDER_FAILED | Execution Engine | Risk Manager / Telegram Bot / Audit | No se pudo colocar o reemplazar el stop en Binance; dispara Fail-Closed |
+| STARTUP_RECONCILIATION_COMPLETED | Execution Engine | Risk Manager / Telegram Bot / Audit | Resultado de la reconciliación de arranque: órdenes adoptadas por identificador de cliente, autorizaciones invalidadas, stops verificados (REQ-G-032) |
+| AUTHORIZATION_INVALIDATED | Execution Engine | Audit / Telegram Bot | Autorización humana no enviada invalidada al reiniciar (REQ-G-032) |
+| UNAUTHORIZED_APPROVAL_ATTEMPT | Telegram Bot | Audit | Mensaje de aprobación de un remitente distinto al propietario; ignorado (REQ-G-033) |
+| NO_SETUP | Strategy Engine | AI Orchestrator / Audit | Sin STRATEGY_CANDIDATE en el filtro determinista; fin del ciclo sin llamadas a LLM (CR-004) |
+| RISK_ANALYSIS_COMPLETED | Risk Analyst | Telegram Bot / Audit | Evaluación consultiva sobre una propuesta con RISK_APPROVED (REQ-G-055, CR-004) |
+| HEARTBEAT | Trading Engine | Servicio externo de vigilancia | Latido periódico sin datos sensibles (REQ-G-035) |
+| PUBLIC_IP_CHANGED | Trading Engine | Risk Manager / Telegram Bot / Audit | IP pública distinta a la registrada en Binance; dispara Fail-Closed (REQ-G-036) |
+
+**Identificador de cliente en órdenes (REQ-G-032, CR-003):** toda orden enviada a Binance (compra, venta, stop) incluye un identificador de cliente derivado de forma determinista del `correlation_id` y de la secuencia de la orden dentro del ciclo. Es la clave de idempotencia ante reintentos. No sustituye al `order_id` de Binance registrado en `trades.db`. Formato exacto: PENDING (FASE 2).
 
 **Nota:** Los nombres definitivos de tipos de eventos se confirman al definir el catálogo de producción.
 

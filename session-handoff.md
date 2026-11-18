@@ -1,14 +1,17 @@
 # session-handoff.md — SwingPilot Harness
 
-## Cierre de sesión 2026-11-17 — siguiente acción
+## Cierre de sesión 2026-11-18 — siguiente acción
 
-- Sesión técnica completa: DEC-004, DEC-005, DEC-006; CR-001 y CR-002 aprobadas y aplicadas.
-- Todos los parámetros PENDING resueltos salvo P08 (contador, diferido).
-- Por confirmar con el propietario: si mantiene o retira la adición de P24 (ver aclaración en DEC-005).
+- Decisiones: DEC-001..DEC-007. Change requests CR-001..CR-004 aprobadas y aplicadas.
+- Feedback externo (puntos A–F) atendido vía CR-003 y CR-004.
+- Producción en Laptop B (Linux Mint 22, siempre encendida); desarrollo e investigación en Laptop A; vigilancia con servicio externo (DEC-007).
+- Todos los parámetros PENDING resueltos salvo P08 (contador, diferido por el propietario).
+- P24: adición retirada el 2026-11-18; queda "ninguno adicional".
 - G3 PENDING por decisión del propietario. FASE 2 bloqueada.
-- Cambios del 15–17/11 sin commit.
+- Cambios del 15–18/11 sin commit.
 - Siguiente acción autorizada: esperar decisión del propietario sobre G3.
-> Actualizado: 2026-11-17 — FASE 1: G2 PASS; conflictos CONF-001..005 resueltos; CR-001 aplicada; G3 PENDING (decisión del propietario: se mantiene pendiente)
+
+> Actualizado: 2026-11-18 — FASE 1: G2 PASS; conflictos CONF-001..005 resueltos; CR-001..004 aplicadas; G3 PENDING (decisión del propietario)
 
 ---
 

@@ -313,6 +313,60 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 - Si falla la colocación del stop: STOP_ORDER_FAILED, aviso por Telegram y bloqueo de nuevas entradas
 - La reconciliación detecta y reporta una posición abierta sin stop activo
 
+### REQ-G-032
+**Descripción:** Persistencia de estado y reinicio seguro. (1) Todo cambio de estado de una operación se escribe en almacenamiento durable antes de ejecutar la acción externa asociada (enviar orden, colocar/reemplazar stop, cancelar); si la escritura falla, la acción no se ejecuta (Fail-Closed). (2) Al arrancar, toda autorización humana vigente cuya orden no conste como enviada y confirmada se invalida (AUTHORIZATION_INVALIDATED); requiere nueva autorización aunque `valid_until_utc` no haya vencido. (3) Cada orden enviada a Binance lleva un identificador de cliente derivado de forma determinista del `correlation_id` y de la secuencia de la orden en el ciclo; antes de reenviar tras una caída se consulta en Binance por ese identificador y, si la orden existe, se adopta su estado en lugar de enviar otra. (4) La reconciliación de arranque (REQ-G-P26) aplica los puntos 2 y 3 y registra su resultado (STARTUP_RECONCILIATION_COMPLETED).  
+**Fuentes:** REQ-G-062 (eventos idempotentes; REQ-3007, REQ-3009, REQ-3046), REQ-5041; DEC-006 (P26); CR-003 §A  
+**Tipo:** RISK_MANAGEMENT  
+**Prioridad:** CRITICAL  
+**Estado:** APPROVED-CR-003  
+**PENDING (FASE 2):** formato exacto del identificador de cliente según restricciones de Binance; mecanismo concreto de almacenamiento durable.  
+**Criterios de aceptación:**
+- Ninguna acción externa ocurre sin que su estado previo esté persistido
+- Tras un reinicio, una autorización no enviada no produce orden
+- Un reintento tras caída nunca produce dos órdenes para la misma decisión
+
+### REQ-G-033
+**Descripción:** Seguridad del canal de aprobación humana (Telegram). El token del bot se trata como secreto con el mismo nivel que la clave de Binance: en `.env`, nunca en código fuente, registros ni mensajes a componentes LLM. El bot solo acepta acciones del identificador de usuario del propietario (DEC-004, Q5); cualquier otro remitente se ignora y se registra como evento de seguridad (UNAUTHORIZED_APPROVAL_ATTEMPT).  
+**Fuentes:** REQ-5027; DEC-004 (Q5); CR-003 §B  
+**Tipo:** SECURITY  
+**Prioridad:** CRITICAL  
+**Estado:** APPROVED-CR-003  
+**Criterios de aceptación:**
+- El token de Telegram no aparece en código fuente ni registros
+- Un mensaje de aprobación de un usuario distinto al propietario no tiene efecto y queda registrado
+
+### REQ-G-034
+**Descripción:** Reintentos y fallo de agentes LLM. Cada llamada a un agente LLM admite 1 reintento tras pausa breve, solo ante errores transitorios (red, saturación, límite de tasa) o respuesta que no cumple el contrato JSON, siempre dentro del límite de 5 min del ciclo. Si un agente sigue fallando tras el reintento, el ciclo termina sin propuesta (Fail-Closed) y se registra su estado (ERROR/TIMEOUT). Si se alcanza el tope mensual de gasto de IA (REQ-G-P18), no se hacen llamadas y el ciclo termina sin propuesta. Las lecturas de datos de Binance admiten el mismo reintento único; las órdenes no (rige REQ-G-032).  
+**Fuentes:** REQ-3047; DEC-006, DEC-007 (Q20, Q21); CR-004 §B  
+**Tipo:** NON_FUNCTIONAL  
+**Prioridad:** CRITICAL  
+**Estado:** APPROVED-CR-004  
+**Criterios de aceptación:**
+- Un error transitorio produce como máximo 1 reintento
+- Un fallo persistente de cualquier agente termina el ciclo sin propuesta
+- Con el tope mensual alcanzado no se realizan llamadas a LLM
+
+### REQ-G-035
+**Descripción:** Vigilancia del proceso y reinicio automático. SwingPilot emite un latido tras cada ciclo de reconciliación y como mínimo cada 15 min, sin saldo, posiciones ni credenciales. Un servicio externo de vigilancia, fuera de la red del propietario, alerta si pasan 30 min sin latido; la URL o clave de ping es secreta (`.env`) y el servicio no puede aprobar operaciones ni accede a credenciales. En la máquina de producción (Laptop B, DEC-007) el proceso se reinicia automáticamente si se cae y arranca en modo seguro (REQ-G-P26, REQ-G-032).  
+**Fuentes:** DEC-007 (Q18, Q22); CR-004 §C  
+**Tipo:** NON_FUNCTIONAL  
+**Prioridad:** HIGH  
+**Estado:** APPROVED-CR-004  
+**PENDING (FASE 2):** elección del servicio externo de vigilancia.  
+**Criterios de aceptación:**
+- Sin latido durante 30 min, el propietario recibe alerta
+- El proceso terminado se reinicia y entra en modo seguro
+
+### REQ-G-036
+**Descripción:** Verificación de IP pública. SwingPilot consulta su IP pública al arrancar y en cada ciclo. Si difiere de la IP registrada en la restricción de la clave de Binance (REQ-G-093) —por ejemplo, al pasar a internet satelital—, entra en Fail-Closed (sin operaciones nuevas) y avisa por Telegram antes de intentar operar. Reanudar requiere que el propietario actualice la IP en Binance y confirme. Las posiciones abiertas siguen protegidas por el stop en Binance (REQ-G-031).  
+**Fuentes:** DEC-007 (Q22); CR-004 §D  
+**Tipo:** SECURITY  
+**Prioridad:** HIGH  
+**Estado:** APPROVED-CR-004  
+**PENDING (FASE 2):** servicio de consulta de IP pública.  
+**Criterios de aceptación:**
+- Con IP pública distinta a la registrada no se envían órdenes nuevas y el propietario recibe aviso
+
 ---
 
 ## Módulo 4: Autorización Humana y Control de Acciones
@@ -406,8 +460,8 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Prioridad:** HIGH
 
 ### REQ-G-055
-**Descripción:** Risk Analyst (agente LLM): evaluación consultiva de riesgos — detecta riesgos no evidentes, señala inconsistencias, identifica exposición a eventos externos, evalúa riesgos operativos/datos, cuestiona supuestos. Su evaluación es informativa y no vinculante. No sustituye al Risk Manager determinista. No tiene autoridad para aprobar operaciones.  
-**Fuentes:** REQ-3016  
+**Descripción:** Risk Analyst (agente LLM): evaluación consultiva de riesgos — detecta riesgos no evidentes, señala inconsistencias, identifica exposición a eventos externos, evalúa riesgos operativos/datos, cuestiona supuestos. Su evaluación es informativa y no vinculante. No sustituye al Risk Manager determinista. No tiene autoridad para aprobar operaciones. **Momento de ejecución (CR-004):** corre en la Fase 5, solo después de RISK_APPROVED, sobre la propuesta aprobada y el estado del sistema; su evaluación se muestra al propietario junto con la propuesta en Telegram. No puede revertir ni modificar el resultado del Risk Manager. Decision Synthesis no integra su salida.  
+**Fuentes:** REQ-3016; CR-004 §A  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** HIGH
 
@@ -496,31 +550,32 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 ## Módulo 7: Flujo de Decisión Integral (7 fases)
 
 ### REQ-G-070
-**Descripción:** Fase 1 — Captura y preparación de datos: Trading Engine y Market Intelligence validan integridad, identifican temporalidad/activo, registran fuente/timestamp, detectan datos faltantes/duplicados/obsoletos, mantienen separación entre tiempo de mercado y tiempo de procesamiento. Si los datos no cumplen condiciones mínimas, el análisis no produce propuesta ejecutable.  
-**Fuentes:** REQ-3022  
+**Descripción:** Fase 1 — Captura y preparación de datos: Trading Engine y Market Intelligence validan integridad, identifican temporalidad/activo, registran fuente/timestamp, detectan datos faltantes/duplicados/obsoletos, mantienen separación entre tiempo de mercado y tiempo de procesamiento. Si los datos no cumplen condiciones mínimas, el análisis no produce propuesta ejecutable. **Solo velas cerradas (CR-003 §C):** el análisis en vivo usa exclusivamente velas cerradas en D1, H4 y H1; la vela en formación se descarta. Una vela se considera cerrada cuando su tiempo de cierre según Binance es anterior al tiempo actual del servidor de Binance (no del reloj local). Si la última vela cerrada esperada no está disponible: DATA_UNAVAILABLE.  
+**Fuentes:** REQ-3022; CR-003 §C  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** CRITICAL
 
 ### REQ-G-071
-**Descripción:** Fase 2 — Análisis paralelo: Orchestrator distribuye contexto a Market Analyst, Macro Analyst, ML Engine y Regime Engine. Todos los resultados comparten correlation_id. Cada componente entrega resultado o estado explícito (error, indisponibilidad, insuficiencia).  
-**Fuentes:** REQ-3023  
+**Descripción:** Fase 2 — Filtro determinista (CR-004): Regime Engine y ML Engine producen sus resultados; el Strategy Engine evalúa las estrategias aprobadas con ellos y produce STRATEGY_CANDIDATE. La salida del ML Engine la consume el Strategy Engine (familia ML-Based) y Decision Synthesis solo como contexto; no es un decisor paralelo. **Si no hay candidato: NO_SETUP y fin del ciclo sin ninguna llamada a LLM.** Fase 3 — Análisis LLM paralelo: el Orchestrator distribuye contexto a Market Analyst, Macro Analyst y Strategy Analyst. Todos los resultados comparten correlation_id. Cada componente entrega resultado o estado explícito (error, indisponibilidad, insuficiencia).  
+**Fuentes:** REQ-3023; CR-004 §A  
+**Nota:** el orden original de DOC-003 (análisis paralelo antes de evaluación de estrategias) se ajusta por CR-004; DOC-003 no se modifica.  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** CRITICAL
 
 ### REQ-G-072
-**Descripción:** Fase 3 — Evaluación de estrategias: Strategy Engine evalúa estrategias candidatas. Las familias (Trend Following, Momentum, Mean Reversion, Breakout, Volatility-Based, ML-Based) son referencias de investigación, no habilitadas automáticamente para producción. Cada estrategia requiere definición versionada, condiciones de entrada/salida, reglas de invalidación y evidencia experimental.  
+**Descripción:** Evaluación de estrategias (Fase 2 desde CR-004): Strategy Engine evalúa estrategias candidatas. Las familias (Trend Following, Momentum, Mean Reversion, Breakout, Volatility-Based, ML-Based) son referencias de investigación, no habilitadas automáticamente para producción. Cada estrategia requiere definición versionada, condiciones de entrada/salida, reglas de invalidación y evidencia experimental.  
 **Fuentes:** REQ-3024  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** HIGH
 
 ### REQ-G-073
-**Descripción:** Fase 4 — Síntesis: Decision Synthesis determina si generar TRADE_PROPOSAL, solicitar info adicional, descartar oportunidad o indicar desacuerdo. TRADE_PROPOSAL no es una orden ni autorización.  
+**Descripción:** Fase 4 — Síntesis: Decision Synthesis integra los resultados de las Fases 2 y 3 (no los del Risk Analyst, CR-004) y determina si generar TRADE_PROPOSAL, solicitar info adicional, descartar oportunidad o indicar desacuerdo. TRADE_PROPOSAL no es una orden ni autorización.  
 **Fuentes:** REQ-3025  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** CRITICAL
 
 ### REQ-G-074
-**Descripción:** Fase 5 — Validación determinista de riesgo: Risk Manager recibe la propuesta y ejecuta validaciones. Verifica mínimamente: capital disponible, riesgo monetario/porcentual, stop-loss, exposición agregada, posiciones simultáneas, límite mensual, instrumentos permitidos, liquidez, integridad de datos, versión de estrategia, duplicidad, consistencia de cantidades. Resultados posibles: RISK_APPROVED, RISK_REJECTED, RISK_REQUIRES_REVIEW. Ausencia de respuesta ≠ aprobación.  
+**Descripción:** Fase 5 — Validación determinista de riesgo: Risk Manager recibe la propuesta y ejecuta validaciones. Verifica mínimamente: capital disponible, riesgo monetario/porcentual, stop-loss, exposición agregada, posiciones simultáneas, límite mensual, instrumentos permitidos, liquidez, integridad de datos, versión de estrategia, duplicidad, consistencia de cantidades. Resultados posibles: RISK_APPROVED, RISK_REJECTED, RISK_REQUIRES_REVIEW. Ausencia de respuesta ≠ aprobación. Tras RISK_APPROVED corre el Risk Analyst (REQ-G-055); si RISK_REJECTED, no se invoca.  
 **Fuentes:** REQ-3026  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** CRITICAL  
@@ -600,10 +655,13 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Prioridad:** HIGH
 
 ### REQ-G-093
-**Descripción:** Integración Binance: obtener datos de mercado, consultar balances, enviar órdenes autorizadas, consultar estado de órdenes, recuperar ejecuciones/comisiones, reconciliar. Credenciales con permisos mínimos. Los componentes IA no reciben credenciales de ejecución directa.  
-**Fuentes:** REQ-3040  
+**Descripción:** Integración Binance: obtener datos de mercado, consultar balances, enviar órdenes autorizadas, consultar estado de órdenes, recuperar ejecuciones/comisiones, reconciliar. Credenciales con permisos mínimos. Los componentes IA no reciben credenciales de ejecución directa. **Permisos explícitos (CR-003 §B):** la clave de API de Binance tiene solo lectura y trading Spot; **sin permiso de retiro** y sin margin/futuros; con **restricción por IP** limitada al equipo donde corre SwingPilot; almacenada en `.env`, nunca en código ni registros. Al arrancar, el sistema verifica los permisos de la clave por API; si tiene permiso de retiro habilitado, no opera en modo Live (Fail-Closed).  
+**Fuentes:** REQ-3040; CR-003 §B  
 **Tipo:** SECURITY  
-**Prioridad:** CRITICAL
+**Prioridad:** CRITICAL  
+**Criterios de aceptación:**
+- Con una clave que tenga permiso de retiro, el sistema no arranca en modo Live
+- La clave está restringida por IP
 
 ### REQ-G-094
 **Descripción:** Telegram es la interfaz de interacción y notificación. Muestra estado del sistema, análisis, propuestas, alertas, órdenes, resultados y solicitudes de intervención. Las acciones críticas requieren autorización/identidad/permisos del backend. Telegram no es fuente de autoridad independiente; el backend valida cada acción.  
@@ -840,13 +898,13 @@ Los siguientes parámetros técnicos están pendientes de definición. Ningún a
 | REQ-G-P15 | **RESUELTO (DEC-005):** ≥ 100 trades Train+Val; ≥ 30 en OOS y en LOCKBOX — ~~Tamaño mínimo de muestra~~ | REQ-4033, REQ-4035 |
 | REQ-G-P16 | **RESUELTO (DEC-005):** móvil 24m entrenamiento / 6m prueba / paso 6m — ~~Duración y tamaño de ventanas Walk-Forward~~ | REQ-4027, REQ-4035 |
 | REQ-G-P17 | **RESUELTO (DEC-005):** IC bootstrap 95% expectancy > 0 + línea base ingenua + corrección por nº de experimentos — ~~Requisitos estadísticos de aceptación de modelos ML~~ | REQ-4029, REQ-4035 |
-| REQ-G-P18 | **RESUELTO (DEC-006):** tope $5 USD/mes; IA solo al cierre H4 con setup; timeout 60 s; ciclo ≤ 5 min; sin SLA 24/7 — ~~Tiempos máximos de respuesta, límites de consumo API, objetivos de disponibilidad~~ | REQ-3047 |
+| REQ-G-P18 | **RESUELTO (DEC-006):** tope $5 USD/mes; IA solo al cierre H4 con setup; timeout 60 s; ciclo ≤ 5 min; sin SLA 24/7; reintentos y fallo de agentes: DEC-007 / REQ-G-034 — ~~Tiempos máximos de respuesta, límites de consumo API, objetivos de disponibilidad~~ | REQ-3047 |
 | REQ-G-P19 | **RESUELTO (DEC-004):** arranque + cada ciclo de decisión + cada 5 min con posición abierta — ~~Frecuencia de reconciliación con Binance~~ | REQ-5041 |
 | REQ-G-P20 | **RESUELTO (DEC-004):** 0.5% — ~~Tolerancia de desviación de precio~~ | REQ-5041 |
 | REQ-G-P21 | **RESUELTO (DEC-005):** solo por drift o revisión semestral; nunca automático — ~~Política de reentrenamiento de modelos ML~~ | REQ-4035 |
 | REQ-G-P22 | **RESUELTO (DEC-005):** expectancy últimos 20 trades < límite inferior IC OOS, o PSI > 0.25 → suspensión — ~~Umbrales de degradación del modelo (concept drift)~~ | REQ-4035 |
 | REQ-G-P23 | **RESUELTO (DEC-005):** hash datos+código+parámetros; promoción solo HUMAN_REVIEW → APPROVED — ~~Política de versionado y promoción de modelos a producción~~ | REQ-4035 |
-| REQ-G-P24 | **RESUELTO (DEC-005):** ninguno, salvo revisión humana tras 2 meses consecutivos en DD 5% — ~~Límites cuantitativos adicionales del Risk Manager~~ | REQ-4035 |
+| REQ-G-P24 | **RESUELTO (DEC-005):** ninguno adicional (adición de revisión tras 2 meses en DD 5% retirada el 2026-11-18 por redundante con INV-011 y REQ-G-030 criterio 9) — ~~Límites cuantitativos adicionales del Risk Manager~~ | REQ-4035 |
 | REQ-G-P25 | **RESUELTO (DEC-006):** JSON en repositorio con esquema y validador — ~~Formato definitivo de almacenamiento de la matriz de trazabilidad~~ | REQ-6010, REQ-6031 |
 | REQ-G-P26 | **RESUELTO (DEC-006):** Recuperación ante fallos: reconciliar, modo seguro sin nuevas órdenes, aviso por Telegram, reanudar solo con confirmación del propietario. Stop-loss en Binance: CR-002 (APROBADA, REQ-G-031) | REQ-5041, REQ-5021 |
 

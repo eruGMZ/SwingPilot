@@ -153,9 +153,9 @@ Las siguientes decisiones están aprobadas (DEC-001) y no son negociables para F
 |---|---|---|---|
 | Market Analyst | OHLCV, indicadores, temporalidades | Análisis estructurado (observaciones, evidencia, confianza, limitaciones, timestamp_datos) | No puede autorizar operaciones |
 | Macro Analyst | Noticias, eventos macro, regulaciones | Análisis contextual (confirmados vs rumores) | No puede convertir noticia en señal de entrada |
-| Strategy Analyst | Estrategias candidatas versionadas | Evaluación de lógica, condiciones, invalidaciones | No puede modificar estrategias aprobadas ni ejecutar |
-| Risk Analyst | Propuesta de operación, estado del sistema | Evaluación consultiva (no vinculante) | No tiene autoridad de aprobación |
-| Decision Synthesis | Resultados de todos los agentes | TRADE_PROPOSAL o descarte explícito | No puede ocultar incertidumbre; TRADE_PROPOSAL ≠ orden |
+| Strategy Analyst | STRATEGY_CANDIDATE del Strategy Engine (Fase 3, en paralelo con Market y Macro; CR-004) | Evaluación de lógica, condiciones, invalidaciones | No puede modificar estrategias aprobadas ni ejecutar |
+| Risk Analyst | Propuesta con RISK_APPROVED, estado del sistema (Fase 5, después del Risk Manager; CR-004) | Evaluación consultiva (no vinculante), mostrada al propietario en Telegram | No tiene autoridad de aprobación; no puede revertir el resultado del Risk Manager |
+| Decision Synthesis | Resultados de Fase 2 (deterministas) y Fase 3 (Market, Macro, Strategy Analyst); no del Risk Analyst (CR-004) | TRADE_PROPOSAL o descarte explícito | No puede ocultar incertidumbre; TRADE_PROPOSAL ≠ orden |
 
 ### 3.3 Risk Manager (Determinista)
 

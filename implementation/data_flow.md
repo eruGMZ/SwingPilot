@@ -8,7 +8,7 @@
 
 ## 1. Flujo de Decisión Integral (7 Fases)
 
-Basado en AI_INTEGRATION.md (aprobado DEC-001). Todas las fases son secuenciales; no hay salto de fases.
+Basado en AI_INTEGRATION.md (aprobado DEC-001), con el orden de fases ajustado por CR-004 (DEC-007): el filtro determinista va antes de cualquier llamada a LLM. Todas las fases son secuenciales; no hay salto de fases. Cada llamada a un agente LLM admite 1 reintento; si un agente sigue fallando, el ciclo termina sin propuesta (REQ-G-034).
 
 ```
 Disparador externo (señal periódica o solicitud manual)
@@ -18,6 +18,8 @@ Disparador externo (señal periódica o solicitud manual)
 │ Trading Engine + Market Intelligence                                     │
 │                                                                         │
 │  - Obtener OHLCV de Binance: D1, H4, H1 para BTC/USDT                  │
+│  - Solo velas cerradas: descartar la vela en formación; cierre según   │
+│    hora del servidor de Binance (REQ-G-070, CR-003)                     │
 │  - Validar integridad: completitud, timestamps, duplicados              │
 │  - Detectar datos obsoletos, faltantes o inconsistentes                 │
 │  - Calcular indicadores técnicos configurados                           │
@@ -28,46 +30,46 @@ Disparador externo (señal periódica o solicitud manual)
 │  → DATA_UNAVAILABLE (Risk Manager state) → no se genera propuesta      │
 └─────────────────────────┬───────────────────────────────────────────────┘
                           │ Datos validados + correlation_id
-                          ▼ FASE 2 — Análisis Paralelo
+                          ▼ FASE 2 — Filtro Determinista (sin LLM)
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Regime Engine + ML Engine → Strategy Engine (todos deterministas)       │
+│                                                                         │
+│  - Regime Engine: clasificación de condiciones de mercado               │
+│  - ML Engine: inferencia (ML_INFERENCE_COMPLETED); la consume el        │
+│    Strategy Engine (familia ML-Based) y Synthesis solo como contexto.   │
+│    No es un decisor paralelo.                                           │
+│  - Strategy Engine: evalúa estrategias APROBADAS (versionadas) y        │
+│    produce STRATEGY_CANDIDATE (strategy_id, strategy_version,           │
+│    conditions, entry_zone, stop_loss, invalidation_conditions)          │
+│                                                                         │
+│  Familias de INVESTIGACIÓN (Trend Follow., Momentum, Mean Reversion,    │
+│  Breakout, Volatility-Based, ML-Based): ninguna habilitada en           │
+│  producción sin evidencia experimental.                                 │
+│                                                                         │
+│  SIN CANDIDATO → NO_SETUP → fin del ciclo, CERO llamadas a LLM          │
+└─────────────────────────┬───────────────────────────────────────────────┘
+                          │ STRATEGY_CANDIDATEs (si hay)
+                          ▼ FASE 3 — Análisis LLM Paralelo
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ AI Orchestrator distribuye a (en paralelo):                             │
 │                                                                         │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐      │
-│  │  Market Analyst  │  │  Macro Analyst   │  │   ML Engine      │      │
-│  │  (LLM)           │  │  (LLM)           │  │   (determinista) │      │
-│  │  OHLCV+indicad.  │  │  noticias+macro  │  │   inferencia     │      │
-│  └────────┬─────────┘  └────────┬─────────┘  └────────┬─────────┘      │
-│           │                     │                     │                 │
-│  ┌────────┴─────────────────────┴─────────────────────┘                 │
-│  │                                                                       │
-│  │  Regime Engine (clasificación de condiciones de mercado)             │
-│  └───────────────────────────────────────────────────────────────────── │
+│  │  Market Analyst  │  │  Macro Analyst   │  │ Strategy Analyst │      │
+│  │  (LLM)           │  │  (LLM)           │  │ (LLM)            │      │
+│  │  OHLCV+indicad.  │  │  noticias+macro  │  │ STRATEGY_CANDIDATE│     │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘      │
 │                                                                         │
-│  Todos comparten correlation_id. Cada componente entrega resultado      │
-│  o estado explícito (INSUFFICIENT_DATA, ERROR, TIMEOUT).               │
-│  El Orchestrator no asume completitud si un componente no responde.     │
+│  Todos comparten correlation_id. Cada agente entrega resultado o        │
+│  estado explícito (INSUFFICIENT_DATA, ERROR, TIMEOUT).                  │
+│  1 reintento por agente; fallo persistente → ciclo sin propuesta.       │
 └─────────────────────────┬───────────────────────────────────────────────┘
-                          │ Resultados de análisis paralelo
-                          ▼ FASE 3 — Evaluación de Estrategias
-┌─────────────────────────────────────────────────────────────────────────┐
-│ Strategy Engine                                                          │
-│                                                                         │
-│  - Evaluar estrategias candidatas APROBADAS (versionadas)               │
-│  - Verificar condiciones de entrada según lógica de cada estrategia     │
-│  - Producir STRATEGY_CANDIDATE para cada estrategia aplicable           │
-│  - Cada candidato incluye: strategy_id, strategy_version, conditions,   │
-│    entry_zone, stop_loss, invalidation_conditions                       │
-│                                                                         │
-│  Estrategias disponibles son familias de INVESTIGACIÓN (Trend Follow.,  │
-│  Momentum, Mean Reversion, Breakout, Volatility-Based, ML-Based).       │
-│  Ninguna familia está habilitada en producción sin evidencia experimental│
-└─────────────────────────┬───────────────────────────────────────────────┘
-                          │ STRATEGY_CANDIDATEs
+                          │ Resultados de análisis
                           ▼ FASE 4 — Síntesis
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ Decision Synthesis (LLM)                                                 │
 │                                                                         │
-│  - Integra análisis de Market, Macro, Regime, Strategy, Risk Analyst    │
+│  - Integra Fase 2 (Regime, ML como contexto, candidatos) y Fase 3       │
+│    (Market, Macro, Strategy Analyst). NO integra al Risk Analyst.       │
 │  - Identifica coincidencias y contradicciones (las preserva; no oculta) │
 │  - Evalúa consistencia de evidencia entre temporalidades                │
 │  - Identifica información faltante o insuficiente                       │
@@ -99,7 +101,11 @@ Disparador externo (señal periódica o solicitud manual)
 │ 14. Consistencia de cantidad (stepSize, minQty, minNotional)            │
 │                                                                         │
 │  Resultados:                                                             │
-│  - RISK_APPROVED → pasa a autorización humana                          │
+│  - RISK_APPROVED → Risk Analyst (LLM, consultivo, CR-004) evalúa la    │
+│    propuesta aprobada y el estado del sistema (RISK_ANALYSIS_COMPLETED);│
+│    no puede revertir ni modificar el resultado del Risk Manager.        │
+│    Fallo persistente del Risk Analyst → ciclo sin propuesta.            │
+│    Luego → autorización humana                                          │
 │  - RISK_REJECTED → registra motivos; fin del ciclo                     │
 │  - RISK_REQUIRES_REVIEW → escala a Telegram para intervención humana   │
 │                                                                         │
@@ -111,6 +117,7 @@ Disparador externo (señal periódica o solicitud manual)
 │ Telegram Bot → Operador Humano → Backend de Autorización                │
 │                                                                         │
 │  - Telegram muestra: propuesta completa, cálculos de riesgo, estrategia│
+│    y la evaluación del Risk Analyst                                    │
 │  - Operador aprueba o rechaza (Nivel 1 de autonomía — INV-008)          │
 │  - Backend verifica identidad y permisos del operador                   │
 │  - Genera human_authorization_id con vigencia limitada                  │
@@ -118,7 +125,9 @@ Disparador externo (señal periódica o solicitud manual)
 │  Execution Engine (solo si autorización válida):                        │
 │  - Re-verifica condiciones de riesgo al momento de ejecución            │
 │  - Si condiciones cambiaron materialmente → nueva autorización          │
+│  - Persiste el estado ANTES de enviar (REQ-G-032); si falla, no envía   │
 │  - Envía orden a Binance respetando stepSize/minQty/minNotional          │
+│    con identificador de cliente derivado del correlation_id             │
 │  - Gestiona respuesta: ORDER_SUBMITTED → ORDER_FILLED / REJECTED        │
 │  - Reconcilia ejecuciones parciales como eventos independientes         │
 └─────────────────────────┬───────────────────────────────────────────────┘
