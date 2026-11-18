@@ -1,8 +1,8 @@
-# SwingPilot — Architecture Contract v0.1
+# SwingPilot — Architecture Contract v0.3
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** DRAFT — pendiente de verificación adversarial (G2) y aprobación humana (G3)  
+**Estado:** v0.3 — DRAFT — verificado en G2 (2026-11-13) y re-verificado en VER-003 (2026-11-18); incorpora CR-001..CR-008; pendiente de verificación de cierre y aprobación humana (G3)  
 **Autoridad documental:** DEC-001 — AI_INTEGRATION.md v1.0 (principios D1–D4 aprobados)
 
 ---
@@ -134,7 +134,7 @@ Las siguientes decisiones están aprobadas (DEC-001) y no son negociables para F
 - Determinar qué agentes participan y en qué orden
 - Preparar y distribuir contexto (cada agente recibe contexto mínimo necesario)
 - Administrar correlation_id para toda la cadena de un análisis
-- Coordinar análisis paralelos (Market, Macro, ML, Regime) y secuenciales
+- Coordinar el análisis paralelo de Fase 3 (Market, Macro y Strategy Analyst) y los pasos secuenciales (CR-004)
 - Validar respuestas de agentes contra contratos JSON definidos
 - Enviar resultados consolidados a Decision Synthesis
 - Registrar todas las interacciones: modelo, versión, prompt versión, timestamp
@@ -241,44 +241,55 @@ Las siguientes decisiones están aprobadas (DEC-001) y no son negociables para F
 
 ## 6. Separación de Responsabilidades (Tabla de Autoridad)
 
-| Acción | Autoridad | Notas |
+Fuente: AI_INTEGRATION.md, «¿Quién tiene autoridad sobre qué?» (texto fiel; CR-008). En SwingPilot, el operador humano y el operador autorizado son el propietario.
+
+| Decisión o actividad | Autoridad | Notas del contrato |
 |---|---|---|
-| Interpretación de mercado | Agentes LLM | Resultado consultivo, no vinculante |
-| Generación de señales estratégicas | Strategy Engine + ML Engine | Determinista, versionado |
-| Aprobación técnica de operación | Risk Manager determinista | Verifica todos los invariantes |
-| Autorización de ejecución | Operador humano | Individual, por operación (INV-008) |
-| Envío de órdenes | Execution Engine | Solo con autorización válida vigente |
-| Asignación de capital | Operador humano | Cambio requiere autorización del propietario |
-| Cambio de modo operativo | Operador autorizado | Registrado; LLM no puede automodificarlo |
-| Modificación de políticas críticas | Propietario del proyecto | Cambio requiere aprobación explícita |
-| Registro fiscal | Fiscal Ledger | Registros inmutables |
-| Verificación | Componente distinto al implementador | Separación de responsabilidades C1/C2 |
+| Interpretar mercado | Agentes de IA | Resultado consultivo, no vinculante |
+| Analizar contexto macro | Agentes de IA | No convierte una noticia en señal |
+| Generar hipótesis | IA y Research | Preregistro obligatorio (REQ-G-103) |
+| Evaluar estrategias | Strategy Engine | Determinista, versionado |
+| Ejecutar modelos predictivos | ML Engine | Determinista, versionado |
+| Consolidar evidencia | Decision Synthesis | No fabrica consenso |
+| Determinar límites de riesgo | Configuración aprobada y Risk Manager | Invariantes INV-001..012 |
+| Aprobar o rechazar técnicamente una operación | Risk Manager determinista | Verifica todos los invariantes |
+| Enviar órdenes autorizadas | Execution Engine | Solo con autorización humana válida (INV-008) |
+| Decidir aportaciones y retiros de capital | Operador humano (propietario) | — |
+| Decidir asignación del presupuesto | Operador humano (propietario) | — |
+| Cambiar el modo operativo | Operador autorizado (propietario) | Registrado; ningún LLM puede cambiarlo |
+| Modificar políticas críticas | Operador autorizado (propietario) | Requiere aprobación explícita |
+
+Adicionales del contrato (no en la tabla fuente): autorización individual de cada operación por el propietario (INV-008); registro fiscal por el Fiscal Ledger (inmutable); verificación por un componente distinto al implementador (C1/C2).
 
 ---
 
 ## 7. Fases de Implementación (referencia)
 
-Las 6 fases de implementación definidas en AI_INTEGRATION.md se mantienen como referencia de orden:
+Las 6 fases de AI_INTEGRATION.md («¿En qué fases se implementa la integración?»). No se avanza de fase por haber completado tareas: cada fase requiere evidencia verificable.
 
-1. Fundaciones: infraestructura base, contratos de mensajes, gestión de secretos
-2. Componentes deterministas: Risk Manager, Trading Engine, Market Intelligence
-3. Integración LLM: Orchestrator, agentes especializados, AI Provider Adapter
-4. Pipeline completo: Research → Paper Trading → Live Trading
-5. Interfaz humana: Telegram, mecanismo de aprobación, alertas
-6. Producción: seguridad, monitoreo, reconciliación, Fiscal Ledger
+| Fase | Contenido | Criterio de salida |
+|---|---|---|
+| 1. Fundamentos de integración | AI Provider Adapter; Anthropic API; AI Orchestrator; contratos universales; catálogo inicial de eventos; validación y trazabilidad | El Orchestrator coordina una solicitud y recibe respuestas estructuradas, validadas y auditables |
+| 2. Agentes especializados | Market, Macro, Strategy y Risk Analyst; Decision Synthesis | Los agentes trabajan coordinadamente, conservan sus resultados y expresan desacuerdos sin producir autorizaciones financieras |
+| 3. Integración cuantitativa | ML Engine; Regime Engine; Strategy Engine; normalización de propuestas; consistencia entre análisis y resultados cuantitativos | Las propuestas se relacionan con estrategias, inferencias y evidencia reproducible |
+| 4. Integración con riesgo | Decision Synthesis con Risk Manager; validaciones deterministas; autorizaciones con vigencia; bloqueos y fail-safe | Ninguna propuesta llega a ejecución sin autorización válida del Risk Manager |
+| 5. Paper Trading | Execution Engine simulado; eventos de órdenes; ejecuciones parciales; reconciliación; trazabilidad | El ciclo completo se prueba sin comprometer capital real |
+| 6. Live Trading | Revisión de seguridad; permisos de Binance; reconciliación; aprobación humana del cambio de modo; pruebas controladas | Autorización explícita del operador y cumplimiento de los criterios de aceptación de producción |
 
-**Criterio de salida de cada fase:** criterios de aceptación definidos en AI_INTEGRATION.md (REQ-3048..REQ-3059) verificados por componente distinto al implementador. Estos criterios de salida no tienen REQ-G-NNN asignados en requirements.md v0.1 (ver FIND-004 en verification_report_v1.json); deben ser asignados e incorporados al plan de verificación antes de iniciar FASE 2.
+Los criterios de cierre de la integración de IA son AC-01..AC-16 (REQ-3054..REQ-3069), con casos en `test_plan.md` §9.
 
 ---
 
-## 8. Parámetros PENDING de Arquitectura
+## 8. Parámetros de Arquitectura (estado tras CR-008)
 
-| ID | Parámetro | Impacto |
+| ID | Parámetro | Estado |
 |---|---|---|
-| REQ-G-P06 | Mecanismo técnico de aprobación humana | Diseño del Telegram Bot + backend de autorización |
-| REQ-G-P18 | Tiempos máximos de respuesta, límites de consumo API | SLA del sistema y configuración de timeouts |
-| REQ-G-P19 | Frecuencia de reconciliación con Binance | Frecuencia de polling del Execution Engine |
-| REQ-G-P21..P24 | Política de reentrenamiento ML, umbrales de degradación, promoción a producción | Ciclo de vida de modelos ML |
+| REQ-G-P06 | Mecanismo técnico de aprobación humana | RESUELTO (DEC-004): Telegram con botones |
+| REQ-G-P18 | Tiempos, consumo y reintentos de la API de IA | RESUELTO (DEC-006, DEC-007, DEC-009): REQ-G-034, REQ-G-095, REQ-G-096 |
+| REQ-G-P19 | Frecuencia de reconciliación con Binance | RESUELTO (DEC-004): arranque, antes y después de cada ciclo, cada 5 min con posición abierta |
+| REQ-G-P21..P24 | Reentrenamiento, degradación, promoción y límites adicionales | RESUELTO (DEC-005) |
+
+Pendientes técnicos de FASE 2 (no parámetros del propietario): tipo de orden de stop, formato del identificador de cliente, almacenamiento durable, servicio de vigilancia, servicio de IP pública, calibración de `effort`, límite de gasto en consola.
 
 ---
 

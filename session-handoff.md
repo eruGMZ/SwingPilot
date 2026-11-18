@@ -2,7 +2,7 @@
 
 ## Cierre de sesión 2026-11-18 — siguiente acción
 
-- Decisiones: DEC-001..DEC-009. Change requests CR-001..CR-006 aprobadas y aplicadas.
+- Decisiones: DEC-001..DEC-010. Change requests CR-001..CR-009 aprobadas y aplicadas. Todo con commit (2026-11-18).
 - **CR-006 APROBADA y aplicada** el 2026-11-18 (DEC-009: Haiku 5.5 en 4 agentes, Sonnet 5.5 en Decision Synthesis; Messages API sin herramientas; sin caching; controles de costo; REQ-G-095, REQ-G-096).
 - **CR-005 APROBADA y aplicada** el 2026-11-18 (DEC-008: estados de la operación, recuperación por estado, autorización de 30 min, cierre protector; REQ-G-037..039).
 - Feedback externo (puntos A–F) atendido vía CR-003 y CR-004. Documento externo `error-handling.md` revisado: estructura adoptada en CR-005, 10 puntos no adoptados (CR-005 §F).
@@ -11,7 +11,11 @@
 - P24: adición retirada el 2026-11-18; queda "ninguno adicional".
 - G3 PENDING por decisión del propietario. FASE 2 bloqueada.
 - Cambios hasta CR-006 con commit (2026-11-18).
-- Siguiente acción autorizada: esperar decisión del propietario sobre G3.
+- Paquete de revisión de G3: `harness/gates/G3_resumen_contrato.md` (hallazgos H1–H6; opciones A/B/C).
+- Opción A elegida para G3. **CR-007 APROBADA y aplicada** el 2026-11-18 (contrato v0.2; TC-AC-01..16).
+- VER-003: PASS_WITH_FINDINGS, sin críticos. **CR-008 APROBADA y aplicada** (DEC-010: Q28 A, Q29 A); contrato v0.3..
+- Verificación de cierre de CR-008: PASS_WITH_FINDINGS (solo BAJA); C-03 aplicado en CR-009.
+- Siguiente acción autorizada: decisión del propietario sobre G3 ("APRUEBO EL CONTRATO TÉCNICO v1.0").
 
 > Actualizado: 2026-11-18 — FASE 1: G2 PASS; conflictos CONF-001..005 resueltos; CR-001..006 aplicadas; G3 PENDING (decisión del propietario)
 

@@ -1,8 +1,8 @@
-# SwingPilot — Test Plan v0.1
+# SwingPilot — Test Plan v0.3
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** DRAFT — pendiente de verificación adversarial (G2) y aprobación humana (G3)
+**Estado:** v0.3 — DRAFT — verificado en G2 (2026-11-13) y re-verificado en VER-003 (2026-11-18); incorpora CR-001..CR-008; pendiente de verificación de cierre y aprobación humana (G3)
 
 ---
 
@@ -33,7 +33,7 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 | Fiscal Ledger (DDL + FIFO) | ALTA | C2 | Verificación independiente |
 | Modos Operativos | ALTA | C2 | Verificación funcional |
 | Seguridad (credenciales, prompt injection) | ALTA | C1 | Verificación independiente |
-| Criterios de Aceptación Global (AC-01..AC-16) | ALTA | C2 | Verificación funcional |
+| Criterios de Aceptación Global (AC-01..AC-16) | ALTA | C1 o C2 según §9 (CR-007) | Verificación funcional |
 | Regresión | MEDIA | C3 | Automatizada |
 
 ---
@@ -103,9 +103,9 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Input: TRADE_PROPOSAL sin `exit_mechanism` definido
 - Expected: RISK_REJECTED con motivo INV-007
 
-**TC-INV-007-B — Rechazo con exit_mechanism no verificable:**
-- Input: `exit_mechanism.type = "MANUAL"` sin procedimiento de contingencia
-- Expected: RISK_REJECTED
+**TC-INV-007-B — Rechazo de salida discrecional (CR-008):**
+- Input: `exit_mechanism.type = "MANUAL"` (no admitido por el esquema) o salida que dependa exclusivamente de una decisión discrecional futura
+- Expected: RISK_REJECTED con motivo INV-007
 
 ### REQ-G-031: Stop-loss en el exchange (CR-002)
 
@@ -131,7 +131,7 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 
 **TC-STOP-006 — Reconciliación sin stop:**
 - Input: posición abierta sin orden de stop activa en Binance
-- Expected: la reconciliación lo detecta, emite alerta y bloquea nuevas entradas
+- Expected: la reconciliación lo detecta, emite alerta, bloquea nuevas entradas y aplica REQ-G-031: recolocar el stop o cierre protector (ver TC-STOP-007/008; CR-008)
 
 **TC-STOP-007 — Cierre protector (CR-005):**
 - Input: posición abierta sin stop activo en Binance; precio en o por debajo del stop autorizado
@@ -226,6 +226,34 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 ### TC-ML-003 — Normalización sin contaminación
 - Input: Normalización aplicada al conjunto de entrenamiento con sus propias estadísticas
 - Expected: Las mismas estadísticas (media/std) se aplican a Validation y OOS sin recalcular sobre esos conjuntos
+
+### TC-ML-004 — Muestra mínima (REQ-G-P15, DEC-005; CR-008)
+- Input: experimento con < 100 trades en Train+Val, o < 30 en OOS o en LOCKBOX
+- Expected: experimento INCONCLUSIVE; no puede pasar a APPROVED
+
+### TC-ML-005 — Umbrales netos (REQ-G-P11..P14)
+- Input: resultados netos de costes que incumplen uno de: Profit Factor ≥ 1.3, expectancy ≥ 0.10 R, drawdown ≤ 20%, Sharpe OOS ≥ 0.8
+- Expected: experimento REJECTED; la comparación con comprar y mantener queda reportada
+
+### TC-ML-006 — Requisitos estadísticos (REQ-G-P17)
+- Input: experimento que cumple umbrales
+- Expected: se calcula IC bootstrap 95% del expectancy (> 0), comparación con línea base ingenua y corrección por número de experimentos; sin cualquiera de ellos no se aprueba
+
+### TC-ML-007 — LOCKBOX de un solo uso
+- Input: segunda evaluación sobre el mismo LOCKBOX
+- Expected: acceso bloqueado y registrado
+
+### TC-ML-008 — Degradación del modelo (REQ-G-P22)
+- Input: expectancy de los últimos 20 trades por debajo del límite inferior del IC OOS, o PSI > 0.25
+- Expected: modelo suspendido; no se reentrena automáticamente (REQ-G-P21)
+
+### TC-ML-009 — Promoción a producción (REQ-G-P23)
+- Input: intento de usar un modelo en producción
+- Expected: solo con estado HUMAN_REVIEW → APPROVED y hash de datos+código+parámetros registrado; en otro caso, rechazado
+
+### TC-ML-010 — Registro de experimentos rechazados
+- Input: experimento REJECTED o INCONCLUSIVE
+- Expected: queda registrado con sus resultados; no se elimina ni se oculta
 
 ---
 
@@ -445,39 +473,118 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 
 ---
 
+## 8.8 Pruebas de Parámetros Operativos (C1 — DEC-004; CR-008)
+
+### TC-PARAM-001 — Tolerancia de precio (REQ-G-P20)
+- Input: al ejecutar, el precio se desvía > 0.5% del autorizado
+- Expected: la orden no se envía; se requiere nueva autorización
+
+### TC-PARAM-002 — Antigüedad del tipo de cambio (REQ-G-P02)
+- Input: tipo de cambio USDT/MXN con antigüedad > 5 min
+- Expected: Fail-Closed (DATA_UNAVAILABLE); sin propuesta ejecutable
+
+### TC-PARAM-003 — Frecuencia de reconciliación (REQ-G-P19)
+- Input: arranque; ciclo de decisión; posición abierta durante 20 min
+- Expected: reconciliación al arrancar, antes y después del ciclo, y al menos cada 5 min con posición abierta
+
+### TC-PARAM-004 — Comisión en el sizing (REQ-G-P03)
+- Input: comisión real de la cuenta menor a 0.10%
+- Expected: el sizing usa 0.10% por lado (max(real, 0.10%))
+
+### TC-PARAM-005 — Liberación del límite mensual (DEC-010 Q28)
+- Input: MONTHLY_TRADE_LIMIT_LOCK activo; cambio de mes calendario; con y sin otros bloqueos activos
+- Expected: se libera automáticamente con aviso por Telegram; los demás bloqueos activos se mantienen
+
+---
+
 ## 9. Pruebas de Criterios de Aceptación Global (AI_INTEGRATION.md, AC-01..AC-16)
 
-### AC-01 — Ciclo completo reproducible
-- Input: Mismos datos de entrada → mismo análisis → misma propuesta
-- Expected: Determinismo del Risk Manager verificado; agentes LLM pueden variar pero contratos de salida son válidos
+Numeración igual a la fuente: AI_INTEGRATION.md, «¿Cuándo se considera terminada la integración de IA?»; extracción DOC-003, REQ-3054..REQ-3069 (CR-007).
 
-### AC-02 — Separación de modos operativos
-- Input: En modo Research, enviar propuesta que pasaría todos los controles de riesgo
-- Expected: No se genera ninguna orden real en Binance
+| AC | Criterio (texto de la fuente) | Fuente | Criticidad |
+|---|---|---|---|
+| AC-01 | El Orchestrator coordine agentes especializados. | REQ-3054 | C2 |
+| AC-02 | Cada agente tenga contratos de entrada y salida versionados. | REQ-3055 | C2 |
+| AC-03 | Los mensajes tengan identificadores de correlación y causalidad. | REQ-3056 | C2 |
+| AC-04 | Los resultados puedan reconstruirse históricamente. | REQ-3057 | C2 |
+| AC-05 | Los agentes no tengan autoridad de ejecución. | REQ-3058 | C1 |
+| AC-06 | Decision Synthesis preserve incertidumbre y desacuerdos. | REQ-3059 | C2 |
+| AC-07 | Strategy Engine y ML Engine permanezcan diferenciados de los LLM. | REQ-3060 | C2 |
+| AC-08 | Risk Manager opere de manera determinista. | REQ-3061 | C1 |
+| AC-09 | No exista ejecución sin autorización válida. | REQ-3062 | C1 |
+| AC-10 | La asignación de capital permanezca bajo autoridad humana. | REQ-3063 | C1 |
+| AC-11 | Las condiciones de fail-safe hayan sido probadas. | REQ-3064 | C1 |
+| AC-12 | Binance pueda reconciliar órdenes y ejecuciones. | REQ-3065 | C1 |
+| AC-13 | Research, Paper Trading y Live Trading estén separados. | REQ-3066 | C1 |
+| AC-14 | Los costes de IA puedan medirse. | REQ-3067 | C2 |
+| AC-15 | Los prompts, modelos, estrategias y contratos estén versionados. | REQ-3068 | C2 |
+| AC-16 | Existan pruebas de seguridad y de integridad operativa. | REQ-3069 | C1 |
 
-### AC-03 — Fail-safe ante error de agente
-- Input: Market Analyst devuelve respuesta con contrato inválido (campo requerido faltante)
-- Expected: Orchestrator registra el error, no asume aprobación; ciclo de análisis puede continuar sin ese agente o descartarse
+### TC-AC-01 — Orchestrator coordina (REQ-G-050, REQ-G-051)
+- Input: ciclo con STRATEGY_CANDIDATE.
+- Expected: el Orchestrator invoca a Market, Macro y Strategy Analyst en Fase 3 y a Decision Synthesis en Fase 4, con el contexto mínimo de cada uno; ningún agente invoca a otro directamente; un ciclo con NO_SETUP no invoca agentes.
 
-### AC-04 — Métricas de costes IA medibles
-- Procedimiento: Revisar registros de cada llamada a Anthropic API
-- Expected: Cada llamada registra: modelo, tokens_input, tokens_output, timestamp
+### TC-AC-02 — Contratos versionados (REQ-G-060, REQ-G-064, REQ-G-095)
+- Input: una entrada y una salida de cada agente.
+- Expected: cada una declara `schema_version`; la salida valida contra el esquema de su versión; una salida con versión desconocida se rechaza como fuera de contrato.
 
-### AC-05 — Versionado completo
-- Procedimiento: Revisar un registro de ORDER_FILLED con su correlation_id
-- Expected: El registro contiene versiones de: prompt, modelo LLM, estrategia, contratos JSON, risk rules
+### TC-AC-03 — Correlación y causalidad (REQ-G-061, REQ-G-062)
+- Input: ciclo completo hasta ORDER_FILLED (Paper Trading).
+- Expected: todos los eventos comparten `correlation_id`; cada evento distinto del primero tiene `causation_id` que apunta a un evento existente del mismo ciclo.
 
-### AC-06..AC-16 — PENDING (definir en FASE 2)
+### TC-AC-04 — Reconstrucción histórica (REQ-G-062, REQ-G-076, REQ-G-141) — *reutiliza el actual AC-01*
+- Input: `correlation_id` de un ciclo terminado.
+- Expected: con los registros se reconstruyen datos usados, análisis de cada agente (modelo, prompt, versión), propuesta, decisión del Risk Manager, autorización, órdenes y resultado; los registros no se alteran (TC-SEC-004).
 
-Los criterios de aceptación AC-06..AC-16 de AI_INTEGRATION.md (REQ-3065..REQ-3075) no tienen test cases definidos en este contrato. Se requiere acceso al texto completo del documento fuente para especificar cada caso.
+### TC-AC-05 — Agentes sin autoridad de ejecución (REQ-G-058, REQ-G-059, REQ-G-095)
+- Input: (a) salida de un agente que contiene una «orden» o instrucción de ejecutar; (b) inspección de las llamadas a agentes.
+- Expected: (a) no produce ninguna orden ni cambio de estado; (b) ningún agente recibe herramientas ni credenciales (TC-AI-002, TC-SEC-002).
 
-**Por cada criterio (AC-06..AC-16), el Merger o el implementador de FASE 2 debe:**
-1. Citar el criterio exacto de AI_INTEGRATION.md
-2. Definir un TC-AC-NNN con: input, procedimiento, expected result
-3. Asignar criticidad C1/C2/C3 y responsable de verificación
-4. Registrar en el sistema de trazabilidad (TRC-NNN)
+### TC-AC-06 — Incertidumbre y desacuerdos preservados (REQ-G-056, REQ-G-073)
+- Input: Market Analyst alcista y Macro Analyst con riesgo alto contradictorio; por separado, un analista con INSUFFICIENT_DATA.
+- Expected: la salida de Decision Synthesis registra el desacuerdo (o `DISAGREEMENT`) y la limitación de datos; no presenta la propuesta como consenso; los desacuerdos se muestran en Telegram con la propuesta.
 
-**Estado:** PENDING — no bloquea G2 pero es condición para G4 (pruebas de implementación en FASE 2).
+### TC-AC-07 — Motores deterministas separados de los LLM (REQ-G-057, REQ-G-071)
+- Input: (a) Strategy Engine y ML Engine con la misma entrada dos veces; (b) inspección de dependencias.
+- Expected: (a) misma salida; (b) ninguno de los dos llama a la API de Claude ni consume salidas de agentes LLM.
+
+### TC-AC-08 — Risk Manager determinista (REQ-G-016, REQ-G-074) — *reutiliza el actual AC-01*
+- Input: misma propuesta, mismo estado y mismos parámetros, evaluada dos veces.
+- Expected: resultado, cálculos y motivos idénticos; el Risk Manager no llama a ningún LLM.
+
+### TC-AC-09 — Sin ejecución sin autorización válida (INV-008, REQ-G-039, REQ-G-075)
+- Input: intentos de ejecución (a) sin autorización humana, (b) con autorización vencida, (c) con autorización de otra propuesta, (d) con autorización anulada al reiniciar.
+- Expected: ninguna orden enviada en los cuatro casos; cada intento registrado. Complementa TC-INV-008-A/B, TC-AUTH-001 y TC-REC-001/004.
+
+### TC-AC-10 — Capital bajo autoridad humana (REQ-G-010, REQ-G-011, REQ-G-044)
+- Input: (a) salida de un agente que propone aumentar capital o ticket; (b) cambio de capital configurado sin autorización del propietario.
+- Expected: (a) sin efecto sobre la configuración; (b) rechazado y registrado; el capital solo cambia con autorización registrada del propietario.
+
+### TC-AC-11 — Condiciones de fail-safe (REQ-G-029, REQ-G-034, REQ-G-131) — *reutiliza el actual AC-03 con el resultado corregido (H2)*
+- Input: (a) Market Analyst devuelve contrato inválido dos veces; (b) Risk Manager no disponible; (c) datos obsoletos; (d) equity desconocido; (e) discrepancia local/Binance.
+- Expected: (a) 1 reintento y luego **ciclo sin propuesta** (no continúa sin el agente); (b)–(e) bloqueo de nuevas entradas; en ningún caso se asume aprobación. Complementa TC-INV-012-A/B.
+
+### TC-AC-12 — Reconciliación con Binance (REQ-G-075, REQ-G-093, REQ-G-P19)
+- Input: (a) ejecución parcial; (b) orden enviada y caída antes de la confirmación; (c) posición sin stop en Binance.
+- Expected: (a) cantidad local = cantidad ejecutada en Binance; (b) orden adoptada por identificador de cliente, sin duplicado; (c) detectado y tratado según REQ-G-031. Complementa TC-REC-002/006 y TC-STOP-006/007.
+
+### TC-AC-13 — Modos separados (REQ-G-080..083) — *reutiliza el actual AC-02*
+- Input: (a) propuesta aprobada en Research; (b) en Paper Trading; (c) intento de un agente de cambiar a Live Trading.
+- Expected: (a) y (b) ninguna orden real en Binance; (c) sin efecto; el cambio de modo solo ocurre con autorización registrada del propietario.
+
+### TC-AC-14 — Costes de IA medibles (REQ-G-091, REQ-G-096) — *reutiliza el actual AC-04*
+- Procedimiento: revisar los registros de llamadas a la API de Claude de un ciclo.
+- Expected: cada llamada registra modelo, tokens de entrada, tokens de salida, costo calculado y timestamp; el gasto mensual acumulado coincide con la suma.
+
+### TC-AC-15 — Versionado completo (REQ-G-076, REQ-G-140) — *reutiliza el actual AC-05*
+- Procedimiento: revisar un registro de ORDER_FILLED con su `correlation_id`.
+- Expected: contiene las versiones de prompt, modelo LLM, estrategia, contratos JSON y reglas de riesgo.
+
+### TC-AC-16 — Pruebas de seguridad e integridad operativa (REQ-G-130, REQ-G-032)
+- Procedimiento: ejecutar la suite de seguridad (TC-SEC-001..007) y de integridad (TC-REC-001..009, TC-OPS-STATE-001..003).
+- Expected: todas en PASS con evidencia registrada (condición de G4 y de G6).
+
+**Estado:** casos definidos (CR-007). Su ejecución con evidencia es condición de G4; TC-AC-16 es además condición de G6 (CR-008).
 
 ---
 
@@ -504,19 +611,9 @@ La suite de regresión se ejecuta automáticamente en cada cambio al código del
 
 ---
 
-## 12. Parámetros PENDING en el Test Plan
+## 12. Parámetros del Test Plan (estado tras CR-008)
 
-Los siguientes tests quedan como PENDING hasta que se definan sus valores:
-
-| TC | Parámetro faltante | ID |
-|---|---|---|
-| TC-INV-001-A | Comisión efectiva de Binance | REQ-G-P03 |
-| TC-PS-001..004 | stepSize, minQty, minNotional | REQ-G-P05 |
-| TC-PS-001..004 | Reserva de slippage | REQ-G-P04 |
-| TC-INV-003-B | Mecanismo de aprobación humana | REQ-G-P06 |
-| TC-ML-001..003 | Porcentajes de división Train/Val/OOS | REQ-G-P10 |
-| TC-ML-002..003 | Umbrales de aceptación de modelos | REQ-G-P11..P17 |
-| TC-FL-004 | Fuente BCI Banxico (fixture para tests) | REQ-G-P07 |
+Todos los parámetros que bloqueaban casos de prueba están resueltos: P03–P06 (DEC-004), P07 (DEC-006), P10–P17 (DEC-005). Los casos afectados (TC-INV-001-A, TC-INV-003-B, TC-PS-001..004, TC-ML-001..010, TC-FL-004) usan esos valores. Solo **REQ-G-P08** (validación con contador) sigue PENDING y bloquea cualquier caso que valide cálculos fiscales de ganancia o impuesto.
 
 ---
 

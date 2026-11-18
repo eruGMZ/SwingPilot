@@ -1,8 +1,8 @@
-# SwingPilot — Data Flow v0.1
+# SwingPilot — Data Flow v0.3
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** DRAFT — pendiente de verificación adversarial (G2) y aprobación humana (G3)
+**Estado:** v0.3 — DRAFT — verificado en G2 (2026-11-13) y re-verificado en VER-003 (2026-11-18); incorpora CR-001..CR-008; pendiente de verificación de cierre y aprobación humana (G3)
 
 ---
 
@@ -133,6 +133,7 @@ Disparador externo (señal periódica o solicitud manual)
 │  Execution Engine (solo si autorización válida):                        │
 │  - Re-verifica condiciones de riesgo al momento de ejecución            │
 │  - Si condiciones cambiaron materialmente → nueva autorización          │
+│    (precio > 0.5% del autorizado → nueva autorización, REQ-G-P20)       │
 │  - Persiste el estado ANTES de enviar (REQ-G-032); si falla, no envía   │
 │  - Envía orden a Binance respetando stepSize/minQty/minNotional          │
 │    con identificador de cliente derivado del correlation_id             │
@@ -176,7 +177,8 @@ Estado: SIN_POSICION
 │    ├─ Colocación inmediata de stop en Binance (REQ-G-031, CR-002)
 │    │    - Éxito → STOP_ORDER_PLACED
 │    │    - Fallo → STOP_ORDER_FAILED → aviso Telegram + Fail-Closed
-│    │      (bloqueo de nuevas entradas; cierre o intervención del propietario)
+│    │      (bloqueo de nuevas entradas; tratamiento según REQ-G-031:
+│    │       recolocar el stop o cierre protector)
 │    └─ Estado: POSITION_OPEN
 │         │
 │         ├─ Monitoreo continuo (segunda capa; el stop primario vive en Binance):
@@ -264,7 +266,7 @@ ORDER_FILLED (confirmado por Binance)
 │
 ▼ Fiscal Ledger obtiene:
   - fecha_mxn (conversion de zona horaria a MX)
-  - tc_mxn_usd (PENDING: fuente BCI Banxico — REQ-G-P07)
+  - tc_mxn_usd (fuente BCI Banxico, API SIE — REQ-G-P07 resuelto en DEC-006; tratamiento fiscal sujeto a REQ-G-P08)
   - Calcula: monto_usdt, monto_mxn, comisiones_mxn
 │
 ▼ Calcula FIFO:
@@ -280,22 +282,27 @@ ORDER_FILLED (confirmado por Binance)
 
 ## 5. Trazabilidad de Correlation IDs
 
-Toda la cadena de un análisis/operación puede reconstruirse mediante correlation_id:
+Toda la cadena de un análisis/operación puede reconstruirse mediante `correlation_id`; cada `causation_id` apunta al evento que causa el siguiente (orden vigente tras CR-004 y CR-005; actualizado por CR-008):
 
 ```
-ANALYSIS_REQUESTED (correlation_id: uuid-X, causation_id: null)
-├─ MARKET_ANALYSIS_COMPLETED (correlation_id: uuid-X, causation_id: uuid-X)
-├─ MACRO_ANALYSIS_COMPLETED (correlation_id: uuid-X, causation_id: uuid-X)
-├─ ML_INFERENCE_COMPLETED (correlation_id: uuid-X, causation_id: uuid-X)
-├─ REGIME_CLASSIFIED (correlation_id: uuid-X, causation_id: uuid-X)
-├─ STRATEGY_CANDIDATE (correlation_id: uuid-X, causation_id: uuid-X)
-├─ DECISION_SYNTHESIS_COMPLETED (correlation_id: uuid-X, causation_id: uuid-X)
-├─ TRADE_PROPOSAL (correlation_id: uuid-X, causation_id: uuid-X)
-├─ RISK_APPROVED (correlation_id: uuid-X, causation_id: uuid-X)
-├─ [Autorización humana] (correlation_id: uuid-X, causation_id: uuid-X)
-├─ ORDER_SUBMITTED (correlation_id: uuid-X, causation_id: uuid-X)
-└─ ORDER_FILLED (correlation_id: uuid-X, causation_id: uuid-X)
+E1  ANALYSIS_REQUESTED              (correlation_id: X, causation_id: null)
+E2  REGIME_CLASSIFIED               (X, causation_id: E1)
+E3  ML_INFERENCE_COMPLETED          (X, causation_id: E1)
+E4  STRATEGY_CANDIDATE              (X, causation_id: E2, E3)   — o NO_SETUP (fin del ciclo)
+E5  MARKET_ANALYSIS_COMPLETED       (X, causation_id: E4)
+E6  MACRO_ANALYSIS_COMPLETED        (X, causation_id: E4)
+E7  análisis del Strategy Analyst   (X, causation_id: E4)
+E8  DECISION_SYNTHESIS_COMPLETED    (X, causation_id: E5, E6, E7)
+E9  TRADE_PROPOSAL                  (X, causation_id: E8)
+E10 RISK_APPROVED / RISK_REJECTED   (X, causation_id: E9)
+E11 RISK_ANALYSIS_COMPLETED         (X, causation_id: E10)      — solo con RISK_APPROVED
+E12 autorización humana             (X, causation_id: E10)
+E13 ORDER_SUBMITTED                 (X, causation_id: E12)
+E14 ORDER_FILLED                    (X, causation_id: E13)
+E15 STOP_ORDER_PLACED               (X, causation_id: E14)
 ```
+
+Cuando un evento tiene varias causas, `causation_id` registra la principal y el resto se referencia en el cuerpo del mensaje.
 
 **Regla:** Usando correlation_id: uuid-X es posible reconstruir todo el ciclo, desde el disparador hasta el resultado en Binance y el registro fiscal.
 
@@ -316,7 +323,7 @@ Estado inicial: ACTIVE
 │    └─ Liberación solo con autorización humana (nuevo mes NO libera automáticamente)
 │
 ├─ MonthlyTradeCount = 8 → agrega: MONTHLY_TRADE_LIMIT_LOCK
-│    └─ Liberación al inicio del mes calendario siguiente (PENDING: requiere ratificación del propietario — ver FIND-003)
+│    └─ Liberación automática al inicio del mes calendario siguiente, con aviso por Telegram (DEC-010 Q28)
 │
 ├─ Equity/datos no verificables → agrega: DATA_UNAVAILABLE
 │    └─ Liberación cuando se restaura la verificabilidad
@@ -333,15 +340,17 @@ REGLA: En todos los estados bloqueados, las acciones de protección (stop-loss, 
 
 ---
 
-## 7. Parámetros PENDING que Afectan Flujos
+## 7. Parámetros que Afectan Flujos (estado tras CR-008)
 
-| ID | Flujo afectado | Descripción |
+| ID | Flujo afectado | Estado |
 |---|---|---|
-| REQ-G-P01 | Fiscal Ledger / Fase 7 | Fuente USDT/MXN para `tc_mxn_usd` |
-| REQ-G-P02 | Fase 1 / Risk Manager | Antigüedad máxima del tipo de cambio |
-| REQ-G-P06 | Fase 6 | Mecanismo técnico de aprobación humana |
-| REQ-G-P19 | Fase 6 / Monitoreo | Frecuencia de reconciliación con Binance |
-| REQ-G-P20 | Fase 6 | Tolerancia de desviación de precio antes de nueva autorización |
+| REQ-G-P01 | Fase 1 / Risk Manager | RESUELTO (DEC-004): Binance USDT/MXN en tiempo real; fuente fiscal ligada a P08 |
+| REQ-G-P02 | Fase 1 / Risk Manager | RESUELTO (DEC-004): 5 min; excedido = Fail-Closed |
+| REQ-G-P06 | Fase 6 | RESUELTO (DEC-004): Telegram con botones |
+| REQ-G-P07 | Fiscal Ledger / Fase 7 | RESUELTO (DEC-006): API SIE de Banxico |
+| REQ-G-P08 | Fiscal Ledger | **PENDING** (diferido): validación con contador |
+| REQ-G-P19 | Fase 6 / Monitoreo | RESUELTO (DEC-004): arranque, antes y después de cada ciclo, cada 5 min con posición abierta |
+| REQ-G-P20 | Fase 6 | RESUELTO (DEC-004): 0.5% |
 
 ---
 

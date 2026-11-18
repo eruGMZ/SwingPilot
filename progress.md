@@ -445,3 +445,93 @@
 **Bloqueos:** G3 PENDING (decisión del propietario); P08 diferido; DEC-009 y CR-006 sin commit.
 
 **Siguiente acción autorizada:** esperar decisión del propietario sobre G3. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-18 | FASE 1 | Paquete de revisión de G3 | COMPLETADO
+
+**Actividad:** Resumen del contrato técnico para la decisión de G3, con revisión de consistencia. Hallazgos: H1 (alta) los cambios de CR-001..006 no han pasado por verificación adversarial independiente (G2 es del 2026-11-13); H2 AC-03 contradice REQ-G-034/DEC-007; H3 REQ-G-063 cita 16 eventos (hay 31); H4 encabezados v0.1/DRAFT y "245 requisitos" (son 224); H5 notas PENDING ya resueltas dentro de requisitos; H6 AC-06..16 sin casos de prueba. Opciones presentadas: A (CR-007 + re-verificación + G3, recomendada), B (CR-007 + G3), C (G3 ahora).
+
+**Archivos:** `harness/gates/G3_resumen_contrato.md` (nuevo).
+
+**Estado:** G3 PENDING (decisión del propietario). Contrato sin modificar. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-18 | FASE 1 | CR-007 propuesto (opción A de G3) | PROPUESTA
+
+**Actividad:** El propietario eligió la opción A para G3 (CR-007 → verificación adversarial del contrato actual → G3) y pidió definir las pruebas de H6 en CR-007. Al preparar la CR se detectó H7: la numeración AC-01..05 de `test_plan.md` §9 no corresponde a la fuente (AI_INTEGRATION.md; REQ-3054..3069) y la nota de pendientes citaba REQ-3065..3075. CR-007 rehace §9 con TC-AC-01..16 numerados como la fuente (los 5 casos actuales se reubican; AC-11 corrige H2) y corrige H3–H5.
+
+**Archivos:** `harness/change_requests/CR-007_alineacion-contrato-criterios-aceptacion.md` (nuevo), `session-handoff.md`.
+
+**Estado:** CR-007 pendiente de aprobación; contrato sin modificar. G3 PENDING. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-18 | FASE 1 | CR-007 aprobada y aplicada | COMPLETADO
+
+**Actividad:** El propietario aprobó CR-007 ("APRUEBO CR-007"). Aplicado: `test_plan.md` §9 con TC-AC-01..16 numerados como la fuente (REQ-3054..3069), criticidad C1/C2 por criterio, AC-11 alineado con REQ-G-034 (H2); REQ-G-063 apunta al catálogo de 31 eventos (H3); encabezados a v0.2 y cifra de 224 requisitos (H4); 8 notas PENDING resueltas marcadas, P08 se mantiene (H5).
+
+**Archivos:** `implementation/test_plan.md`, `implementation/requirements.md`, `implementation/architecture.md`, `implementation/api_contracts.md`, `implementation/data_flow.md`, `harness/change_requests/CR-007_alineacion-contrato-criterios-aceptacion.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
+
+**Siguiente acción:** verificación adversarial independiente del contrato v0.2 (H1), luego G3. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-18 | FASE 1 | Pausa de sesión | PAUSADA
+
+**Actividad:** Se lanzó el verificador adversarial V1 (riesgo y ejecución) y se detuvo sin resultados al pausar la sesión el propietario. V2 no se lanzó.
+
+**Estado:** contrato v0.2 con CR-007 aplicada; CR-007 y `harness/gates/G3_resumen_contrato.md` sin commit. G3 PENDING. Código funcional creado: NINGUNO.
+
+**Siguiente acción:** relanzar V1 y V2 sobre el contrato v0.2; luego G3.
+
+---
+
+## 2026-11-18 | FASE 1 | Re-verificación adversarial (VER-003); CR-008 propuesto | PROPUESTA
+
+**Actividad:** Verificación adversarial independiente del contrato v0.2 con 2 sub-agentes Sonnet de solo lectura (V1 riesgo y ejecución; V2 IA, investigación, fiscal y trazabilidad). Ambos PASS_WITH_FINDINGS, sin hallazgos críticos: 3 ALTA, 12 MEDIA, 10 BAJA; hallazgos comprobados por el Orquestador. Hallazgo adicional O-01: liberación de MONTHLY_TRADE_LIMIT_LOCK pendiente de ratificación desde G2. CR-008 propone las correcciones y dos decisiones (Q28, Q29).
+
+**Consumo de sub-agentes:** V1 ~131K tokens, V2 ~151K tokens (superior a la guía de 80K por sub-agente Sonnet).
+
+**Archivos:** `harness/verification/VER-003_reverificacion_contrato_v0.2.md` (nuevo), `harness/change_requests/CR-008_correcciones-reverificacion.md` (nuevo), `harness/gates/G3_resumen_contrato.md` (30 eventos), `session-handoff.md`.
+
+**Estado:** CR-008 pendiente de aprobación; contrato v0.2 sin modificar. G3 PENDING. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-18 | FASE 1 | CR-008 aprobada y aplicada; DEC-010 | COMPLETADO
+
+**Actividad:** El propietario aprobó CR-008 ("APRUEBO CR-008, Q28 A, Q29 A"). DEC-010: MONTHLY_TRADE_LIMIT_LOCK se libera automáticamente al inicio del mes con aviso (cierra FIND-003 de G2); AI_BUDGET_WARNING una vez por mes. Aplicado: contratos completos de los 5 agentes con campos comunes de D2 y `schema_version`; MANUAL eliminado como salida; vigencia fuera de la salida del Risk Manager; evento de auditoría con campos de RISK_POLICY; REQ-G-030 con los 16 criterios textuales; REQ-G-053/059/063/096/115 y fila P19 corregidos; architecture §3.1, §6, §7, §8; data_flow §1, §2, §4, §5 (cadena de causalidad), §6, §7; test_plan TC-INV-007-B, TC-STOP-006, TC-ML-004..010, §8.8 TC-PARAM-001..005, §9, §12. Contrato v0.3.
+
+**Archivos:** `docs/decisions/DEC-010_liberacion-limite-mensual-aviso-presupuesto.md` (nuevo), `implementation/*.md` (5 documentos), `harness/change_requests/CR-008_correcciones-reverificacion.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
+
+**Siguiente acción:** verificación de cierre acotada a CR-008; luego G3. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-18 | FASE 1 | Verificación de cierre de CR-008 | PASS_WITH_FINDINGS
+
+**Actividad:** 1 verificador independiente (Sonnet, solo lectura, ~80K tokens) confirmó los 22 puntos de CR-008. Hallazgos BAJA: C-01 (rango «3.1–3.8» en api_contracts §3.0) corregido como errata de aplicación; C-02 sin cambio; C-03 (mencionar Q28 en REQ-G-024) pendiente de decisión del propietario, no bloquea G3. Paquete de G3 actualizado (§7).
+
+**Archivos:** `implementation/api_contracts.md`, `harness/verification/VER-003_reverificacion_contrato_v0.2.md`, `harness/gates/G3_resumen_contrato.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
+
+**Siguiente acción:** decisión del propietario sobre G3. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-18 | FASE 1 | CR-009 aprobada y aplicada; commit | COMPLETADO
+
+**Actividad:** El propietario pidió agregar C-03 ("agrega C-03"). CR-009: REQ-G-024 recoge la liberación automática de MONTHLY_TRADE_LIMIT_LOCK (DEC-010 Q28). Commit de todo lo hecho desde CR-006 (CR-007, CR-008, CR-009, DEC-010, VER-003, paquete de G3, contrato v0.3).
+
+**Archivos:** `implementation/requirements.md`, `harness/change_requests/CR-009_req-g-024-liberacion-limite-mensual.md` (nuevo), `harness/gates/G3_resumen_contrato.md`, `harness/verification/VER-003_reverificacion_contrato_v0.2.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
+
+**Siguiente acción autorizada:** decisión del propietario sobre G3. Código funcional creado: NINGUNO.

@@ -1,8 +1,8 @@
-# SwingPilot — API Contracts v0.1
+# SwingPilot — API Contracts v0.3
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** DRAFT — pendiente de verificación adversarial (G2) y aprobación humana (G3)
+**Estado:** v0.3 — DRAFT — verificado en G2 (2026-11-13) y re-verificado en VER-003 (2026-11-18); incorpora CR-001..CR-008; pendiente de verificación de cierre y aprobación humana (G3)
 
 ---
 
@@ -82,15 +82,51 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
 
 **Valores de `model_id` (REQ-G-095, CR-006):** `claude-haiku-5-5` para Market Analyst, Macro Analyst, Strategy Analyst y Risk Analyst; `claude-sonnet-5-5` para Decision Synthesis. Cada contrato de salida de esta sección es el esquema de la salida estructurada (`output_config.format`) de su agente; las llamadas no incluyen herramientas.
 
+### 3.0 Campos comunes (D2 de AI_INTEGRATION.md; CR-008)
+
+**Toda entrada de agente** incluye:
+
+```json
+{
+  "correlation_id": "<uuid>",
+  "causation_id": "<uuid>",
+  "schema_version": "<semver>",
+  "agent": "market_analyst|macro_analyst|strategy_analyst|decision_synthesis|risk_analyst",
+  "data_timestamp_utc": "<ISO8601>",
+  "context": {}
+}
+```
+
+**Toda salida de agente** incluye:
+
+```json
+{
+  "analysis_id": "<uuid>",
+  "correlation_id": "<uuid>",
+  "causation_id": "<uuid>",
+  "schema_version": "<semver>",
+  "agent": "<igual que en la entrada>",
+  "model_id": "<claude-model-id>",
+  "prompt_version": "<semver>",
+  "data_timestamp_utc": "<ISO8601>",
+  "analysis_timestamp_utc": "<ISO8601>",
+  "sources": ["<fuentes y referencias utilizadas>"],
+  "missing_data": ["<datos faltantes declarados; nunca inventados>"],
+  "status": "COMPLETED|INSUFFICIENT_DATA|ERROR"
+}
+```
+
+Cada afirmación de una salida lleva `statement_type`: `FACT|INFERENCE|RECOMMENDATION`. Los errores se representan de forma estructurada (`status: ERROR` con `error: {code, message}`). Las secciones 3.1–3.7 muestran solo los campos específicos de cada agente, que se añaden a los comunes.
+
 ### 3.1 Contrato de Entrada — Market Analyst
 
 ```json
 {
-  "market_context": {
+  "context": {
     "asset": "BTC/USDT",
     "timeframes": ["D1", "H4", "H1"],
     "ohlcv": {
-      "D1": [/* array de {timestamp, open, high, low, close, volume} */],
+      "D1": [/* array de {timestamp, open, high, low, close, volume}; solo velas cerradas */],
       "H4": [],
       "H1": []
     },
@@ -99,7 +135,6 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
       "H4": {},
       "H1": {}
     },
-    "data_timestamp_utc": "<ISO8601>",
     "data_source": "<exchange>"
   },
   "analysis_instructions": {
@@ -113,19 +148,13 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
 
 ```json
 {
-  "analysis_id": "<uuid>",
-  "correlation_id": "<uuid>",
-  "analyst": "market_analyst",
-  "model_id": "<claude-model-id>",
-  "prompt_version": "<semver>",
-  "data_timestamp_utc": "<ISO8601>",
-  "analysis_timestamp_utc": "<ISO8601>",
   "observations": [
     {
       "timeframe": "H4",
       "observation": "<descripción>",
       "evidence": "<precio/indicador/zona específica>",
-      "confidence": "HIGH|MEDIUM|LOW"
+      "confidence": "HIGH|MEDIUM|LOW",
+      "statement_type": "FACT|INFERENCE|RECOMMENDATION"
     }
   ],
   "key_levels": {
@@ -136,20 +165,16 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
     "D1": "BULLISH|BEARISH|NEUTRAL|UNCLEAR",
     "H4": "BULLISH|BEARISH|NEUTRAL|UNCLEAR"
   },
-  "limitations": ["<lista de limitaciones del análisis>"],
-  "status": "COMPLETED|INSUFFICIENT_DATA|ERROR"
+  "limitations": ["<lista de limitaciones del análisis>"]
 }
 ```
 
 ### 3.3 Contrato de Salida — Decision Synthesis
 
+Entrada: las salidas de Fase 2 (REGIME_CLASSIFIED, ML_INFERENCE_COMPLETED, STRATEGY_CANDIDATE) y de Fase 3 (Market, Macro y Strategy Analyst), referenciadas por su `analysis_id` en `context.inputs`. No recibe la salida del Risk Analyst (CR-004).
+
 ```json
 {
-  "synthesis_id": "<uuid>",
-  "correlation_id": "<uuid>",
-  "model_id": "<claude-model-id>",
-  "prompt_version": "<semver>",
-  "timestamp_utc": "<ISO8601>",
   "decision": "TRADE_PROPOSAL|INSUFFICIENT_INFO|DISCARD|DISAGREEMENT",
   "trade_proposal": {
     "asset": "BTC/USDT",
@@ -166,14 +191,84 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
   "agent_summaries": {
     "market_analyst": {"key_finding": "<>", "confidence": "HIGH|MEDIUM|LOW"},
     "macro_analyst": {"key_finding": "<>", "confidence": "HIGH|MEDIUM|LOW"},
-    "strategy_analyst": {"key_finding": "<>", "confidence": "HIGH|MEDIUM|LOW"},
-    "risk_analyst": {"key_finding": "<>", "concerns": []}
+    "strategy_analyst": {"key_finding": "<>", "confidence": "HIGH|MEDIUM|LOW"}
   },
-  "status": "COMPLETED|ERROR"
+  "input_analysis_ids": ["<analysis_id de cada entrada usada>"]
+}
+```
+
+### 3.4 Contrato de Entrada — Macro Analyst
+
+```json
+{
+  "context": {
+    "news_sources": [{"source": "<>", "items": []}],
+    "macro_data": {},
+    "time_window": {"from_utc": "<ISO8601>", "to_utc": "<ISO8601>"}
+  }
+}
+```
+
+### 3.5 Contrato de Salida — Macro Analyst
+
+Fuente: AI_INTEGRATION.md, «Macro Analyst». No puede convertir una noticia en señal de entrada.
+
+```json
+{
+  "events": [
+    {
+      "description": "<evento relevante>",
+      "potential_impact": "<impacto potencial>",
+      "time_horizon": "<horizonte temporal>",
+      "source": "<fuente>",
+      "publication_date": "<ISO8601>",
+      "confirmation": "CONFIRMED|RUMOR|SPECULATION",
+      "uncertainty": "HIGH|MEDIUM|LOW",
+      "statement_type": "FACT|INFERENCE|RECOMMENDATION"
+    }
+  ]
+}
+```
+
+### 3.6 Contratos de Entrada y Salida — Strategy Analyst
+
+Entrada: `context.strategy_candidates` = STRATEGY_CANDIDATE del Strategy Engine. Fuente: AI_INTEGRATION.md, «Strategy Analyst». No modifica estrategias aprobadas ni ejecuta.
+
+```json
+{
+  "evaluations": [
+    {
+      "strategy_id": "<strategy_id>",
+      "strategy_version": "<semver>",
+      "logic_assessment": "<>",
+      "activation_conditions_assessment": "<>",
+      "signal_invalidation_coherence": "<>",
+      "weakening_conditions": ["<>"],
+      "comparison": "<solo con evidencia suficiente; null si no>",
+      "discard_reasons": ["<>"],
+      "statement_type": "FACT|INFERENCE|RECOMMENDATION"
+    }
+  ]
+}
+```
+
+### 3.7 Contratos de Entrada y Salida — Risk Analyst
+
+Entrada: `context.proposal` (propuesta con RISK_APPROVED) y `context.system_state`. Fuente: AI_INTEGRATION.md, «Risk Analyst». Consultivo; no aprueba ni revierte decisiones del Risk Manager.
+
+```json
+{
+  "hidden_risks": ["<>"],
+  "entry_stop_target_inconsistencies": ["<>"],
+  "external_event_exposure": ["<>"],
+  "operational_data_risks": ["<>"],
+  "challenged_assumptions": ["<>"],
+  "advisory_only": true
 }
 ```
 
 ---
+
 
 ## 4. Contratos del Risk Manager
 
@@ -192,7 +287,7 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
   "strategy_id": "<strategy_id>",
   "strategy_version": "<semver>",
   "exit_mechanism": {
-    "type": "STOP_LOSS|TRAILING_STOP|TARGET_PRICE|MANUAL",
+    "type": "STOP_LOSS|TRAILING_STOP|TARGET_PRICE",
     "trigger_condition": "<condición exacta de activación>",
     "execution_method": "<cómo se envía la orden>",
     "failure_procedure": "<procedimiento ante fallo>"
@@ -210,7 +305,6 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
   "schema_version": "1.0.0",
   "result": "RISK_APPROVED",
   "timestamp_utc": "<ISO8601>",
-  "valid_until_utc": "<ISO8601>",
   "authorized_instrument": "BTC/USDT",
   "authorized_direction": "LONG",
   "authorized_quantity_max": 0.0,
@@ -229,6 +323,8 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
   "requires_human_approval": true
 }
 ```
+
+**Vigencia (CR-008):** la salida del Risk Manager no fija vigencia. La vigencia de la autorización la fija el backend de autorización al enviar la solicitud por Telegram (REQ-G-039, §5); el Risk Manager re-verifica las condiciones al ejecutar (REQ-G-042).
 
 ### 4.3 Contrato de Salida — Risk Manager (RISK_REJECTED)
 
@@ -289,7 +385,7 @@ La autorización humana del propietario debe incluir:
 
 ## 6. Contrato de Evento de Auditoría
 
-Cada evento de auditoría del Risk Manager contiene (mínimo 12 campos):
+Cada evento de auditoría del Risk Manager contiene, como mínimo, los campos de RISK_POLICY «Información mínima por evento» (ampliado por CR-008):
 
 ```json
 {
@@ -305,7 +401,15 @@ Cada evento de auditoría del Risk Manager contiene (mínimo 12 campos):
   "result": {},
   "risk_manager_state_before": ["<estados activos>"],
   "risk_manager_state_after": ["<estados activos>"],
-  "policy_version": "<semver — versión de RISK_POLICY vigente al momento del evento>"
+  "policy_version": "<semver — versión de RISK_POLICY vigente al momento del evento>",
+  "operation_id": "<uuid de la operación relacionada (REQ-G-037) o null>",
+  "equity": 0.0,
+  "risk_budget": 0.0,
+  "effective_risk": 0.0,
+  "position_size": 0.0,
+  "decision": "APPROVED|REJECTED|BLOCKED",
+  "reason": "<motivo de la decisión>",
+  "actor": "<componente responsable>"
 }
 ```
 
@@ -353,16 +457,18 @@ Cada inserción debe provenir del Execution Engine tras un ORDER_FILLED confirma
 
 ---
 
-## 9. Parámetros PENDING
+## 9. Parámetros (estado tras CR-008)
 
-| ID | Campo afectado | Descripción |
+| ID | Campo afectado | Estado |
 |---|---|---|
-| REQ-G-P01 | `tc_mxn_usd` | Fuente de conversión USDT/MXN |
-| REQ-G-P02 | `tc_mxn_usd` | Antigüedad máxima aceptable del tipo de cambio |
-| REQ-G-P03 | `comisiones_mxn` | Comisión efectiva de Binance |
-| REQ-G-P04 | Fórmula sizing | Reserva de slippage |
-| REQ-G-P05 | `authorized_quantity_max` | stepSize, minQty, minNotional de Binance |
-| REQ-G-P06 | Mecanismo de aprobación | Formato técnico de la autorización Telegram |
+| REQ-G-P01 | `tc_mxn_usd` | RESUELTO (DEC-004): Binance USDT/MXN en tiempo real para sizing; fuente fiscal ligada a P08 |
+| REQ-G-P02 | `tc_mxn_usd` | RESUELTO (DEC-004): antigüedad máxima 5 min; excedido = Fail-Closed |
+| REQ-G-P03 | `comisiones_mxn` | RESUELTO (DEC-004): comisión real por API, mínimo 0.10% por lado |
+| REQ-G-P04 | Fórmula de sizing | RESUELTO (DEC-004): slippage 0.10% |
+| REQ-G-P05 | `authorized_quantity_max` | RESUELTO (DEC-004): exchangeInfo dinámico, refresco diario |
+| REQ-G-P06 | Autorización humana | RESUELTO (DEC-004): Telegram con botones Aprobar/Rechazar |
+| REQ-G-P07 | `tc_mxn_usd` (fiscal) | RESUELTO (DEC-006): API SIE de Banxico |
+| REQ-G-P08 | Fiscal Ledger | **PENDING** (diferido por el propietario): validación con contador |
 
 ---
 

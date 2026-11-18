@@ -1,15 +1,15 @@
-# SwingPilot — Requirements Contract v0.1
+# SwingPilot — Requirements Contract v0.3
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** DRAFT — pendiente de verificación adversarial (G2) y aprobación humana (G3)  
+**Estado:** v0.3 — DRAFT — verificado en G2 (2026-11-13) y re-verificado en VER-003 (2026-11-18); incorpora CR-001..CR-008; pendiente de verificación de cierre y aprobación humana (G3)  
 **Autoridad documental aplicada:** DEC-001 (resoluciones de conflictos CONF-001, CONF-002)
 
 ---
 
 ## Notas del Merger
 
-Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (DOC-001..DOC-006) en requisitos globales con identificadores REQ-G-NNN. Se aplicaron las siguientes reglas:
+Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuente (DOC-001..DOC-006) en requisitos globales con identificadores REQ-G-NNN. Se aplicaron las siguientes reglas:
 
 1. Los requisitos idénticos o altamente solapados entre documentos se fusionan en un único REQ-G-NNN con todas las fuentes listadas.
 2. Los requisitos PENDING conservan su estado; ningún valor se inventa.
@@ -139,7 +139,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 - El equity se recalcula antes de cada autorización y ejecución
 - La fórmula `Equity_t = Cash_t + MarketValue_t` está implementada
 - La conversión USDT/MXN usa una fuente configurada y vigente
-**PENDING:** Fuente de conversión USDT/MXN (ver REQ-G-P01). Antigüedad máxima aceptable del tipo de cambio (ver REQ-G-P02).
+**RESUELTO — ver Módulo 15 (DEC-004):** fuente de conversión USDT/MXN (REQ-G-P01); antigüedad máxima del tipo de cambio (REQ-G-P02).
 
 ### REQ-G-013
 **Descripción:** Presupuesto de riesgo por operación: `RiskBudget_t = Equity_t × 0.015`. El presupuesto se actualiza dinámicamente; no es fijo en $45 MXN. Si el equity disminuye, el presupuesto disminuye proporcionalmente.  
@@ -176,7 +176,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 - La fórmula está implementada
 - La cantidad resultante siempre cumple `RiskEffective <= RiskBudget_t` incluso después del redondeo
 - El sistema rechaza operaciones donde el mínimo de Binance excede el presupuesto
-**PENDING:** Comisión efectiva de Binance (REQ-G-P03). Reserva de slippage (REQ-G-P04). stepSize/minQty/minNotional (REQ-G-P05).
+**RESUELTO — ver Módulo 15 (DEC-004):** comisión efectiva de Binance (REQ-G-P03); reserva de slippage (REQ-G-P04); stepSize/minQty/minNotional (REQ-G-P05).
 
 ### REQ-G-016
 **Descripción:** El position sizing es estrictamente determinista y reproducible. Ningún agente puede incrementar la cantidad calculada por razones discrecionales: mayor confianza en la señal, alta probabilidad de éxito, oportunidad excepcional, recuperación de pérdidas anteriores, objetivo mensual, recomendación de otro agente.  
@@ -228,7 +228,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 - El bloqueo requiere los 4 pasos de liberación
 
 ### REQ-G-024
-**Descripción:** 8 estados del Risk Manager: ACTIVE, POSITION_OPEN, LOSS_STREAK_LOCK, MONTHLY_DRAWDOWN_LOCK, MONTHLY_TRADE_LIMIT_LOCK, DATA_UNAVAILABLE, EXCHANGE_DESYNC, MANUAL_REVIEW. Los estados pueden coexistir. Liberar un bloqueo no elimina automáticamente otros bloqueos activos. Las acciones de protección y cierre de posiciones permanecen disponibles en todos los estados.  
+**Descripción:** 8 estados del Risk Manager: ACTIVE, POSITION_OPEN, LOSS_STREAK_LOCK, MONTHLY_DRAWDOWN_LOCK, MONTHLY_TRADE_LIMIT_LOCK, DATA_UNAVAILABLE, EXCHANGE_DESYNC, MANUAL_REVIEW. Los estados pueden coexistir. Liberar un bloqueo no elimina automáticamente otros bloqueos activos. MONTHLY_TRADE_LIMIT_LOCK se libera automáticamente al inicio del mes calendario siguiente, con aviso por Telegram (DEC-010 Q28; CR-009); los demás bloqueos siguen sus propias reglas de liberación. Las acciones de protección y cierre de posiciones permanecen disponibles en todos los estados.  
 **Fuentes:** REQ-5034  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** CRITICAL  
@@ -294,7 +294,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Estado:** APPROVED-DEC-001
 
 ### REQ-G-030
-**Descripción:** 16 criterios de implementación correcta del Risk Manager (REQ-5047 en DOC-005/RISK_POLICY.md). Cada criterio debe tener prueba automatizada y evidencia de validación. La cobertura de los 16 criterios debe estar confirmada antes de G4. Los criterios incluyen (lista reconstructiva — verificar texto definitivo contra RISK_POLICY.md): (1) equity calculado dinámicamente antes de cada autorización; (2) RiskBudget = Equity × 0.015 dinámico; (3) fórmula de sizing con todos los costes; (4) redondeo hacia abajo por stepSize; (5) rechazo si mínimo Binance excede presupuesto; (6) mecanismo de salida verificado antes de RISK_APPROVED; (7) máximo 1 posición simultánea global; (8) bloqueo MONTHLY_DRAWDOWN_LOCK al 5% incluyendo pérdidas no realizadas; (9) bloqueo NO se libera automáticamente por cambio de mes; (10) LOSS_STREAK_LOCK a 3 pérdidas consecutivas; (11) contador reiniciado con ganancia neta; (12) límite 8 ops/mes con MONTHLY_TRADE_LIMIT_LOCK; (13) modificación de stop solo hacia arriba; (14) Fail-Closed ante condición no verificable; (15) reconciliación con Binance antes de cada autorización; (16) 14 tipos de eventos de auditoría registrados correctamente. Los test cases individuales TC-RM-01..TC-RM-16 se definen en FASE 2.  
+**Descripción:** 16 criterios de implementación correcta del Risk Manager (REQ-5047 en DOC-005/RISK_POLICY.md). Cada criterio debe tener prueba automatizada y evidencia de validación. La cobertura de los 16 criterios debe estar confirmada antes de G4. Los 16 criterios, con el texto de RISK_POLICY.md «¿Cuándo se considera bien implementada esta política?» (CR-008): (1) el equity se calcula correctamente a partir de los saldos y posiciones reales; (2) el presupuesto del 1.5% se actualiza con el equity actual; (3) el position sizing incorpora precio, costes y reserva de slippage; (4) el redondeo de cantidades no permite exceder el presupuesto; (5) no pueden existir dos posiciones abiertas simultáneamente; (6) el sistema rechaza operaciones sin mecanismo de salida; (7) el sistema rechaza cualquier intento de promediar a la baja; (8) el drawdown incorpora pérdidas realizadas y no realizadas; (9) el bloqueo mensual se activa al alcanzar el 5%; (10) tres pérdidas consecutivas activan la suspensión; (11) los bloqueos requieren las autorizaciones correspondientes para su liberación; (12) los stops no pueden modificarse para ampliar el riesgo inicial; (13) el límite mensual de ocho operaciones se respeta; (14) los agentes no pueden ejecutar operaciones sin aprobación humana; (15) los errores de datos o sincronización producen un comportamiento restrictivo; (16) todos los eventos de riesgo quedan registrados y son auditables. Los test cases individuales TC-RM-01..TC-RM-16 se definen en FASE 2.  
 **Fuentes:** REQ-5047  
 **Tipo:** NON_FUNCTIONAL  
 **Prioridad:** CRITICAL  
@@ -413,7 +413,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Estado:** APPROVED-DEC-001  
 **Criterios de aceptación:**
 - No existe ninguna ruta de ejecución que omita la autorización individual del propietario
-**PENDING:** Mecanismo técnico de aprobación humana (Telegram u otro) — REQ-G-P06.
+**RESUELTO — ver Módulo 15 (DEC-004):** mecanismo técnico de aprobación humana (REQ-G-P06).
 
 ### REQ-G-041
 **Descripción:** Solo las operaciones que superan TODAS las restricciones del Risk Manager llegan al usuario para aprobación. El Risk Manager filtra operaciones inválidas antes de generar la solicitud de aprobación humana.  
@@ -482,7 +482,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Prioridad:** CRITICAL
 
 ### REQ-G-053
-**Descripción:** Macro Analyst (agente LLM): evalúa contexto macroeconómico — noticias económicas/financieras, eventos macro, regulatorios, institucionales, catalizadores de volatilidad, distingue confirmados de rumores. No puede convertir una noticia en una señal de entrada por sí sola.  
+**Descripción:** Macro Analyst (agente LLM): evalúa contexto macroeconómico — noticias económicas/financieras, eventos macro, regulatorios, institucionales, catalizadores de volatilidad, distingue confirmados de rumores. Salida: eventos relevantes, impacto potencial, horizonte temporal, fuentes, fecha de publicación y nivel de incertidumbre (contrato en api_contracts.md §3.5, CR-008). No puede convertir una noticia en una señal de entrada por sí sola.  
 **Fuentes:** REQ-3014  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** HIGH
@@ -528,7 +528,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 - La asignación de capital permanece bajo autoridad humana
 
 ### REQ-G-059
-**Descripción:** Prohibiciones absolutas para todos los agentes: no cambiar límites de riesgo, no modificar capital configurado, no auto-autorizarse, no modificar reglas de ejecución, no eludir validaciones, no operar fuera de permisos, no convertir recomendación en orden ejecutable sin aprobación humana, no alterar registros históricos.  
+**Descripción:** Prohibiciones absolutas para todos los agentes: no cambiar límites de riesgo, no modificar capital configurado, no auto-autorizarse, no modificar reglas de ejecución, no eludir validaciones, no ejecutar herramientas financieras fuera de sus permisos, no transformar una recomendación en una orden, no alterar registros históricos (texto de AI_INTEGRATION.md, CR-008).  
 **Fuentes:** REQ-3031, REQ-1016  
 **Tipo:** CONSTRAINT  
 **Prioridad:** CRITICAL
@@ -566,7 +566,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 - Los registros históricos no se sobrescriben para aparentar uso de información retrospectiva
 
 ### REQ-G-063
-**Descripción:** Catálogo inicial de 16 tipos de eventos del sistema: ANALYSIS_REQUESTED, MARKET_ANALYSIS_COMPLETED, MACRO_ANALYSIS_COMPLETED, ML_INFERENCE_COMPLETED, REGIME_CLASSIFIED, STRATEGY_CANDIDATE, DECISION_SYNTHESIS_COMPLETED, TRADE_PROPOSAL, RISK_APPROVED, RISK_REJECTED, RISK_REQUIRES_REVIEW, ORDER_SUBMITTED, ORDER_PARTIALLY_FILLED, ORDER_FILLED, ORDER_CANCELLED, ORDER_REJECTED. Los nombres definitivos se establecen en el catálogo del sistema.  
+**Descripción:** Catálogo inicial de 16 tipos de eventos del sistema (ampliado por CR-002..CR-006; catálogo vigente en `api_contracts.md` §2, 30 tipos): ANALYSIS_REQUESTED, MARKET_ANALYSIS_COMPLETED, MACRO_ANALYSIS_COMPLETED, ML_INFERENCE_COMPLETED, REGIME_CLASSIFIED, STRATEGY_CANDIDATE, DECISION_SYNTHESIS_COMPLETED, TRADE_PROPOSAL, RISK_APPROVED, RISK_REJECTED, RISK_REQUIRES_REVIEW, ORDER_SUBMITTED, ORDER_PARTIALLY_FILLED, ORDER_FILLED, ORDER_CANCELLED, ORDER_REJECTED. Los nombres definitivos se establecen en el catálogo del sistema.  
 **Fuentes:** REQ-3021  
 **Tipo:** INTERFACE  
 **Prioridad:** HIGH
@@ -719,7 +719,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 - Un rechazo del modelo termina el ciclo sin propuesta y sin cambio de modelo
 
 ### REQ-G-096
-**Descripción:** Controles de costo de la IA. (1) Con el tope mensual de $5 USD alcanzado no hay llamadas a LLM (REQ-G-034). (2) Al alcanzar $4 de gasto en el mes, aviso por Telegram (AI_BUDGET_WARNING). (3) Antes de la Fase 3, si hay posición abierta (INV-003) o un bloqueo que impide nuevas entradas (LOSS_STREAK_LOCK, MONTHLY_DRAWDOWN_LOCK, MONTHLY_TRADE_LIMIT_LOCK, DATA_UNAVAILABLE, EXCHANGE_DESYNC, MANUAL_REVIEW o modo seguro), el ciclo termina sin llamadas a LLM; no afecta acciones de protección ni la gestión de la posición abierta. (4) Límite de gasto en la consola de Anthropic igual o ligeramente superior a $5 como respaldo, si la cuenta lo permite. (5) Se registra el uso de tokens (`usage`) de cada llamada para medir el costo real por ciclo.  
+**Descripción:** Controles de costo de la IA. (1) Con el tope mensual de $5 USD alcanzado no hay llamadas a LLM (REQ-G-034). (2) Al alcanzar $4 de gasto en el mes, aviso por Telegram (AI_BUDGET_WARNING), una sola vez por mes calendario (DEC-010 Q29). (3) Antes de la Fase 3, si hay posición abierta (INV-003) o un bloqueo que impide nuevas entradas (LOSS_STREAK_LOCK, MONTHLY_DRAWDOWN_LOCK, MONTHLY_TRADE_LIMIT_LOCK, DATA_UNAVAILABLE, EXCHANGE_DESYNC, MANUAL_REVIEW o modo seguro), el ciclo termina sin llamadas a LLM; no afecta acciones de protección ni la gestión de la posición abierta. (4) Límite de gasto en la consola de Anthropic igual o ligeramente superior a $5 como respaldo, si la cuenta lo permite. (5) Se registra el uso de tokens (`usage`) de cada llamada para medir el costo real por ciclo.  
 **Fuentes:** REQ-G-091; REQ-G-P18 (DEC-006); DEC-009 (Q27); CR-006 §E  
 **Tipo:** NON_FUNCTIONAL  
 **Prioridad:** HIGH  
@@ -747,7 +747,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Tipo:** CONSTRAINT  
 **Prioridad:** CRITICAL  
 **Estado:** APPROVED-DEC-001  
-**PENDING:** Porcentajes exactos de división Train/Validation/OOS — REQ-G-P10.
+**RESUELTO — ver Módulo 15 (DEC-005):** división Train/Validation/OOS/LOCKBOX (REQ-G-P10).
 
 ### REQ-G-102
 **Descripción:** Prohibición absoluta de look-ahead bias: no usar información que no estuviera disponible en el momento histórico de la señal. Prohibición de data leakage: controles sobre variables derivadas del futuro, normalización sobre dataset completo, imputación con info futura, selección de características con datos OOS, etiquetas con info posterior, ventanas superpuestas, contaminación entre particiones. Las transformaciones y selección se ajustan solo con datos de la partición permitida.  
@@ -771,7 +771,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Tipo:** FUNCTIONAL  
 **Prioridad:** HIGH  
 **Estado:** APPROVED-DEC-001  
-**PENDING:** Umbrales mínimos de rentabilidad, drawdown máximo permitido, Expectancy mínimo, Profit Factor mínimo, tamaño mínimo de muestra — REQ-G-P11..REQ-G-P15.
+**RESUELTO — ver Módulo 15 (DEC-005):** umbrales de rentabilidad, drawdown, expectancy, Profit Factor y tamaño de muestra (REQ-G-P11..REQ-G-P15).
 
 ### REQ-G-105
 **Descripción:** Un modelo ML no es por sí solo una estrategia completa. El flujo distingue 7 etapas en orden: generación de características → inferencia → interpretación de predicciones → generación de señales → evaluación de riesgo → autorización → ejecución. Una predicción favorable no implica automáticamente una orden de compra. Un resultado de IA no constituye aprobación humana.  
@@ -786,7 +786,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Tipo:** FUNCTIONAL  
 **Prioridad:** HIGH  
 **Estado:** APPROVED-DEC-001  
-**PENDING:** Duración y tamaño de ventanas Walk-Forward — REQ-G-P16. Requisitos estadísticos de aceptación — REQ-G-P17.
+**RESUELTO — ver Módulo 15 (DEC-005):** ventanas Walk-Forward (REQ-G-P16); requisitos estadísticos de aceptación (REQ-G-P17).
 
 ### REQ-G-107
 **Descripción:** 7 restricciones absolutas para la IA en el contexto de investigación: (1) no modificar hipótesis congeladas, (2) no modificar criterios de aceptación post-observación de resultados, (3) no usar datos reservados para modificar entrenamiento, (4) no declarar aprobado un experimento por sí misma, (5) no modificar capital asignado, (6) no saltarse controles del Risk Manager, (7) no ejecutar operaciones sin autorización.  
@@ -834,7 +834,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Fuentes:** REQ-2002, REQ-2012  
 **Tipo:** CONSTRAINT  
 **Prioridad:** HIGH  
-**PENDING:** Fuente o API para obtener el BCI automáticamente — REQ-G-P07. Antigüedad máxima aceptable del tipo de cambio — REQ-G-P02.
+**RESUELTO — ver Módulo 15 (DEC-006, DEC-004):** fuente del BCI (REQ-G-P07); antigüedad máxima del tipo de cambio (REQ-G-P02). Tipo exacto de serie y días sin publicación: REQ-G-P08 (PENDING).
 
 ### REQ-G-114
 **Descripción:** Campos críticos para auditoría SAT: fecha_utc, fecha_mxn, activo, accion, cantidad, precio_usdt, tc_mxn_usd, comisiones_mxn, costo_acum_mxn, ganancia_mxn, order_id y metodo_costo. Deben ser completos, correctos y auditables para toda operación registrada. Binance reporta operaciones al SAT vía CARF (desde 2023); el order_id garantiza trazabilidad. La omisión de declaración anual (aunque el ISR sea $0) está sujeta a multa de $2,050–$25,360 MXN.  
@@ -843,7 +843,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Prioridad:** CRITICAL
 
 ### REQ-G-115
-**Descripción:** Marco fiscal de referencia: régimen 605 — Sueldos y Salarios e Ingresos Asimilados a Salarios (DEC-003; régimen 616 del 29/06/2021 al 12/10/2025; régimen 605 con efecto desde el 13/10/2025; aviso al SAT presentado el 17/11/2026, por lo que el registro ante el SAT figura en 616 entre el 13/10/2025 y el 17/11/2026). CONTEXTO_FISCAL_OPERATIVO.md plantea la exención Art. 93 XIX b) LISR ($128,383.92 MXN/año para 2026). La obligación de declaración anual subsiste aunque el ISR sea $0. Declaración ante SAT entre 15 de febrero y 30 de abril en sección 'Enajenación de bienes'.  
+**Descripción:** Marco fiscal de referencia: régimen 605 — Sueldos y Salarios e Ingresos Asimilados a Salarios (DEC-003; régimen 616 del 29/06/2021 al 12/10/2025; régimen 605 con efecto desde el 13/10/2025; aviso al SAT presentado el 17/11/2026, por lo que el registro ante el SAT figura en 616 entre el 13/10/2025 y el 17/11/2026). CONTEXTO_FISCAL_OPERATIVO.md plantea la exención Art. 93 XIX b) LISR ($128,383.92 MXN/año para 2026). La obligación de declaración anual subsiste aunque el ISR sea $0. Declaración ante SAT entre 15 de febrero y 30 de abril en sección 'Enajenación de bienes'.   Si los tickets superan $50,000 MXN, reevaluar el riesgo de PFAE (CONTEXTO_FISCAL_OPERATIVO.md); el máximo extraordinario vigente es $10,000 MXN (REQ-G-010) (CR-008).  
 **Condición:** OWNEW_CONTEXT.md establece que el sistema NO debe asumir exención de ISR ni ISR cero; el tratamiento fiscal de las operaciones debe validarse profesionalmente antes de fijar obligaciones, cálculos definitivos o declaraciones (REQ-G-P08). El marco de CONTEXTO_FISCAL_OPERATIVO.md es referencia de diseño.  
 **Restricción de implementación:** El Fiscal Ledger debe implementarse con el régimen fiscal como parámetro configurable (no hardcodeado). La lógica de exención/cálculo de ISR debe ser modular y no debe deployarse en producción sin validación professional del régimen correcto.  
 **Fuentes:** REQ-2001, REQ-2008, REQ-2009, REQ-1001  
@@ -920,7 +920,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Fuentes:** REQ-3047  
 **Tipo:** NON_FUNCTIONAL  
 **Prioridad:** HIGH  
-**PENDING:** Tiempos máximos de respuesta, límites de consumo API, políticas de reintento, objetivos de disponibilidad — REQ-G-P18.
+**RESUELTO — ver Módulo 15 (DEC-006, DEC-007, DEC-009):** tiempos de respuesta, límites de consumo, reintentos y disponibilidad (REQ-G-P18; REQ-G-034, REQ-G-095, REQ-G-096).
 
 ### REQ-G-141
 **Descripción:** Observabilidad del sistema: debe poder responder (a) qué información provocó el análisis, qué agentes participaron, qué modelo/versión usaron, qué información recibió cada agente, qué resultados generaron, qué desacuerdos existieron; (b) qué estrategia/versión produjo la propuesta, qué reglas de riesgo se evaluaron, por qué se aprobó/rechazó, qué autorización permitió ejecutar, qué ocurrió en Binance, cuál fue el resultado neto.  
@@ -960,7 +960,7 @@ Los siguientes parámetros técnicos están pendientes de definición. Ningún a
 | REQ-G-P16 | **RESUELTO (DEC-005):** móvil 24m entrenamiento / 6m prueba / paso 6m — ~~Duración y tamaño de ventanas Walk-Forward~~ | REQ-4027, REQ-4035 |
 | REQ-G-P17 | **RESUELTO (DEC-005):** IC bootstrap 95% expectancy > 0 + línea base ingenua + corrección por nº de experimentos — ~~Requisitos estadísticos de aceptación de modelos ML~~ | REQ-4029, REQ-4035 |
 | REQ-G-P18 | **RESUELTO (DEC-006):** tope $5 USD/mes; IA solo al cierre H4 con setup; timeout 60 s; ciclo ≤ 5 min; sin SLA 24/7; reintentos y fallo de agentes: DEC-007 / REQ-G-034; modelos, invocación y controles de costo: DEC-009 / REQ-G-095, REQ-G-096 (CR-006) — ~~Tiempos máximos de respuesta, límites de consumo API, objetivos de disponibilidad~~ | REQ-3047 |
-| REQ-G-P19 | **RESUELTO (DEC-004):** arranque + cada ciclo de decisión + cada 5 min con posición abierta — ~~Frecuencia de reconciliación con Binance~~ | REQ-5041 |
+| REQ-G-P19 | **RESUELTO (DEC-004):** arranque + antes y después de cada ciclo de decisión + cada 5 min con posición abierta — ~~Frecuencia de reconciliación con Binance~~ | REQ-5041 |
 | REQ-G-P20 | **RESUELTO (DEC-004):** 0.5% — ~~Tolerancia de desviación de precio~~ | REQ-5041 |
 | REQ-G-P21 | **RESUELTO (DEC-005):** solo por drift o revisión semestral; nunca automático — ~~Política de reentrenamiento de modelos ML~~ | REQ-4035 |
 | REQ-G-P22 | **RESUELTO (DEC-005):** expectancy últimos 20 trades < límite inferior IC OOS, o PSI > 0.25 → suspensión — ~~Umbrales de degradación del modelo (concept drift)~~ | REQ-4035 |
