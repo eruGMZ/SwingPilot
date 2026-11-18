@@ -301,25 +301,27 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Estado:** APPROVED-DEC-001
 
 ### REQ-G-031
-**Descripción:** Stop-loss colocado en el exchange. Al confirmarse la ejecución de una compra (ORDER_FILLED, incluidas ejecuciones parciales), el Execution Engine coloca de inmediato en Binance una orden de stop por la cantidad ejecutada y al precio de stop autorizado. El monitoreo del stop en software se mantiene como segunda capa. Toda modificación de stop permitida por REQ-G-027 se aplica cancelando y reemplazando la orden en Binance. Si la orden de stop no puede colocarse, el sistema emite STOP_ORDER_FAILED, avisa al propietario por Telegram y aplica Fail-Closed (bloqueo de nuevas entradas; cierre de la posición o intervención del propietario). La reconciliación verifica que toda posición abierta tenga su stop activo en Binance.  
-**Fuentes:** REQ-5011, REQ-5021; DEC-006 (Q17); CR-002  
+**Descripción:** Stop-loss colocado en el exchange. Al confirmarse la ejecución de una compra (ORDER_FILLED, incluidas ejecuciones parciales), el Execution Engine coloca de inmediato en Binance una orden de stop por la cantidad ejecutada y al precio de stop autorizado. El monitoreo del stop en software se mantiene como segunda capa. Toda modificación de stop permitida por REQ-G-027 se aplica cancelando y reemplazando la orden en Binance. Si la orden de stop no puede colocarse, el sistema emite STOP_ORDER_FAILED, avisa al propietario por Telegram y aplica Fail-Closed (bloqueo de nuevas entradas). La reconciliación verifica que toda posición abierta tenga su stop activo en Binance. **Cierre protector (CR-005, DEC-008 Q25):** en la reconciliación de arranque, en la periódica y en el monitoreo de segunda capa, si hay posición abierta sin stop activo en Binance: (a) con el precio sobre el stop, se recoloca el stop sin nueva autorización (STOP_ORDER_PLACED; si falla, STOP_ORDER_FAILED); (b) con el precio en o por debajo del stop, se envía de inmediato una venta a mercado por la cantidad en posición con identificador de cliente determinista (PROTECTIVE_CLOSE_SUBMITTED), sin nueva autorización por ejecutar la salida ya autorizada (INV-007); después, aviso por Telegram y MANUAL_REVIEW (sin nuevas entradas) hasta revisión del propietario; (c) si el precio no puede obtenerse, Fail-Closed (DATA_UNAVAILABLE), aviso inmediato e intento de recolocar el stop; nunca se cierra a ciegas.  
+**Fuentes:** REQ-5011, REQ-5021; DEC-006 (Q17); CR-002; DEC-008 (Q25); CR-005 §D  
 **Tipo:** RISK_MANAGEMENT  
 **Prioridad:** CRITICAL  
-**Estado:** APPROVED-CR-002  
+**Estado:** APPROVED-CR-002; ampliado CR-005  
 **PENDING (FASE 2):** tipo de orden (stop-limit vs OCO) y manejo de huecos de precio con stop-limit, con datos reales de Binance.  
 **Criterios de aceptación:**
 - Tras cada compra ejecutada existe en Binance una orden de stop activa por la cantidad ejecutada
 - Con SwingPilot detenido y una posición abierta, la orden de stop sigue activa en Binance
 - Si falla la colocación del stop: STOP_ORDER_FAILED, aviso por Telegram y bloqueo de nuevas entradas
 - La reconciliación detecta y reporta una posición abierta sin stop activo
+- Sin stop y con el precio en o bajo el stop: venta a mercado, aviso y MANUAL_REVIEW
+- Sin stop y sin precio disponible: no se cierra a ciegas; Fail-Closed y aviso
 
 ### REQ-G-032
-**Descripción:** Persistencia de estado y reinicio seguro. (1) Todo cambio de estado de una operación se escribe en almacenamiento durable antes de ejecutar la acción externa asociada (enviar orden, colocar/reemplazar stop, cancelar); si la escritura falla, la acción no se ejecuta (Fail-Closed). (2) Al arrancar, toda autorización humana vigente cuya orden no conste como enviada y confirmada se invalida (AUTHORIZATION_INVALIDATED); requiere nueva autorización aunque `valid_until_utc` no haya vencido. (3) Cada orden enviada a Binance lleva un identificador de cliente derivado de forma determinista del `correlation_id` y de la secuencia de la orden en el ciclo; antes de reenviar tras una caída se consulta en Binance por ese identificador y, si la orden existe, se adopta su estado en lugar de enviar otra. (4) La reconciliación de arranque (REQ-G-P26) aplica los puntos 2 y 3 y registra su resultado (STARTUP_RECONCILIATION_COMPLETED).  
-**Fuentes:** REQ-G-062 (eventos idempotentes; REQ-3007, REQ-3009, REQ-3046), REQ-5041; DEC-006 (P26); CR-003 §A  
+**Descripción:** Persistencia de estado y reinicio seguro. (1) Todo cambio de estado de una operación se escribe en almacenamiento durable antes de ejecutar la acción externa asociada (enviar orden, colocar/reemplazar stop, cancelar); si la escritura falla, la acción no se ejecuta (Fail-Closed). (2) Al arrancar, toda autorización humana vigente cuya orden no conste como enviada y confirmada se invalida (AUTHORIZATION_INVALIDATED); requiere nueva autorización aunque `valid_until_utc` no haya vencido. (3) Cada orden enviada a Binance lleva un identificador de cliente derivado de forma determinista del `correlation_id` y de la secuencia de la orden en el ciclo; antes de reenviar tras una caída se consulta en Binance por ese identificador y, si la orden existe, se adopta su estado en lugar de enviar otra. (4) La reconciliación de arranque (REQ-G-P26) aplica los puntos 2 y 3 y registra su resultado (STARTUP_RECONCILIATION_COMPLETED). Los estados persistidos son los de REQ-G-037; la acción de recuperación por estado es la de REQ-G-038.  
+**Fuentes:** REQ-G-062 (eventos idempotentes; REQ-3007, REQ-3009, REQ-3046), REQ-5041; DEC-006 (P26); CR-003 §A; CR-005  
 **Tipo:** RISK_MANAGEMENT  
 **Prioridad:** CRITICAL  
 **Estado:** APPROVED-CR-003  
-**PENDING (FASE 2):** formato exacto del identificador de cliente según restricciones de Binance; mecanismo concreto de almacenamiento durable.  
+**PENDING (FASE 2):** formato exacto del identificador de cliente según restricciones de Binance; mecanismo concreto de almacenamiento durable (referencia no vinculante: tabla `operations` en SQLite `state.db`, CR-005 §E, con estados de REQ-G-037, identificador de cliente por orden con secuencia, `valid_until_utc` y `last_error`).  
 **Criterios de aceptación:**
 - Ninguna acción externa ocurre sin que su estado previo esté persistido
 - Tras un reinicio, una autorización no enviada no produce orden
@@ -366,6 +368,38 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **PENDING (FASE 2):** servicio de consulta de IP pública.  
 **Criterios de aceptación:**
 - Con IP pública distinta a la registrada no se envían órdenes nuevas y el propietario recibe aviso
+
+### REQ-G-037
+**Descripción:** Máquina de estados de la operación. Una operación nace cuando el Risk Manager recibe un TRADE_PROPOSAL y termina en un estado terminal; es distinta de los estados del Risk Manager (REQ-G-024) y coexiste con ellos. Estados y transiciones permitidas: `PROPOSED` → `RISK_APPROVED` | `RISK_REJECTED`; `RISK_APPROVED` → `AWAITING_AUTH` | `INVALIDATED`; `AWAITING_AUTH` → `AUTHORIZED` | `AUTH_REJECTED` | `AUTH_EXPIRED` | `INVALIDATED`; `AUTHORIZED` → `ENTRY_PENDING` | `INVALIDATED`; `ENTRY_PENDING` → `ENTRY_FILLED` | `ENTRY_FAILED` | `INVALIDATED`; `ENTRY_FILLED` → `POSITION_OPEN` | `EXIT_PENDING`; `POSITION_OPEN` → `EXIT_PENDING`; `EXIT_PENDING` → `CLOSED` | `POSITION_OPEN`. Terminales: `RISK_REJECTED`, `AUTH_REJECTED`, `AUTH_EXPIRED`, `ENTRY_FAILED`, `CLOSED`, `INVALIDATED`. Reglas: (1) toda transición se persiste antes de la acción externa asociada (REQ-G-032); (2) una transición no listada se rechaza, se registra y aplica Fail-Closed; (3) no existe estado `ERROR` genérico: ante un fallo la operación conserva su último estado persistido con el error registrado y el sistema aplica Fail-Closed mediante los estados del Risk Manager (DATA_UNAVAILABLE, EXCHANGE_DESYNC, MANUAL_REVIEW); (4) a lo sumo una operación en `AUTHORIZED`, `ENTRY_PENDING`, `ENTRY_FILLED`, `POSITION_OPEN` o `EXIT_PENDING` (INV-003); (5) cada transición emite OPERATION_STATE_CHANGED. Significado de cada estado: CR-005 §A.  
+**Fuentes:** REQ-G-032; REQ-G-024; DEC-008 (Q23); CR-005 §A  
+**Tipo:** RISK_MANAGEMENT  
+**Prioridad:** CRITICAL  
+**Estado:** APPROVED-CR-005  
+**Criterios de aceptación:**
+- Toda transición queda persistida antes de su acción externa
+- Una transición no permitida se rechaza, se registra y aplica Fail-Closed
+- Nunca hay más de una operación en estados activos
+
+### REQ-G-038
+**Descripción:** Recuperación por estado al arrancar. El sistema arranca siempre en modo seguro (REQ-G-P26): sin nuevas entradas hasta confirmación del propietario; durante la reconciliación solo se permiten acciones de protección (REQ-G-024). Por estado encontrado: `PROPOSED`, `RISK_APPROVED` → `INVALIDATED`, sin reenvío; `AWAITING_AUTH`, `AUTHORIZED` → `INVALIDATED` con AUTHORIZATION_INVALIDATED aunque la vigencia no haya vencido; `ENTRY_PENDING` → consulta en Binance por identificador de cliente: ejecutada (total o parcial) se adopta como `ENTRY_FILLED`, remanente abierto se cancela, sin ejecución → `ENTRY_FAILED`, inexistente → `INVALIDATED` sin reenvío, Binance sin respuesta → se conserva `ENTRY_PENDING` con EXCHANGE_DESYNC y nueva consulta en cada reconciliación sin enviar órdenes; `ENTRY_FILLED`, `POSITION_OPEN` → verificación del stop activo por la cantidad en posición y, si falta, cierre protector según REQ-G-031; `EXIT_PENDING` → consulta de la venta por identificador de cliente: ejecutada → `CLOSED` y registro en trades.db; inexistente → cierre protector según REQ-G-031 o, con el precio sobre el stop, `POSITION_OPEN` con stop verificado y aviso al propietario si la salida era manual; terminales → sin acción. Al terminar: STARTUP_RECONCILIATION_COMPLETED, informe por Telegram y espera de confirmación del propietario.  
+**Fuentes:** REQ-G-032; REQ-G-P26 (DEC-006); DEC-008 (Q23); CR-005 §B  
+**Tipo:** RISK_MANAGEMENT  
+**Prioridad:** CRITICAL  
+**Estado:** APPROVED-CR-005  
+**Criterios de aceptación:**
+- Ninguna operación anterior al envío produce una orden tras el reinicio
+- Una compra en curso se localiza por identificador de cliente y nunca se reenvía
+- Tras la reconciliación no hay nuevas entradas sin confirmación del propietario
+
+### REQ-G-039
+**Descripción:** Vigencia de la autorización humana. `valid_until_utc` = momento de envío de la solicitud por Telegram + 30 min, medido con la hora del backend de autorización. Una respuesta recibida después no tiene efecto: la operación pasa a `AUTH_EXPIRED`, se emite AUTHORIZATION_EXPIRED, se avisa al propietario y los botones del mensaje vencido se desactivan o se ignoran. En el modo de prueba de FASE 2 se registra el tiempo entre solicitud y respuesta para revisar el valor con datos reales. El valor solo cambia mediante una decisión registrada (DEC).  
+**Fuentes:** REQ-G-075; DEC-004 (Q5); DEC-008 (Q24); CR-005 §C  
+**Tipo:** RISK_MANAGEMENT  
+**Prioridad:** CRITICAL  
+**Estado:** APPROVED-CR-005  
+**Criterios de aceptación:**
+- Una respuesta dentro de 30 min es válida; una posterior no produce orden
+- El vencimiento se mide con la hora del backend
 
 ---
 
@@ -584,7 +618,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 - No existe ejecución sin autorización válida
 
 ### REQ-G-075
-**Descripción:** Fase 6 — Autorización y ejecución: las autorizaciones deben contener propuesta original, ID de autorización, instrumento, cantidad máxima autorizada, límites de precio, vigencia, versión de reglas de riesgo y estado. Execution Engine solo acepta autorizaciones válidas. Las autorizaciones expiradas, revocadas o que incumplan condiciones no pueden usarse. Execution Engine reconcilia órdenes enviadas con ejecuciones reportadas por Binance. Las ejecuciones parciales son eventos independientes.  
+**Descripción:** Fase 6 — Autorización y ejecución: las autorizaciones deben contener propuesta original, ID de autorización, instrumento, cantidad máxima autorizada, límites de precio, vigencia, versión de reglas de riesgo y estado. Execution Engine solo acepta autorizaciones válidas. Las autorizaciones expiradas, revocadas o que incumplan condiciones no pueden usarse. Vigencia: 30 min (REQ-G-039); estados de la operación y recuperación: REQ-G-037, REQ-G-038 (CR-005). Execution Engine reconcilia órdenes enviadas con ejecuciones reportadas por Binance. Las ejecuciones parciales son eventos independientes.  
 **Fuentes:** REQ-3027, REQ-3028  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** CRITICAL  
@@ -906,7 +940,7 @@ Los siguientes parámetros técnicos están pendientes de definición. Ningún a
 | REQ-G-P23 | **RESUELTO (DEC-005):** hash datos+código+parámetros; promoción solo HUMAN_REVIEW → APPROVED — ~~Política de versionado y promoción de modelos a producción~~ | REQ-4035 |
 | REQ-G-P24 | **RESUELTO (DEC-005):** ninguno adicional (adición de revisión tras 2 meses en DD 5% retirada el 2026-11-18 por redundante con INV-011 y REQ-G-030 criterio 9) — ~~Límites cuantitativos adicionales del Risk Manager~~ | REQ-4035 |
 | REQ-G-P25 | **RESUELTO (DEC-006):** JSON en repositorio con esquema y validador — ~~Formato definitivo de almacenamiento de la matriz de trazabilidad~~ | REQ-6010, REQ-6031 |
-| REQ-G-P26 | **RESUELTO (DEC-006):** Recuperación ante fallos: reconciliar, modo seguro sin nuevas órdenes, aviso por Telegram, reanudar solo con confirmación del propietario. Stop-loss en Binance: CR-002 (APROBADA, REQ-G-031) | REQ-5041, REQ-5021 |
+| REQ-G-P26 | **RESUELTO (DEC-006):** Recuperación ante fallos: reconciliar, modo seguro sin nuevas órdenes, aviso por Telegram, reanudar solo con confirmación del propietario. Stop-loss en Binance: CR-002 (APROBADA, REQ-G-031). Recuperación por estado: REQ-G-038 (CR-005) | REQ-5041, REQ-5021 |
 
 ---
 

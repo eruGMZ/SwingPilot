@@ -120,7 +120,9 @@ Disparador externo (señal periódica o solicitud manual)
 │    y la evaluación del Risk Analyst                                    │
 │  - Operador aprueba o rechaza (Nivel 1 de autonomía — INV-008)          │
 │  - Backend verifica identidad y permisos del operador                   │
-│  - Genera human_authorization_id con vigencia limitada                  │
+│  - Genera human_authorization_id con vigencia de 30 min (REQ-G-039);    │
+│    respuesta tardía → AUTH_EXPIRED, sin orden                           │
+│  - Estados de la operación: REQ-G-037 (CR-005)                          │
 │                                                                         │
 │  Execution Engine (solo si autorización válida):                        │
 │  - Re-verifica condiciones de riesgo al momento de ejecución            │
@@ -176,6 +178,12 @@ Estado: SIN_POSICION
 │         │    - Equity y drawdown mensual
 │         │    - Estado de Binance (reconciliación, incluye stop activo)
 │         │
+│         ├─ Sin stop activo en Binance (cierre protector, REQ-G-031, CR-005):
+│         │    - Precio sobre el stop → recolocar stop (STOP_ORDER_PLACED)
+│         │    - Precio en o bajo el stop → venta a mercado
+│         │      (PROTECTIVE_CLOSE_SUBMITTED) + aviso + MANUAL_REVIEW
+│         │    - Precio no disponible → Fail-Closed + aviso; no se cierra a ciegas
+│         │
 │         ├─ Modificación de stop permitida (REQ-G-027):
 │         │    - Cancelar y reemplazar en Binance → STOP_ORDER_REPLACED
 │         │
@@ -192,6 +200,22 @@ Estado: SIN_POSICION
 └─ ORDER_REJECTED / ORDER_CANCELLED → Estado: SIN_POSICION
      └─ Registrado en Audit con motivo
 ```
+
+### 2.1 Estados de la operación y recuperación (CR-005)
+
+Correspondencia con los estados formales de la operación (REQ-G-037):
+
+| Ciclo de vida de posición | Estados de la operación |
+|---|---|
+| Propuesta en evaluación de riesgo | `PROPOSED` → `RISK_APPROVED` / `RISK_REJECTED` |
+| Autorización humana (vigencia 30 min, REQ-G-039) | `AWAITING_AUTH` → `AUTHORIZED` / `AUTH_REJECTED` / `AUTH_EXPIRED` |
+| ORDER_SUBMITTED (compra) | `ENTRY_PENDING` (persistido antes del envío) |
+| ORDER_FILLED, colocación del stop | `ENTRY_FILLED` → `POSITION_OPEN` |
+| ORDER_REJECTED / ORDER_CANCELLED sin ejecución | `ENTRY_FAILED` |
+| Evento de salida | `EXIT_PENDING` → `CLOSED` |
+| Anulada antes del envío (reinicio o condiciones cambiadas) | `INVALIDATED` |
+
+Al arrancar, cada operación no terminal se resuelve según REQ-G-038; el sistema queda en modo seguro hasta confirmación del propietario (REQ-G-P26).
 
 ---
 

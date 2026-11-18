@@ -393,3 +393,29 @@
 **Bloqueos:** G3 PENDING; P08 diferido; cambios sin commit.
 
 **Siguiente acción autorizada:** esperar decisión del propietario sobre G3. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-18 | FASE 1 | DEC-008 registrada; CR-005 propuesto | PROPUESTA
+
+**Actividad:** Revisión de un documento externo de feedback (`error-handling.md`, manejo de fallos y recuperación) contra el contrato. Aporta la máquina de estados de la operación y la recuperación por estado; contradice en 10 puntos lo aprobado (el más grave: reintentaba ejecución desde RISK_APPROVED sin autorización humana, INV-008). Decisiones del propietario (DEC-008): Q23 A (máquina de estados en el contrato), Q24 vigencia de autorización 30 min, Q25 A (cierre protector a mercado si el precio cruzó el stop sin orden protectora). Redactado CR-005 con los cambios al contrato y la lista de puntos no adoptados.
+
+**Archivos:** `docs/decisions/DEC-008_estados-operacion-vigencia-cierre-protector.md` (nuevo), `harness/change_requests/CR-005_estados-operacion-recuperacion.md` (nuevo), `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
+
+**Estado:** CR-005 pendiente de aprobación formal; contrato sin modificar. G3 PENDING. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-18 | FASE 1 | CR-005 aprobada y aplicada | COMPLETADO
+
+**Actividad:** El propietario aprobó CR-005 ("APRUEBO CR-005"). Aplicado: REQ-G-037 (máquina de estados de la operación, 14 estados, sin estado ERROR genérico), REQ-G-038 (recuperación por estado al arrancar en modo seguro), REQ-G-039 (vigencia de autorización de 30 min con hora del backend), REQ-G-031 ampliado con el cierre protector. 3 eventos y 13 pruebas nuevas.
+
+**Archivos:** `implementation/requirements.md`, `implementation/data_flow.md`, `implementation/api_contracts.md`, `implementation/architecture.md`, `implementation/test_plan.md`, `harness/change_requests/CR-005_estados-operacion-recuperacion.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
+
+**Bloqueos:** G3 PENDING (decisión del propietario); P08 diferido; cambios sin commit.
+
+**Siguiente acción autorizada:** esperar decisión del propietario sobre G3. Código funcional creado: NINGUNO.

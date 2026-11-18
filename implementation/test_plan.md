@@ -133,6 +133,14 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Input: posición abierta sin orden de stop activa en Binance
 - Expected: la reconciliación lo detecta, emite alerta y bloquea nuevas entradas
 
+**TC-STOP-007 — Cierre protector (CR-005):**
+- Input: posición abierta sin stop activo en Binance; precio en o por debajo del stop autorizado
+- Expected: venta a mercado por la cantidad en posición; PROTECTIVE_CLOSE_SUBMITTED; aviso por Telegram; MANUAL_REVIEW; sin nueva autorización
+
+**TC-STOP-008 — Sin stop y sin precio (CR-005):**
+- Input: posición abierta sin stop activo; precio actual no disponible
+- Expected: Fail-Closed (DATA_UNAVAILABLE); aviso inmediato; intento de recolocar el stop; ninguna venta a ciegas
+
 ### INV-008: Sin ejecución sin autorización humana
 
 **TC-INV-008-A — Bloqueo sin autorización humana:**
@@ -307,6 +315,30 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Input: el almacenamiento durable rechaza la escritura previa al envío
 - Expected: la orden no se envía (Fail-Closed)
 
+### TC-REC-004 — Reinicio en RISK_APPROVED (REQ-G-038, CR-005)
+- Input: operación persistida en `RISK_APPROVED`; reinicio
+- Expected: `INVALIDATED`; ninguna orden ni reintento de ejecución
+
+### TC-REC-005 — Reinicio en ENTRY_PENDING sin orden en Binance
+- Input: `ENTRY_PENDING`; Binance no tiene orden con ese identificador de cliente; reinicio
+- Expected: `INVALIDATED`; la orden no se reenvía
+
+### TC-REC-006 — Reinicio en ENTRY_PENDING con ejecución parcial
+- Input: `ENTRY_PENDING`; en Binance la orden está parcialmente ejecutada y con remanente abierto
+- Expected: se adopta lo ejecutado (`ENTRY_FILLED`), se cancela el remanente y se coloca stop por la cantidad ejecutada
+
+### TC-REC-007 — Reinicio con posición sin stop y precio sobre el stop
+- Input: `POSITION_OPEN`; sin stop activo en Binance; precio sobre el stop
+- Expected: STOP_ORDER_PLACED sin nueva autorización
+
+### TC-REC-008 — Reinicio con Binance sin respuesta
+- Input: `ENTRY_PENDING`; Binance no responde durante la reconciliación
+- Expected: se conserva `ENTRY_PENDING`; EXCHANGE_DESYNC; ninguna orden enviada; nueva consulta en la siguiente reconciliación
+
+### TC-REC-009 — Modo seguro tras la reconciliación
+- Input: reconciliación de arranque terminada; candidato de entrada válido
+- Expected: STARTUP_RECONCILIATION_COMPLETED e informe por Telegram; ninguna entrada nueva hasta confirmación del propietario
+
 ## 8.2 Pruebas de Datos de Mercado (C1 — REQ-G-070, CR-003)
 
 ### TC-DATA-001 — Vela en formación excluida
@@ -358,6 +390,28 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 ### TC-OPS-003 — Cambio de IP pública
 - Input: la IP pública difiere de la registrada en Binance
 - Expected: PUBLIC_IP_CHANGED; Fail-Closed y aviso por Telegram antes de cualquier orden
+
+## 8.6 Pruebas de Estados de la Operación y Vigencia de Autorización (C1 — REQ-G-037, REQ-G-039, CR-005)
+
+### TC-OPS-STATE-001 — Persistencia previa a la acción externa
+- Input: cada transición con acción externa (envío de compra, stop, venta, cancelación)
+- Expected: el nuevo estado consta persistido antes de la llamada a Binance; OPERATION_STATE_CHANGED registrado
+
+### TC-OPS-STATE-002 — Transición no permitida
+- Input: intento de pasar de `AWAITING_AUTH` a `ENTRY_PENDING` sin `AUTHORIZED`
+- Expected: transición rechazada y registrada; Fail-Closed; ninguna orden
+
+### TC-OPS-STATE-003 — Una sola operación activa (INV-003)
+- Input: operación en `POSITION_OPEN`; nueva propuesta llega a autorización
+- Expected: la segunda operación no puede pasar a `AUTHORIZED` ni posteriores
+
+### TC-AUTH-001 — Vigencia de 30 min
+- Input: respuesta de aprobación a los 29 min; otra a los 31 min del envío
+- Expected: la primera es válida; la segunda produce `AUTH_EXPIRED`, AUTHORIZATION_EXPIRED y ninguna orden
+
+### TC-AUTH-002 — Hora de referencia
+- Input: reloj del cliente de Telegram desfasado respecto al backend
+- Expected: el vencimiento se evalúa con la hora del backend de autorización
 
 ---
 

@@ -186,6 +186,8 @@ Las siguientes decisiones están aprobadas (DEC-001) y no son negociables para F
 - Enviar órdenes a Binance respetando stepSize, minQty, minNotional
 - Reconciliar órdenes enviadas con ejecuciones reportadas por Binance
 - Gestionar ejecuciones parciales como eventos independientes
+- Mantener la máquina de estados de la operación, persistiendo cada transición antes de la acción externa (REQ-G-037, CR-005)
+- Ejecutar la recuperación por estado al arrancar (REQ-G-038) y el cierre protector (REQ-G-031)
 - No tiene credenciales compartidas con componentes LLM
 
 ### 3.5 Fiscal Ledger

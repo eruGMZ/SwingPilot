@@ -67,6 +67,9 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
 | RISK_ANALYSIS_COMPLETED | Risk Analyst | Telegram Bot / Audit | Evaluación consultiva sobre una propuesta con RISK_APPROVED (REQ-G-055, CR-004) |
 | HEARTBEAT | Trading Engine | Servicio externo de vigilancia | Latido periódico sin datos sensibles (REQ-G-035) |
 | PUBLIC_IP_CHANGED | Trading Engine | Risk Manager / Telegram Bot / Audit | IP pública distinta a la registrada en Binance; dispara Fail-Closed (REQ-G-036) |
+| OPERATION_STATE_CHANGED | Execution Engine | Audit | Transición de estado de una operación: estado anterior, nuevo, motivo, `correlation_id` (REQ-G-037, CR-005) |
+| AUTHORIZATION_EXPIRED | Backend de Autorización | Telegram Bot / Audit | Autorización sin respuesta dentro de los 30 min; operación en AUTH_EXPIRED (REQ-G-039, CR-005) |
+| PROTECTIVE_CLOSE_SUBMITTED | Execution Engine | Risk Manager / Telegram Bot / Audit | Venta a mercado por posición sin stop activo con el precio en o bajo el stop; pasa a MANUAL_REVIEW (REQ-G-031, CR-005) |
 
 **Identificador de cliente en órdenes (REQ-G-032, CR-003):** toda orden enviada a Binance (compra, venta, stop) incluye un identificador de cliente derivado de forma determinista del `correlation_id` y de la secuencia de la orden dentro del ciclo. Es la clave de idempotencia ante reintentos. No sustituye al `order_id` de Binance registrado en `trades.db`. Formato exacto: PENDING (FASE 2).
 
@@ -275,7 +278,7 @@ La autorización humana del propietario debe incluir:
 
 **Reglas de validación antes de ejecución:**
 - `human_authorization_id` debe existir y estar vinculado a `risk_authorization_id`
-- `valid_until_utc` no puede estar en el pasado
+- `valid_until_utc` no puede estar en el pasado; se fija en el envío de la solicitud por Telegram + 30 min, con la hora del backend (REQ-G-039, CR-005)
 - El instrumento y dirección deben coincidir exactamente con la orden a enviar
 - El Risk Manager re-verifica condiciones en el momento de ejecución
 
