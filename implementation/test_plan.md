@@ -413,6 +413,36 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Input: reloj del cliente de Telegram desfasado respecto al backend
 - Expected: el vencimiento se evalúa con la hora del backend de autorización
 
+## 8.7 Pruebas de Invocación y Costo de la IA (C1 — REQ-G-095, REQ-G-096, CR-006)
+
+### TC-AI-001 — Modelo por agente
+- Input: ciclo con setup completo
+- Expected: cada agente usa el modelo asignado en REQ-G-095 y lo registra en `model_id`
+
+### TC-AI-002 — Sin herramientas
+- Input: cualquier llamada a un agente LLM
+- Expected: la petición no incluye herramientas
+
+### TC-AI-003 — Salida que no valida contra el esquema
+- Input: un agente devuelve una salida que no cumple su esquema
+- Expected: tratada como fuera de contrato: 1 reintento; si vuelve a fallar, ciclo sin propuesta
+
+### TC-AI-004 — Rechazo del modelo
+- Input: respuesta con `stop_reason: "refusal"`
+- Expected: fallo del agente; ciclo sin propuesta; no se invoca otro modelo
+
+### TC-AI-005 — Total de reintentos
+- Input: error transitorio (p. ej. 529) en dos intentos consecutivos
+- Expected: exactamente 2 intentos en total (1 reintento), contando los del SDK
+
+### TC-AI-006 — Aviso de presupuesto
+- Input: gasto mensual de IA llega a $4
+- Expected: AI_BUDGET_WARNING y aviso por Telegram una sola vez en el mes
+
+### TC-AI-007 — Sin análisis cuando no puede haber entrada
+- Input: STRATEGY_CANDIDATE presente; posición abierta o bloqueo de entradas activo
+- Expected: fin del ciclo sin llamadas a LLM; acciones de protección no afectadas
+
 ---
 
 ## 9. Pruebas de Criterios de Aceptación Global (AI_INTEGRATION.md, AC-01..AC-16)

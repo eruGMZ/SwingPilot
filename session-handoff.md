@@ -2,17 +2,18 @@
 
 ## Cierre de sesión 2026-11-18 — siguiente acción
 
-- Decisiones: DEC-001..DEC-008. Change requests CR-001..CR-005 aprobadas y aplicadas.
+- Decisiones: DEC-001..DEC-009. Change requests CR-001..CR-006 aprobadas y aplicadas.
+- **CR-006 APROBADA y aplicada** el 2026-11-18 (DEC-009: Haiku 5.5 en 4 agentes, Sonnet 5.5 en Decision Synthesis; Messages API sin herramientas; sin caching; controles de costo; REQ-G-095, REQ-G-096).
 - **CR-005 APROBADA y aplicada** el 2026-11-18 (DEC-008: estados de la operación, recuperación por estado, autorización de 30 min, cierre protector; REQ-G-037..039).
 - Feedback externo (puntos A–F) atendido vía CR-003 y CR-004. Documento externo `error-handling.md` revisado: estructura adoptada en CR-005, 10 puntos no adoptados (CR-005 §F).
 - Producción en Laptop B (Linux Mint 22, siempre encendida); desarrollo e investigación en Laptop A; vigilancia con servicio externo (DEC-007).
 - Todos los parámetros PENDING resueltos salvo P08 (contador, diferido por el propietario).
 - P24: adición retirada el 2026-11-18; queda "ninguno adicional".
 - G3 PENDING por decisión del propietario. FASE 2 bloqueada.
-- Cambios hasta CR-005 con commit (2026-11-18).
+- Cambios hasta CR-006 con commit (2026-11-18).
 - Siguiente acción autorizada: esperar decisión del propietario sobre G3.
 
-> Actualizado: 2026-11-18 — FASE 1: G2 PASS; conflictos CONF-001..005 resueltos; CR-001..005 aplicadas; G3 PENDING (decisión del propietario)
+> Actualizado: 2026-11-18 — FASE 1: G2 PASS; conflictos CONF-001..005 resueltos; CR-001..006 aplicadas; G3 PENDING (decisión del propietario)
 
 ---
 

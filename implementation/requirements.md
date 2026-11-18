@@ -338,7 +338,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 - Un mensaje de aprobación de un usuario distinto al propietario no tiene efecto y queda registrado
 
 ### REQ-G-034
-**Descripción:** Reintentos y fallo de agentes LLM. Cada llamada a un agente LLM admite 1 reintento tras pausa breve, solo ante errores transitorios (red, saturación, límite de tasa) o respuesta que no cumple el contrato JSON, siempre dentro del límite de 5 min del ciclo. Si un agente sigue fallando tras el reintento, el ciclo termina sin propuesta (Fail-Closed) y se registra su estado (ERROR/TIMEOUT). Si se alcanza el tope mensual de gasto de IA (REQ-G-P18), no se hacen llamadas y el ciclo termina sin propuesta. Las lecturas de datos de Binance admiten el mismo reintento único; las órdenes no (rige REQ-G-032).  
+**Descripción:** Reintentos y fallo de agentes LLM. Cada llamada a un agente LLM admite 1 reintento tras pausa breve, solo ante errores transitorios (red, saturación, límite de tasa) o respuesta que no cumple el contrato JSON, siempre dentro del límite de 5 min del ciclo. Si un agente sigue fallando tras el reintento, el ciclo termina sin propuesta (Fail-Closed) y se registra su estado (ERROR/TIMEOUT). Si se alcanza el tope mensual de gasto de IA (REQ-G-P18), no se hacen llamadas y el ciclo termina sin propuesta. Las lecturas de datos de Binance admiten el mismo reintento único; las órdenes no (rige REQ-G-032). El reintento automático del SDK de Anthropic (2 por defecto) se configura para que el total por llamada sea 1 reintento, sea del SDK o propio, nunca ambos; timeout de 60 s configurado explícitamente en el cliente (CR-006).  
 **Fuentes:** REQ-3047; DEC-006, DEC-007 (Q20, Q21); CR-004 §B  
 **Tipo:** NON_FUNCTIONAL  
 **Prioridad:** CRITICAL  
@@ -682,6 +682,8 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 - Costes de IA son medibles
 - Prompts, modelos, estrategias y contratos están versionados
 
+**Ampliado por CR-006:** modelos, forma de invocación y caching en REQ-G-095; controles de costo en REQ-G-096.
+
 ### REQ-G-092
 **Descripción:** Python es la base para modelos cuantitativos (pandas, NumPy, scikit-learn, XGBoost, PyTorch solo con justificación experimental). Los modelos requieren ID/versión, datos de entrenamiento identificados, métricas, separación Train/Validation/Test, evidencia backtesting, registro de inferencias y política de actualización. Salida de ML ≠ certeza ni autorización.  
 **Fuentes:** REQ-3039  
@@ -702,6 +704,31 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Fuentes:** REQ-3041  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** HIGH
+
+### REQ-G-095
+**Descripción:** Modelos y forma de invocación de los agentes LLM. Modelos: Market Analyst, Macro Analyst, Strategy Analyst y Risk Analyst → `claude-haiku-5-5`; Decision Synthesis → `claude-sonnet-5-5`. Se usan identificadores exactos, sin alias, y `model_id` registra el modelo efectivamente usado. El nivel de esfuerzo (`effort`) se fija explícitamente por agente (valor inicial `medium`, calibrado en el modo de prueba de FASE 2). Cada agente es una llamada independiente a la Messages API orquestada por el AI Orchestrator determinista; no se usan Claude Agent SDK, Managed Agents ni Batches API. Los agentes no reciben herramientas; su salida se obtiene como salida estructurada validada por esquema (`output_config.format`) contra el contrato JSON de `api_contracts.md` §3, y una salida que no valida cuenta como respuesta fuera de contrato (REQ-G-034). Una respuesta con `stop_reason: "refusal"` es fallo del agente (ciclo sin propuesta); no se usa cambio automático de modelo (`fallbacks`). No se usa prompt caching (`cache_control`): ciclos cada 4 h y prompts distintos por agente no generan reutilización. Cambiar el modelo de un agente o activar caching requiere una DEC.  
+**Fuentes:** REQ-G-091 (REQ-3037); REQ-G-034; REQ-G-P18 (DEC-006); DEC-009 (Q26, Q27); CR-006 §A, §B, §D  
+**Tipo:** NON_FUNCTIONAL  
+**Prioridad:** CRITICAL  
+**Estado:** APPROVED-CR-006  
+**PENDING (FASE 2):** calibración de `effort` por agente; costo real por ciclo.  
+**Criterios de aceptación:**
+- Cada agente usa el modelo asignado y lo registra en `model_id`
+- Ninguna llamada a un agente incluye herramientas
+- Una salida que no valida contra el esquema se trata como fuera de contrato
+- Un rechazo del modelo termina el ciclo sin propuesta y sin cambio de modelo
+
+### REQ-G-096
+**Descripción:** Controles de costo de la IA. (1) Con el tope mensual de $5 USD alcanzado no hay llamadas a LLM (REQ-G-034). (2) Al alcanzar $4 de gasto en el mes, aviso por Telegram (AI_BUDGET_WARNING). (3) Antes de la Fase 3, si hay posición abierta (INV-003) o un bloqueo que impide nuevas entradas (LOSS_STREAK_LOCK, MONTHLY_DRAWDOWN_LOCK, MONTHLY_TRADE_LIMIT_LOCK, DATA_UNAVAILABLE, EXCHANGE_DESYNC, MANUAL_REVIEW o modo seguro), el ciclo termina sin llamadas a LLM; no afecta acciones de protección ni la gestión de la posición abierta. (4) Límite de gasto en la consola de Anthropic igual o ligeramente superior a $5 como respaldo, si la cuenta lo permite. (5) Se registra el uso de tokens (`usage`) de cada llamada para medir el costo real por ciclo.  
+**Fuentes:** REQ-G-091; REQ-G-P18 (DEC-006); DEC-009 (Q27); CR-006 §E  
+**Tipo:** NON_FUNCTIONAL  
+**Prioridad:** HIGH  
+**Estado:** APPROVED-CR-006  
+**PENDING (FASE 2):** disponibilidad del límite de gasto en la consola de la cuenta.  
+**Criterios de aceptación:**
+- Con gasto mensual de $4 el propietario recibe AI_BUDGET_WARNING
+- Con posición abierta o bloqueo de entradas activo no se realizan llamadas a LLM
+- El costo de cada llamada queda registrado
 
 ---
 
@@ -932,7 +959,7 @@ Los siguientes parámetros técnicos están pendientes de definición. Ningún a
 | REQ-G-P15 | **RESUELTO (DEC-005):** ≥ 100 trades Train+Val; ≥ 30 en OOS y en LOCKBOX — ~~Tamaño mínimo de muestra~~ | REQ-4033, REQ-4035 |
 | REQ-G-P16 | **RESUELTO (DEC-005):** móvil 24m entrenamiento / 6m prueba / paso 6m — ~~Duración y tamaño de ventanas Walk-Forward~~ | REQ-4027, REQ-4035 |
 | REQ-G-P17 | **RESUELTO (DEC-005):** IC bootstrap 95% expectancy > 0 + línea base ingenua + corrección por nº de experimentos — ~~Requisitos estadísticos de aceptación de modelos ML~~ | REQ-4029, REQ-4035 |
-| REQ-G-P18 | **RESUELTO (DEC-006):** tope $5 USD/mes; IA solo al cierre H4 con setup; timeout 60 s; ciclo ≤ 5 min; sin SLA 24/7; reintentos y fallo de agentes: DEC-007 / REQ-G-034 — ~~Tiempos máximos de respuesta, límites de consumo API, objetivos de disponibilidad~~ | REQ-3047 |
+| REQ-G-P18 | **RESUELTO (DEC-006):** tope $5 USD/mes; IA solo al cierre H4 con setup; timeout 60 s; ciclo ≤ 5 min; sin SLA 24/7; reintentos y fallo de agentes: DEC-007 / REQ-G-034; modelos, invocación y controles de costo: DEC-009 / REQ-G-095, REQ-G-096 (CR-006) — ~~Tiempos máximos de respuesta, límites de consumo API, objetivos de disponibilidad~~ | REQ-3047 |
 | REQ-G-P19 | **RESUELTO (DEC-004):** arranque + cada ciclo de decisión + cada 5 min con posición abierta — ~~Frecuencia de reconciliación con Binance~~ | REQ-5041 |
 | REQ-G-P20 | **RESUELTO (DEC-004):** 0.5% — ~~Tolerancia de desviación de precio~~ | REQ-5041 |
 | REQ-G-P21 | **RESUELTO (DEC-005):** solo por drift o revisión semestral; nunca automático — ~~Política de reentrenamiento de modelos ML~~ | REQ-4035 |

@@ -139,6 +139,8 @@ Las siguientes decisiones están aprobadas (DEC-001) y no son negociables para F
 - Enviar resultados consolidados a Decision Synthesis
 - Registrar todas las interacciones: modelo, versión, prompt versión, timestamp
 - Gestionar errores, timeouts y respuestas incompletas (no asumir aprobación ante falta de respuesta)
+- Invocar a cada agente como llamada independiente a la Messages API, sin herramientas, con salida estructurada validada por esquema; sin prompt caching (REQ-G-095, CR-006)
+- Aplicar los controles de costo: tope mensual, aviso al 80% y omisión de llamadas cuando no puede haber entrada (REQ-G-096)
 - NO puede autorizar operaciones ni cambiar capital configurado
 
 **Restricciones:**
@@ -156,6 +158,8 @@ Las siguientes decisiones están aprobadas (DEC-001) y no son negociables para F
 | Strategy Analyst | STRATEGY_CANDIDATE del Strategy Engine (Fase 3, en paralelo con Market y Macro; CR-004) | Evaluación de lógica, condiciones, invalidaciones | No puede modificar estrategias aprobadas ni ejecutar |
 | Risk Analyst | Propuesta con RISK_APPROVED, estado del sistema (Fase 5, después del Risk Manager; CR-004) | Evaluación consultiva (no vinculante), mostrada al propietario en Telegram | No tiene autoridad de aprobación; no puede revertir el resultado del Risk Manager |
 | Decision Synthesis | Resultados de Fase 2 (deterministas) y Fase 3 (Market, Macro, Strategy Analyst); no del Risk Analyst (CR-004) | TRADE_PROPOSAL o descarte explícito | No puede ocultar incertidumbre; TRADE_PROPOSAL ≠ orden |
+
+**Modelos (REQ-G-095, DEC-009, CR-006):** Market Analyst, Macro Analyst, Strategy Analyst y Risk Analyst → `claude-haiku-5-5`; Decision Synthesis → `claude-sonnet-5-5`. Ningún agente recibe herramientas.
 
 ### 3.3 Risk Manager (Determinista)
 

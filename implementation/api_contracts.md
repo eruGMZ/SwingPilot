@@ -69,6 +69,7 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
 | PUBLIC_IP_CHANGED | Trading Engine | Risk Manager / Telegram Bot / Audit | IP pública distinta a la registrada en Binance; dispara Fail-Closed (REQ-G-036) |
 | OPERATION_STATE_CHANGED | Execution Engine | Audit | Transición de estado de una operación: estado anterior, nuevo, motivo, `correlation_id` (REQ-G-037, CR-005) |
 | AUTHORIZATION_EXPIRED | Backend de Autorización | Telegram Bot / Audit | Autorización sin respuesta dentro de los 30 min; operación en AUTH_EXPIRED (REQ-G-039, CR-005) |
+| AI_BUDGET_WARNING | AI Orchestrator | Telegram Bot / Audit | Gasto mensual de IA alcanzó $4 (80% del tope de $5) (REQ-G-096, CR-006) |
 | PROTECTIVE_CLOSE_SUBMITTED | Execution Engine | Risk Manager / Telegram Bot / Audit | Venta a mercado por posición sin stop activo con el precio en o bajo el stop; pasa a MANUAL_REVIEW (REQ-G-031, CR-005) |
 
 **Identificador de cliente en órdenes (REQ-G-032, CR-003):** toda orden enviada a Binance (compra, venta, stop) incluye un identificador de cliente derivado de forma determinista del `correlation_id` y de la secuencia de la orden dentro del ciclo. Es la clave de idempotencia ante reintentos. No sustituye al `order_id` de Binance registrado en `trades.db`. Formato exacto: PENDING (FASE 2).
@@ -78,6 +79,8 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
 ---
 
 ## 3. Contratos de Agentes LLM
+
+**Valores de `model_id` (REQ-G-095, CR-006):** `claude-haiku-5-5` para Market Analyst, Macro Analyst, Strategy Analyst y Risk Analyst; `claude-sonnet-5-5` para Decision Synthesis. Cada contrato de salida de esta sección es el esquema de la salida estructurada (`output_config.format`) de su agente; las llamadas no incluyen herramientas.
 
 ### 3.1 Contrato de Entrada — Market Analyst
 

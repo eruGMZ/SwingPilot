@@ -47,6 +47,10 @@ Disparador externo (señal periódica o solicitud manual)
 │  producción sin evidencia experimental.                                 │
 │                                                                         │
 │  SIN CANDIDATO → NO_SETUP → fin del ciclo, CERO llamadas a LLM          │
+│                                                                         │
+│  Control de costo previo a Fase 3 (REQ-G-096, CR-006): con posición     │
+│  abierta, bloqueo de entradas activo, modo seguro o tope mensual de IA  │
+│  alcanzado → fin del ciclo, CERO llamadas a LLM                         │
 └─────────────────────────┬───────────────────────────────────────────────┘
                           │ STRATEGY_CANDIDATEs (si hay)
                           ▼ FASE 3 — Análisis LLM Paralelo
@@ -62,6 +66,8 @@ Disparador externo (señal periódica o solicitud manual)
 │  Todos comparten correlation_id. Cada agente entrega resultado o        │
 │  estado explícito (INSUFFICIENT_DATA, ERROR, TIMEOUT).                  │
 │  1 reintento por agente; fallo persistente → ciclo sin propuesta.       │
+│  Modelos: Haiku 5.5 (analistas), Sonnet 5.5 (Synthesis); Messages API   │
+│  sin herramientas, salida estructurada validada (REQ-G-095, CR-006).    │
 └─────────────────────────┬───────────────────────────────────────────────┘
                           │ Resultados de análisis
                           ▼ FASE 4 — Síntesis
