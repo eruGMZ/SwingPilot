@@ -22,15 +22,15 @@ La siguiente tabla resume la evidencia registrada en el sistema.
 | Campo | Información |
 |---|---|
 | País de residencia fiscal | México |
-| Régimen que aparece en la CSF | 616 — Sin obligaciones fiscales |
-| Fecha de inicio registrada | 29/06/2021 |
-| Evidencia | Constancia de Situación Fiscal del 11/11/2026 |
+| Régimen fiscal (efectivo según el propietario) | 605 — Sueldos y Salarios e Ingresos Asimilados a Salarios, desde 13/10/2025 |
+| Régimen anterior | 616 — Sin obligaciones fiscales (29/06/2021 – 12/10/2025) |
+| Aviso de cambio de régimen ante el SAT | Presentado el 17/11/2026 (DEC-003) |
 | Asesoría fiscal especializada en criptomonedas | No consultada |
 | Asesoría fiscal general | No consultada |
 
 ### ¿Qué advertencia fiscal está pendiente?
 
-El propietario ha indicado que percibe ingresos laborales, pero la CSF (Constancia de Situación Fiscal, documento emitido por el SAT) proporcionada únicamente muestra el régimen 616 y no muestra el 605. Esta discrepancia debe revisarse con un contador o directamente con el SAT.
+El propietario percibe ingresos laborales bajo el régimen 605.
 
 SwingPilot no debe asumir que el propietario está exento de ISR (Impuesto Sobre la Renta) por operar criptomonedas, que las ganancias de trading tienen ISR cero, que existe una exención anual automática aplicable ni que la clasificación fiscal de todas las operaciones está resuelta.
 

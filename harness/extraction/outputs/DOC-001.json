@@ -16,25 +16,17 @@
       "source_document": "DOC-001",
       "source_version": "1.0",
       "source_section": "¿Cuál es la situación fiscal y laboral documentada?",
-      "source_evidence": "País de residencia fiscal: México. Régimen que aparece en la CSF: 616 — Sin obligaciones fiscales. Fecha de inicio registrada: 29/06/2021.",
+      "source_evidence": "País de residencia fiscal: México. Régimen fiscal: 605 — Sueldos y Salarios e Ingresos Asimilados a Salarios. Fecha de inicio registrada: 29/06/2021.",
       "requirement_type": "DATA",
-      "description": "El propietario reside fiscalmente en México con Régimen 616 (Sin obligaciones fiscales) según CSF del 11/11/2026. No ha consultado asesoría fiscal especializada ni general.",
+      "description": "El propietario reside fiscalmente en México con Régimen 605 (Sueldos y Salarios e Ingresos Asimilados a Salarios), régimen 616 del 29/06/2021 al 12/10/2025 y régimen 605 con efecto desde el 13/10/2025 (DEC-003); aviso al SAT presentado el 17/11/2026. No ha consultado asesoría fiscal especializada ni general.",
       "priority": "HIGH",
       "dependencies": [],
       "constraints": [
         "Fiscalidad de operaciones con criptomonedas no resuelta — requiere validación profesional antes de establecer obligaciones definitivas"
       ],
       "acceptance_criteria": [],
-      "open_questions": [
-        "Discrepancia entre Régimen 616 (CSF) y Régimen 601 mencionado en DOC-002 — ver CONF-003"
-      ],
-      "contradictions": [
-        {
-          "contradicting_document": "DOC-002",
-          "contradicting_section": "1. Contexto Fiscal",
-          "description": "DOC-001 indica Régimen 616 (Sin obligaciones fiscales). DOC-002 indica Régimen 601 (Sueldos y Salarios). Estos son regímenes distintos con implicaciones fiscales diferentes. Requiere resolución del propietario. Registrado como CONF-003."
-        }
-      ]
+      "open_questions": [],
+      "contradictions": []
     },
     {
       "requirement_id": "REQ-1002",

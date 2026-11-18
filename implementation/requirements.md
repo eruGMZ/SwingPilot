@@ -16,7 +16,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 3. Los parámetros aprobados operativamente por DEC-001 están marcados como `[APPROVED-DEC-001]`.
 4. Los conflictos detectados durante el merge se registran al final del documento y en `conflict_register.md`.
 
-**Nota sobre riesgo 1–2% vs 1.5%:** DOC-003 indica riesgo objetivo "1–2% del capital" como rango orientativo; DOC-001 y DOC-005 establecen **1.5% máximo aprobado**. La jerarquía de DEC-001 indica que OWNER_CONTEXT y RISK_POLICY tienen precedencia. El límite vinculante es **1.5%**; el rango "1–2%" de DOC-003 es contextual/orientativo. Registrado como CONF-003 — ver sección de conflictos.
+**Nota sobre riesgo:** el límite es **1.5% máximo vinculante** (no un rango). La referencia "1–2%" de DOC-003 es incorrecta y se ignora (DEC-002 §2, CONF-004 RESUELTA).
 
 ---
 
@@ -67,7 +67,7 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 - El sistema puede permanecer periodos sin señales sin indicar error ni degradación
 
 ### REQ-G-005
-**Descripción:** Restricciones absolutas de instrumento: solo operaciones BUY y SELL sobre BTC/USDT spot. Quedan expresamente prohibidos: staking, Earn, airdrops, conversiones entre criptoactivos (swaps BTC→ETH), otras criptomonedas o pares. Los agentes no pueden incorporarlos por iniciativa propia.  
+**Descripción:** Restricciones absolutas de instrumento: solo operaciones BUY y SELL sobre BTC/USDT spot. Quedan expresamente prohibidos: staking, Earn, airdrops, conversiones entre criptoactivos (swaps BTC→ETH), otras criptomonedas o pares. Los agentes no pueden incorporarlos por iniciativa propia. ETH/USDT nunca fue autorizado y queda fuera de todo alcance operativo (DEC-002 §3, CONF-005 RESUELTA).  
 **Fuentes:** REQ-1012, REQ-1013, REQ-2011  
 **Tipo:** CONSTRAINT  
 **Prioridad:** CRITICAL  
@@ -299,6 +299,19 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Tipo:** NON_FUNCTIONAL  
 **Prioridad:** CRITICAL  
 **Estado:** APPROVED-DEC-001
+
+### REQ-G-031
+**Descripción:** Stop-loss colocado en el exchange. Al confirmarse la ejecución de una compra (ORDER_FILLED, incluidas ejecuciones parciales), el Execution Engine coloca de inmediato en Binance una orden de stop por la cantidad ejecutada y al precio de stop autorizado. El monitoreo del stop en software se mantiene como segunda capa. Toda modificación de stop permitida por REQ-G-027 se aplica cancelando y reemplazando la orden en Binance. Si la orden de stop no puede colocarse, el sistema emite STOP_ORDER_FAILED, avisa al propietario por Telegram y aplica Fail-Closed (bloqueo de nuevas entradas; cierre de la posición o intervención del propietario). La reconciliación verifica que toda posición abierta tenga su stop activo en Binance.  
+**Fuentes:** REQ-5011, REQ-5021; DEC-006 (Q17); CR-002  
+**Tipo:** RISK_MANAGEMENT  
+**Prioridad:** CRITICAL  
+**Estado:** APPROVED-CR-002  
+**PENDING (FASE 2):** tipo de orden (stop-limit vs OCO) y manejo de huecos de precio con stop-limit, con datos reales de Binance.  
+**Criterios de aceptación:**
+- Tras cada compra ejecutada existe en Binance una orden de stop activa por la cantidad ejecutada
+- Con SwingPilot detenido y una posición abierta, la orden de stop sigue activa en Binance
+- Si falla la colocación del stop: STOP_ORDER_FAILED, aviso por Telegram y bloqueo de nuevas entradas
+- La reconciliación detecta y reporta una posición abierta sin stop activo
 
 ---
 
@@ -711,13 +724,13 @@ Este documento consolida los 245 requisitos extraídos de 6 documentos fuente (D
 **Prioridad:** CRITICAL
 
 ### REQ-G-115
-**Descripción:** Marco fiscal de referencia: CONTEXTO_FISCAL_OPERATIVO.md indica régimen Sueldos y Salarios (clave 601) y exención Art. 93 XIX b) LISR ($128,383.92 MXN/año para 2026). La obligación de declaración anual subsiste aunque el ISR sea $0. Declaración ante SAT entre 15 de febrero y 30 de abril en sección 'Enajenación de bienes'.  
-**⚠ ESTADO CONDICIONAL — CONF-003 OPEN (no resuelta):** OWNEW_CONTEXT.md (DOC-001) indica que la CSF muestra Régimen 616 (Sin obligaciones fiscales), lo que contradice el Régimen 601 de DOC-002. DEC-001 instruye explícitamente: "El Merger debe tratar el cálculo de exención (Art. 93 XIX b) como PENDIENTE/CONDICIONAL hasta resolución." El régimen fiscal correcto NO está confirmado; DOC-002 es una referencia de diseño, no una decisión fiscal definitiva. El sistema NO debe asumir exención de ISR ni obligaciones fiscales definitivas hasta resolución de CONF-003.  
+**Descripción:** Marco fiscal de referencia: régimen 605 — Sueldos y Salarios e Ingresos Asimilados a Salarios (DEC-003; régimen 616 del 29/06/2021 al 12/10/2025; régimen 605 con efecto desde el 13/10/2025; aviso al SAT presentado el 17/11/2026, por lo que el registro ante el SAT figura en 616 entre el 13/10/2025 y el 17/11/2026). CONTEXTO_FISCAL_OPERATIVO.md plantea la exención Art. 93 XIX b) LISR ($128,383.92 MXN/año para 2026). La obligación de declaración anual subsiste aunque el ISR sea $0. Declaración ante SAT entre 15 de febrero y 30 de abril en sección 'Enajenación de bienes'.  
+**Condición:** OWNEW_CONTEXT.md establece que el sistema NO debe asumir exención de ISR ni ISR cero; el tratamiento fiscal de las operaciones debe validarse profesionalmente antes de fijar obligaciones, cálculos definitivos o declaraciones (REQ-G-P08). El marco de CONTEXTO_FISCAL_OPERATIVO.md es referencia de diseño.  
 **Restricción de implementación:** El Fiscal Ledger debe implementarse con el régimen fiscal como parámetro configurable (no hardcodeado). La lógica de exención/cálculo de ISR debe ser modular y no debe deployarse en producción sin validación professional del régimen correcto.  
 **Fuentes:** REQ-2001, REQ-2008, REQ-2009, REQ-1001  
 **Tipo:** CONSTRAINT  
 **Prioridad:** HIGH  
-**PENDING:** Validación con contador especializado en criptomonedas — REQ-G-P08. Discrepancia CSF 616 vs ingresos laborales (CONF-003) — REQ-G-P09.
+**PENDING:** Validación con contador especializado en criptomonedas — REQ-G-P08.
 
 ---
 
@@ -810,31 +823,32 @@ Los siguientes parámetros técnicos están pendientes de definición. Ningún a
 
 | ID | Descripción | Fuente |
 |---|---|---|
-| REQ-G-P01 | Fuente de conversión USDT/MXN | REQ-5004, REQ-5041 |
-| REQ-G-P02 | Antigüedad máxima aceptable del tipo de cambio | REQ-5004, REQ-5041 |
-| REQ-G-P03 | Comisión efectiva de Binance (obtener de la cuenta real) | REQ-5008, REQ-5041 |
-| REQ-G-P04 | Reserva de slippage (configuración técnica conservadora) | REQ-5008, REQ-5041 |
-| REQ-G-P05 | Precisión de cantidades y precios (stepSize, minQty, minNotional de Binance) | REQ-5009, REQ-5041 |
-| REQ-G-P06 | Mecanismo técnico de aprobación humana (Telegram u otro) | REQ-5027, REQ-5041 |
-| REQ-G-P07 | API/fuente para obtener BCI automáticamente | REQ-2002 |
+| REQ-G-P01 | **RESUELTO (DEC-004):** Binance USDT/MXN en tiempo real (sizing); fuente fiscal diferida a P08 — ~~Fuente de conversión USDT/MXN~~ | REQ-5004, REQ-5041 |
+| REQ-G-P02 | **RESUELTO (DEC-004):** 5 minutos; excedido = Fail-Closed — ~~Antigüedad máxima aceptable del tipo de cambio~~ | REQ-5004, REQ-5041 |
+| REQ-G-P03 | **RESUELTO (DEC-004):** comisión real por API; usar max(real, 0.10%) por lado — ~~Comisión efectiva de Binance (obtener de la cuenta real)~~ | REQ-5008, REQ-5041 |
+| REQ-G-P04 | **RESUELTO (DEC-004):** 0.10% — ~~Reserva de slippage (configuración técnica conservadora)~~ | REQ-5008, REQ-5041 |
+| REQ-G-P05 | **RESUELTO (DEC-004):** lectura dinámica de exchangeInfo, refresco diario — ~~Precisión de cantidades y precios (stepSize, minQty, minNotional de Binance)~~ | REQ-5009, REQ-5041 |
+| REQ-G-P06 | **RESUELTO (DEC-004):** Telegram con botones Aprobar/Rechazar — ~~Mecanismo técnico de aprobación humana (Telegram u otro)~~ | REQ-5027, REQ-5041 |
+| REQ-G-P07 | **RESUELTO (DEC-006):** API SIE de Banxico; guardar valor, fecha y serie (tipo exacto y días sin publicación: P08) — ~~API/fuente para obtener BCI automáticamente~~ | REQ-2002 |
 | REQ-G-P08 | Validación fiscal con contador especializado en criptomonedas | REQ-1001, REQ-2001 |
-| REQ-G-P09 | Discrepancia CSF 616 vs ingresos laborales | REQ-1001 |
-| REQ-G-P10 | Porcentajes exactos de división Train/Validation/OOS | REQ-4016, REQ-4035 |
-| REQ-G-P11 | Umbrales mínimos de rentabilidad para experimentos | REQ-4033, REQ-4035 |
-| REQ-G-P12 | Drawdown máximo permitido para experimentos | REQ-4033, REQ-4035 |
-| REQ-G-P13 | Expectancy mínimo | REQ-4033, REQ-4035 |
-| REQ-G-P14 | Profit Factor mínimo | REQ-4033, REQ-4035 |
-| REQ-G-P15 | Tamaño mínimo de muestra | REQ-4033, REQ-4035 |
-| REQ-G-P16 | Duración y tamaño de ventanas Walk-Forward | REQ-4027, REQ-4035 |
-| REQ-G-P17 | Requisitos estadísticos de aceptación de modelos ML | REQ-4029, REQ-4035 |
-| REQ-G-P18 | Tiempos máximos de respuesta, límites de consumo API, objetivos de disponibilidad | REQ-3047 |
-| REQ-G-P19 | Frecuencia de reconciliación con Binance | REQ-5041 |
-| REQ-G-P20 | Tolerancia de desviación de precio | REQ-5041 |
-| REQ-G-P21 | Política de reentrenamiento de modelos ML | REQ-4035 |
-| REQ-G-P22 | Umbrales de degradación del modelo (concept drift) | REQ-4035 |
-| REQ-G-P23 | Política de versionado y promoción de modelos a producción | REQ-4035 |
-| REQ-G-P24 | Límites cuantitativos adicionales del Risk Manager | REQ-4035 |
-| REQ-G-P25 | Formato definitivo de almacenamiento de la matriz de trazabilidad | REQ-6010, REQ-6031 |
+| REQ-G-P09 | (cerrado — DEC-003) | REQ-1001 |
+| REQ-G-P10 | **RESUELTO (DEC-005):** 50/20/15/15 cronológico (Train/Val/OOS/LOCKBOX) — ~~Porcentajes exactos de división Train/Validation/OOS~~ | REQ-4016, REQ-4035 |
+| REQ-G-P11 | **RESUELTO (DEC-005):** Sharpe OOS ≥ 0.8 neto; comparación vs comprar y mantener reportada — ~~Umbrales mínimos de rentabilidad para experimentos~~ | REQ-4033, REQ-4035 |
+| REQ-G-P12 | **RESUELTO (DEC-005):** ≤ 20% — ~~Drawdown máximo permitido para experimentos~~ | REQ-4033, REQ-4035 |
+| REQ-G-P13 | **RESUELTO (DEC-005):** ≥ 0.10 R neto — ~~Expectancy mínimo~~ | REQ-4033, REQ-4035 |
+| REQ-G-P14 | **RESUELTO (DEC-005):** ≥ 1.3 neto — ~~Profit Factor mínimo~~ | REQ-4033, REQ-4035 |
+| REQ-G-P15 | **RESUELTO (DEC-005):** ≥ 100 trades Train+Val; ≥ 30 en OOS y en LOCKBOX — ~~Tamaño mínimo de muestra~~ | REQ-4033, REQ-4035 |
+| REQ-G-P16 | **RESUELTO (DEC-005):** móvil 24m entrenamiento / 6m prueba / paso 6m — ~~Duración y tamaño de ventanas Walk-Forward~~ | REQ-4027, REQ-4035 |
+| REQ-G-P17 | **RESUELTO (DEC-005):** IC bootstrap 95% expectancy > 0 + línea base ingenua + corrección por nº de experimentos — ~~Requisitos estadísticos de aceptación de modelos ML~~ | REQ-4029, REQ-4035 |
+| REQ-G-P18 | **RESUELTO (DEC-006):** tope $5 USD/mes; IA solo al cierre H4 con setup; timeout 60 s; ciclo ≤ 5 min; sin SLA 24/7 — ~~Tiempos máximos de respuesta, límites de consumo API, objetivos de disponibilidad~~ | REQ-3047 |
+| REQ-G-P19 | **RESUELTO (DEC-004):** arranque + cada ciclo de decisión + cada 5 min con posición abierta — ~~Frecuencia de reconciliación con Binance~~ | REQ-5041 |
+| REQ-G-P20 | **RESUELTO (DEC-004):** 0.5% — ~~Tolerancia de desviación de precio~~ | REQ-5041 |
+| REQ-G-P21 | **RESUELTO (DEC-005):** solo por drift o revisión semestral; nunca automático — ~~Política de reentrenamiento de modelos ML~~ | REQ-4035 |
+| REQ-G-P22 | **RESUELTO (DEC-005):** expectancy últimos 20 trades < límite inferior IC OOS, o PSI > 0.25 → suspensión — ~~Umbrales de degradación del modelo (concept drift)~~ | REQ-4035 |
+| REQ-G-P23 | **RESUELTO (DEC-005):** hash datos+código+parámetros; promoción solo HUMAN_REVIEW → APPROVED — ~~Política de versionado y promoción de modelos a producción~~ | REQ-4035 |
+| REQ-G-P24 | **RESUELTO (DEC-005):** ninguno, salvo revisión humana tras 2 meses consecutivos en DD 5% — ~~Límites cuantitativos adicionales del Risk Manager~~ | REQ-4035 |
+| REQ-G-P25 | **RESUELTO (DEC-006):** JSON en repositorio con esquema y validador — ~~Formato definitivo de almacenamiento de la matriz de trazabilidad~~ | REQ-6010, REQ-6031 |
+| REQ-G-P26 | **RESUELTO (DEC-006):** Recuperación ante fallos: reconciliar, modo seguro sin nuevas órdenes, aviso por Telegram, reanudar solo con confirmación del propietario. Stop-loss en Binance: CR-002 (APROBADA, REQ-G-031) | REQ-5041, REQ-5021 |
 
 ---
 
@@ -844,10 +858,9 @@ Los siguientes parámetros técnicos están pendientes de definición. Ningún a
 - **Fecha:** 2026-11-13
 - **Documentos:** DOC-003 (AI_INTEGRATION.md, sección "Límites operativos") vs DOC-001 (OWNEW_CONTEXT.md) y DOC-005 (RISK_POLICY.md)
 - **Descripción:** DOC-003 indica riesgo objetivo "1–2% del capital". DOC-001 y DOC-005 establecen "1.5% máximo" como límite vinculante.
-- **Resolución propuesta por Merger:** Los documentos son consistentes si "1–2%" en DOC-003 es rango orientativo general y "1.5%" es el límite máximo aprobado. DEC-001 establece que OWNER_CONTEXT y RISK_POLICY tienen precedencia sobre DOC-003 en parámetros operativos.
-- **Autoridad para resolver:** Propietario. Si el rango "1–2%" implica que se puede configurar hasta 2%, el propietario debe ratificarlo explícitamente.
-- **Decisión aplicada en este contrato:** Límite vinculante = **1.5%** (REQ-G-013, REQ-G-028 INV-001).
-- **Estado:** OPEN — pendiente de confirmación del propietario. Ver CONF-004 en conflict_register.md.
+- **Decisión del propietario (DEC-002 §2):** 1.5% máximo vinculante; la referencia "1–2%" es incorrecta.
+- **Aplicado en este contrato:** Límite = **1.5%** (REQ-G-013, REQ-G-028 INV-001).
+- **Estado:** RESUELTA — 2026-11-15.
 
 ---
 

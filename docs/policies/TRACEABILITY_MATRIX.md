@@ -446,8 +446,8 @@ Estos pendientes no autorizan a los agentes a inventar reglas ni a asumir decisi
 
 | Versión | Fecha | Descripción | Estado |
 |---|---|---|---|
-| 1.0 | 2026-11-11 | Primera especificación consolidada a partir de diez decisiones aprobadas | Aprobada |
+| 1.0 | 2026-11-11 | Primera especificación consolidada a partir de diez decisiones aprobadas | BORRADOR |
 
-[CONTRADICCIÓN: el encabezado del documento indica **Estado: BORRADOR — pendiente de aprobación humana**, mientras que la tabla de control de cambios asigna **Aprobada** a la versión 1.0.]
+[RESUELTO — DEC-001 / CR-001: estado canónico BORRADOR — pendiente de aprobación humana.]
 
 Cualquier modificación futura deberá registrar versión anterior, versión nueva, motivo, secciones afectadas, impacto sobre registros existentes y aprobación correspondiente.

@@ -21,7 +21,7 @@ SwingPilot es un sistema orientado a Swing Trading (operaciones de varios días 
 | Elemento | Configuración de referencia |
 |---|---|
 | Activo prioritario | BTC/USDT |
-| Activo secundario | ETH/USDT |
+| Activo secundario | Ninguno — solo BTC/USDT autorizado |
 | Estilo operativo | Swing Trading |
 | Temporalidades | H1, H4 y 1D |
 | Contexto de mercado | 1D |
@@ -34,7 +34,7 @@ Las temporalidades son complementarias, no reglas rígidas. Por lo tanto, la dur
 
 - Máximo de referencia: 8 operaciones ejecutadas por mes.
 - No existe obligación de operar ni de alcanzar una cantidad mínima de operaciones.
-- Riesgo objetivo por operación: 1–2% del capital, sujeto a las restricciones agregadas.
+- Riesgo máximo por operación: 1.5% del capital (límite vinculante), sujeto a las restricciones agregadas.
 - Tickets habituales de referencia: $500–$5,000 MXN.
 - Ticket extraordinario de referencia: hasta $10,000 MXN.
 - El riesgo agregado y las posiciones simultáneas deben evaluarse conjuntamente.

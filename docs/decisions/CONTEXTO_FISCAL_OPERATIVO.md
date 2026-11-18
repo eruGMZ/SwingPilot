@@ -4,10 +4,10 @@
 
 | Campo | Detalle |
 |---|---|
-| **Régimen** | Sueldos y Salarios (clave 601) |
+| **Régimen** | Sueldos y Salarios (clave 605) |
 | **Ingreso principal** | Salario full-time |
 | **Actividad secundaria** | Swing trading cripto |
-| **Instrumentos** | BTC/USDT o ETH/USDT |
+| **Instrumentos** | BTC/USDT |
 | **Exchange** | Binance |
 | **Frecuencia máxima** | 8 trades/mes (variable, no fijo) |
 | **Ticket por trade** | $500 – $5,000 MXN (hasta $10,000 extraordinariamente) |
@@ -25,9 +25,9 @@
 | **Estilo** | Swing trading |
 | **Ventana de posición** | 2 días – 2 semanas |
 | **Timeframe de señal** | D1 + H4 o H1 |
-| **Pares** | preferente BTC/USDT, posiblemente (ETH/USDT) |
+| **Pares** | BTC/USDT |
 | **Límite mensual** | 8 trades (máximo, no mínimo) |
-| **Gestión de riesgo** | 1–2% del capital por trade |
+| **Gestión de riesgo** | 1.5% del capital por trade (máximo) |
 
 ## 3. Esquema de Base de Datos
 

@@ -16,23 +16,15 @@
       "source_document": "DOC-002",
       "source_version": "UNKNOWN",
       "source_section": "1. Contexto Fiscal",
-      "source_evidence": "Régimen: Sueldos y Salarios (clave 601). Ingreso principal: Salario full-time. Actividad secundaria: Swing trading cripto.",
+      "source_evidence": "Régimen: Sueldos y Salarios (clave 605). Ingreso principal: Salario full-time. Actividad secundaria: Swing trading cripto.",
       "requirement_type": "DATA",
-      "description": "Según DOC-002, el propietario opera bajo Régimen 601 (Sueldos y Salarios) con ingreso principal laboral y trading cripto como actividad secundaria.",
+      "description": "Según DOC-002, el propietario opera bajo Régimen 605 (Sueldos y Salarios) con ingreso principal laboral y trading cripto como actividad secundaria.",
       "priority": "HIGH",
       "dependencies": [],
       "constraints": [],
       "acceptance_criteria": [],
-      "open_questions": [
-        "DOC-001 indica Régimen 616, DOC-002 indica Régimen 601 — CONF-003 registrado. Requiere resolución del propietario antes de calcular obligaciones fiscales definitivas."
-      ],
-      "contradictions": [
-        {
-          "contradicting_document": "DOC-001",
-          "contradicting_section": "¿Cuál es la situación fiscal y laboral documentada?",
-          "description": "DOC-001 registra Régimen 616 (Sin obligaciones fiscales) según CSF. DOC-002 indica Régimen 601 (Sueldos y Salarios). La aplicación de la exención Art. 93 XIX b) en DOC-002 depende de que sea correcto el Régimen 601. Con Régimen 616, la situación fiscal sería diferente. Registrado como CONF-003."
-        }
-      ]
+      "open_questions": [],
+      "contradictions": []
     },
     {
       "requirement_id": "REQ-2002",
@@ -41,18 +33,16 @@
       "source_section": "1. Contexto Fiscal",
       "source_evidence": "Exención aplicable: Art. 93, XIX, b) LISR → $128,383.92 MXN/año (2026). ISR a cargo: $0 (bajo exención).",
       "requirement_type": "DATA",
-      "description": "Exención fiscal aplicable bajo Art. 93 XIX b) LISR: $128,383.92 MXN/año (2026). Bajo este régimen y si las ganancias de trading no superan la exención, ISR = $0. Válido condicionalmente a que el Régimen 601 sea el correcto (ver CONF-003).",
+      "description": "Exención fiscal aplicable bajo Art. 93 XIX b) LISR: $128,383.92 MXN/año (2026). Bajo este régimen y si las ganancias de trading no superan la exención, ISR = $0. Régimen 605 (DEC-003).",
       "priority": "HIGH",
       "dependencies": [
         "REQ-2001"
       ],
       "constraints": [
-        "Validez condicionada a resolución de CONF-003 (régimen fiscal correcto)"
+        "Tratamiento fiscal sujeto a validación profesional (REQ-G-P08)"
       ],
       "acceptance_criteria": [],
-      "open_questions": [
-        "¿Aplica la exención si el régimen es 616 y no 601?"
-      ],
+      "open_questions": [],
       "contradictions": []
     },
     {

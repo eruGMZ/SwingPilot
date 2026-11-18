@@ -1,5 +1,14 @@
 # session-handoff.md — SwingPilot Harness
-> Actualizado: 2026-11-13 — Fin de sesión FASE 1 (G2 PASS — verificación adversarial completa, 6 hallazgos aplicados)
+
+## Cierre de sesión 2026-11-17 — siguiente acción
+
+- Sesión técnica completa: DEC-004, DEC-005, DEC-006; CR-001 y CR-002 aprobadas y aplicadas.
+- Todos los parámetros PENDING resueltos salvo P08 (contador, diferido).
+- Por confirmar con el propietario: si mantiene o retira la adición de P24 (ver aclaración en DEC-005).
+- G3 PENDING por decisión del propietario. FASE 2 bloqueada.
+- Cambios del 15–17/11 sin commit.
+- Siguiente acción autorizada: esperar decisión del propietario sobre G3.
+> Actualizado: 2026-11-17 — FASE 1: G2 PASS; conflictos CONF-001..005 resueltos; CR-001 aplicada; G3 PENDING (decisión del propietario: se mantiene pendiente)
 
 ---
 
@@ -56,30 +65,36 @@ Nota: Extracción completa. Las 6 extracciones cubren íntegramente los 6 docume
 
 ## Conflictos Registrados
 
-| ID | Documentos | Estado |
-|----|-----------|--------|
-| CONF-001 | TRACEABILITY_MATRIX.md (encabezado vs tabla versiones) | RESUELTA — estado canónico: BORRADOR |
-| CONF-002 | RISK_POLICY.md, PROFILE (BORRADOR vs parámetros operativos) | RESUELTA — parámetros operativos aprobados vía OWNEW_CONTEXT |
-| CONF-003 | OWNEW_CONTEXT (régimen 616) vs CONTEXTO_FISCAL (régimen 601) | OPEN — escalado al propietario, requiere asesoría fiscal |
-| CONF-004 | AI_INTEGRATION "1-2% riesgo" vs OWNER_CONTEXT/RISK_POLICY "1.5% máximo" | OPEN — límite vinculante 1.5% aplicado en contrato |
-| CONF-005 | DOC-001 (BTC/USDT únicamente) vs DOC-002/DOC-003 (también ETH/USDT) | OPEN — restricción BTC/USDT aplicada per jerarquía DEC-001 |
+| ID | Estado |
+|----|--------|
+| CONF-001 | RESUELTA (DEC-001) — TRACEABILITY_MATRIX = BORRADOR |
+| CONF-002 | RESUELTA (DEC-001) |
+| CONF-003 | RESUELTA (DEC-003) — régimen 605; tratamiento fiscal sujeto a validación profesional (P08) |
+| CONF-004 | RESUELTA (DEC-002) — 1.5% máximo vinculante |
+| CONF-005 | RESUELTA (DEC-002) — solo BTC/USDT |
+
+**CR-001** APROBADA y aplicada el 2026-11-17 (1–2% y ETH/USDT eliminados; TRACEABILITY_MATRIX corregida).
+
+**Historial fiscal (confirmado por el propietario el 2026-11-17, cerrado):** régimen 616 hasta el 12/10/2025; el 605 debió iniciar el 13/10/2025; el aviso ante el SAT se presentó el 17/11/2026. No hay fecha pendiente.
+
+**Diferido por el propietario (2026-11-17):** la validación con contador (REQ-G-P08) queda para después; no se calcula nada fiscal mientras tanto. G3 se mantiene PENDING.
 
 ---
 
-## Parámetros PENDING (12 ítems — resolver en FASE 2)
+## Parámetros PENDING
 
-1. Fuente de conversión USDT/MXN
-2. Antigüedad máxima aceptable del tipo de cambio
-3. Comisión efectiva de Binance (obtener de cuenta real)
-4. Reserva de slippage (configuración técnica conservadora)
-5. Tolerancia de desviación de precio
-6. stepSize / minQty / minNotional BTC/USDT (obtener de Binance)
-7. Frecuencia de reconciliación con Binance
-8. Mecanismo técnico de aprobación humana (Telegram)
-9. Procedimiento de recuperación ante fallos
-10. Umbrales ML (Sharpe, Drawdown, Win Rate, etc.)
-11. Splits Train/Validation/OOS
-12. Asesoría fiscal definitiva (Régimen 616 vs ganancias trading)
+**Resueltos en DEC-004 (2026-11-17):** P01–P06, P19, P20 (fuente FX, antigüedad, comisión, slippage, filtros, Telegram, reconciliación, tolerancia de precio).
+
+**Resueltos en DEC-005 (2026-11-17):** P10–P17, P21–P24 (investigación y ML).
+
+**Resueltos en DEC-006 (2026-11-17):** P07, P18, P25 y P26 (nuevo: recuperación ante fallos).
+
+**Todos los parámetros del Módulo 15 están resueltos excepto P08 (diferido).**
+
+**CR-002** (stop-loss en Binance) APROBADA y aplicada el 2026-11-17 (REQ-G-031, eventos STOP_ORDER_*, TC-STOP-001..006).
+
+**Diferido por el propietario:** P08 (validación fiscal con contador; incluye tratamiento de ganancias y periodo 13/10/2025–17/11/2026).
+
 
 ---
 

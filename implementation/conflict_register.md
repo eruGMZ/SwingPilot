@@ -51,7 +51,7 @@
   - Metodología cuantitativa/investigación (PROFILE): aprobada como marco obligatorio de diseño e investigación. Aprobación formal del texto queda para G3 del paquete de políticas.
   - AI_INTEGRATION.md: tratar como especificación arquitectónica v1.0 aprobada para diseño del contrato (componentes, flujo, límites IA). Cambios arquitectónicos posteriores vía change request.
   - **Pendientes explícitos (NO resolver por agentes):**
-    - Fiscal MX (CSF 616 vs ingresos laborales): sin cálculo fiscal definitivo hasta asesoría profesional.
+    - Fiscal MX: sin cálculo fiscal definitivo hasta asesoría profesional.
     - Parámetros "por definir" (FX USDT/MXN, % Train/Val/OOS, umbrales ML, etc.): permanecen PENDING en requirements.md.
   - **Nota arquitectónica:** aprobación documental formal ≠ aprobación operativa de parámetros; G3 del contrato técnico = aprobación del paquete implementation/*, no sustituye aprobación individual de cada policy salvo indicación explícita del propietario en G3.
   - **Autorización:** continuar Merger y Verificador cuando terminen extractores; incorporar estas resoluciones en el contrato técnico.
@@ -61,13 +61,11 @@
 ### CONF-003
 
 - **Fecha de detección:** 2026-11-13
-- **Documentos en conflicto:** docs/context/OWNEW_CONTEXT.md (DOC-001) vs. docs/decisions/CONTEXTO_FISCAL_OPERATIVO.md (DOC-002)
-- **Sección doc1:** "¿Cuál es la situación fiscal y laboral documentada?" — tabla: "Régimen que aparece en la CSF: 616 — Sin obligaciones fiscales"
-- **Sección doc2:** "1. Contexto Fiscal" — tabla: "Régimen: Sueldos y Salarios (clave 601)"
-- **Naturaleza del conflicto:** DOC-001 indica Régimen 616 (Sin obligaciones fiscales) según la CSF física. DOC-002 indica Régimen 601 (Sueldos y Salarios). Estos son regímenes fiscales distintos con implicaciones diferentes: la exención Art. 93 XIX b) aplicada en DOC-002 está diseñada para Régimen 601. Con Régimen 616, el tratamiento fiscal podría ser distinto. No es posible determinar el régimen correcto sin consulta al SAT o asesoría fiscal.
+- **Documentos:** docs/context/OWNEW_CONTEXT.md (DOC-001) vs. docs/decisions/CONTEXTO_FISCAL_OPERATIVO.md (DOC-002)
+- **Naturaleza:** discrepancia sobre el régimen fiscal del propietario.
 - **Severidad:** HIGH
-- **Estado:** OPEN — escalado al propietario. Requiere verificación directa con el SAT o asesor fiscal antes de establecer obligaciones fiscales definitivas.
-- **Resolución:** PENDIENTE — no resolver por los agentes. El Merger debe tratar el cálculo de exención (Art. 93 XIX b) como PENDIENTE/CONDICIONAL hasta resolución. Los parámetros operativos (capital, riesgo, instrumento) no dependen de esta resolución y permanecen vinculantes per CONF-002.
+- **Estado:** RESUELTA — 2026-11-16 (DEC-003)
+- **Resolución (propietario):** régimen **605 — Sueldos y Salarios e Ingresos Asimilados a Salarios** (616 del 29/06/2021 al 12/10/2025; 605 con efecto desde el 13/10/2025; aviso al SAT presentado el 17/11/2026). Originales corregidos por instrucción expresa del propietario. El tratamiento fiscal de las ganancias sigue sujeto a validación profesional (REQ-G-P08).
 
 ---
 
@@ -80,8 +78,8 @@
 - **Sección doc3:** "¿Qué instrumentos y temporalidades usa? — Activo secundario: ETH/USDT"
 - **Naturaleza del conflicto:** DOC-001 (autoridad máxima — operativamente aprobado por DEC-001) restringe el sistema exclusivamente a BTC/USDT y requiere autorización expresa del propietario para incorporar otros activos. DOC-002 y DOC-003 incluyen ETH/USDT como instrumento válido o secundario. El contrato técnico (requirements.md REQ-G-001, REQ-G-005) aplica correctamente la restricción de DOC-001 per la jerarquía de CONF-002. No obstante, la presencia de ETH/USDT en DOC-002 (documento fiscal) tiene implicaciones potenciales para el alcance de las obligaciones SAT — Binance puede reportar también transacciones sobre ETH/USDT bajo CARF.
 - **Severidad:** MEDIUM
-- **Estado:** OPEN — escalado al propietario. La decisión operativa (BTC/USDT únicamente) es correcta per jerarquía de autoridad. Se requiere confirmación del propietario para: (a) ratificar que ETH/USDT está fuera del alcance de FASE 1 y FASE 2, (b) confirmar que las referencias a ETH/USDT en DOC-002 y DOC-003 son contextuales y no implican habilitación futura sin autorización expresa.
-- **Resolución:** PENDIENTE — La restricción BTC/USDT en el contrato técnico es la decisión correcta per DEC-001/CONF-002. El propietario debe ratificar explícitamente que ETH/USDT queda fuera del alcance. Hasta ratificación, el sistema implementa únicamente BTC/USDT.
+- **Estado:** RESUELTA — 2026-11-15 (DEC-002)
+- **Resolución (propietario):** BTC/USDT es el único par autorizado (Binance, Spot, Long-only; comprar BTC con USDT y vender BTC por USDT). ETH/USDT nunca fue autorizado y se elimina de los alcances operativos. Corrección de DOC-002/DOC-003 vía CR-001 (pendiente de aprobación).
 
 ---
 
@@ -93,5 +91,5 @@
 - **Sección doc2 (DOC-001 + DOC-005):** DOC-001: "riesgo_maximo_por_operacion: 1.5%" (aprobado); DOC-005: invariante INV-001 "RiskEffective ≤ Equity × 0.015" (1.5% explícito, aprobado)
 - **Naturaleza del conflicto:** El rango "1–2%" de DOC-003 permite hasta 2% de riesgo por operación. El límite "1.5%" en DOC-001 y DOC-005 es el techo aprobado explícitamente. Los documentos son consistentes si "1–2%" es un rango orientativo y "1.5%" es el límite máximo (1.5% cae dentro de 1–2%). No son consistentes si "1–2%" implica que el límite superior puede ser 2%.
 - **Severidad:** HIGH — afecta directamente al invariante INV-001 y a todas las pruebas de position sizing
-- **Estado:** OPEN — pendiente de confirmación del propietario. Decisión provisional aplicada en el contrato técnico.
-- **Resolución provisional (aplicada por Merger per DEC-001):** Límite vinculante = **1.5%** (máximo). La jerarquía DEC-001 establece que OWNER_CONTEXT y RISK_POLICY tienen precedencia sobre AI_INTEGRATION en parámetros operativos. El "1–2%" de DOC-003 se interpreta como rango referencial; el límite máximo es 1.5%. Requiere confirmación del propietario en G3.
+- **Estado:** RESUELTA — 2026-11-15 (DEC-002)
+- **Resolución provisional (aplicada por Merger per DEC-001):** Límite vinculante = **1.5%** (máximo). La jerarquía DEC-001 establece que OWNER_CONTEXT y RISK_POLICY tienen precedencia sobre AI_INTEGRATION en parámetros operativos. El "1–2%" de DOC-003 se interpreta como rango referencial; el límite máximo es 1.5%. **Confirmado por el propietario (DEC-002):** 1.5% máximo vinculante, no es rango; la referencia "1–2%" de AI_INTEGRATION es incorrecta y debe eliminarse (CR-001).

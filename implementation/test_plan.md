@@ -107,6 +107,32 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Input: `exit_mechanism.type = "MANUAL"` sin procedimiento de contingencia
 - Expected: RISK_REJECTED
 
+### REQ-G-031: Stop-loss en el exchange (CR-002)
+
+**TC-STOP-001 — Stop colocado tras la compra:**
+- Input: ORDER_FILLED (BUY) completo
+- Expected: STOP_ORDER_PLACED; orden de stop activa en Binance por la cantidad ejecutada y al precio autorizado
+
+**TC-STOP-002 — Ejecución parcial:**
+- Input: ORDER_PARTIALLY_FILLED (BUY)
+- Expected: el stop activo en Binance cubre la cantidad efectivamente ejecutada
+
+**TC-STOP-003 — Protección con el sistema detenido:**
+- Input: posición abierta; SwingPilot detenido; precio cruza el stop (entorno de prueba o simulación del exchange)
+- Expected: la orden de stop se ejecuta en Binance sin intervención de SwingPilot; al reiniciar, la reconciliación registra la salida
+
+**TC-STOP-004 — Fallo al colocar el stop:**
+- Input: Binance rechaza la orden de stop
+- Expected: STOP_ORDER_FAILED; aviso por Telegram; bloqueo de nuevas entradas (Fail-Closed)
+
+**TC-STOP-005 — Modificación de stop:**
+- Input: modificación permitida por INV-009
+- Expected: STOP_ORDER_REPLACED; solo una orden de stop activa en Binance
+
+**TC-STOP-006 — Reconciliación sin stop:**
+- Input: posición abierta sin orden de stop activa en Binance
+- Expected: la reconciliación lo detecta, emite alerta y bloquea nuevas entradas
+
 ### INV-008: Sin ejecución sin autorización humana
 
 **TC-INV-008-A — Bloqueo sin autorización humana:**

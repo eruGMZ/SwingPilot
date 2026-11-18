@@ -57,6 +57,9 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
 | ORDER_FILLED | Execution Engine | Portfolio Manager / Fiscal Ledger | Ejecución completa |
 | ORDER_CANCELLED | Execution Engine | Portfolio Manager / Audit | Orden cancelada |
 | ORDER_REJECTED | Execution Engine | Audit | Orden rechazada por Binance |
+| STOP_ORDER_PLACED | Execution Engine | Portfolio Manager / Audit | Stop colocado en Binance tras compra ejecutada (REQ-G-031) |
+| STOP_ORDER_REPLACED | Execution Engine | Portfolio Manager / Audit | Stop cancelado y reemplazado en Binance por modificación permitida (REQ-G-027) |
+| STOP_ORDER_FAILED | Execution Engine | Risk Manager / Telegram Bot / Audit | No se pudo colocar o reemplazar el stop en Binance; dispara Fail-Closed |
 
 **Nota:** Los nombres definitivos de tipos de eventos se confirman al definir el catálogo de producción.
 

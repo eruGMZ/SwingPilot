@@ -51,7 +51,7 @@ Los siguientes parámetros están autorizados como decisiones operativas del pro
 
 ## Pendientes explícitos — NO resolver por agentes
 
-- **Fiscal MX** (discrepancia CSF 616 vs ingresos laborales): sin cálculo fiscal definitivo hasta asesoría profesional.
+- **Fiscal MX** (régimen fiscal; ver DEC-003): sin cálculo fiscal definitivo hasta asesoría profesional.
 - **Parámetros técnicos "por definir"**: fuente FX USDT/MXN, antigüedad máxima del tipo de cambio, % Train/Val/OOS, umbrales ML, política de reentrenamiento, etc. — permanecen PENDING en requirements.md.
 
 ---

@@ -156,15 +156,23 @@ Estado: SIN_POSICION
 ▼ Autorización humana → ORDER_SUBMITTED
 │
 ├─ ORDER_FILLED (parcial o completo)
+│    ├─ Colocación inmediata de stop en Binance (REQ-G-031, CR-002)
+│    │    - Éxito → STOP_ORDER_PLACED
+│    │    - Fallo → STOP_ORDER_FAILED → aviso Telegram + Fail-Closed
+│    │      (bloqueo de nuevas entradas; cierre o intervención del propietario)
 │    └─ Estado: POSITION_OPEN
 │         │
-│         ├─ Monitoreo continuo:
+│         ├─ Monitoreo continuo (segunda capa; el stop primario vive en Binance):
 │         │    - Precio actual vs stop-loss
 │         │    - Equity y drawdown mensual
-│         │    - Estado de Binance (reconciliación)
+│         │    - Estado de Binance (reconciliación, incluye stop activo)
+│         │
+│         ├─ Modificación de stop permitida (REQ-G-027):
+│         │    - Cancelar y reemplazar en Binance → STOP_ORDER_REPLACED
 │         │
 │         ├─ Evento de salida:
-│         │    - Stop-loss alcanzado → ORDER_SUBMITTED (SELL)
+│         │    - Stop ejecutado en Binance → ORDER_FILLED (SELL)
+│         │    - Stop alcanzado sin ejecución en Binance → ORDER_SUBMITTED (SELL)
 │         │    - Take-profit alcanzado (si configurado) → ORDER_SUBMITTED
 │         │    - Instrucción manual del operador → ORDER_SUBMITTED
 │         │    - Bloqueo de riesgo activo → acciones de protección disponibles
