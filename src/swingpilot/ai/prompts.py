@@ -39,7 +39,8 @@ _ROLES = {
         "incertidumbre. Decide TRADE_PROPOSAL solo con información suficiente (trade_proposal "
         "completo); en otro caso INSUFFICIENT_INFO, DISCARD o DISAGREEMENT con trade_proposal = "
         "null. Un TRADE_PROPOSAL no es una orden ni una autorización. En input_analysis_ids "
-        "lista solo analysis_id recibidos."),
+        "lista los analysis_id de los tres análisis recibidos (Market, Macro y Strategy "
+        "Analyst), todos y solo esos."),
     "risk_analyst": (
         "Rol: Risk Analyst. Evaluación consultiva de una propuesta ya aprobada por el Risk "
         "Manager determinista: riesgos no evidentes, inconsistencias entre entrada, stop y "
@@ -56,4 +57,6 @@ class Prompt:
     text: str
 
 
-PROMPTS = {a: Prompt(a, "0.1.0", f"{_ROLES[a]}\n\n{_COMMON}") for a in _ROLES}
+# Historial: 0.1.0 inicial; decision_synthesis 0.1.1 exige citar los 3 analysis_id (QA, hallazgo 6).
+_VERSIONS = {"decision_synthesis": "0.1.1"}
+PROMPTS = {a: Prompt(a, _VERSIONS.get(a, "0.1.0"), f"{_ROLES[a]}\n\n{_COMMON}") for a in _ROLES}

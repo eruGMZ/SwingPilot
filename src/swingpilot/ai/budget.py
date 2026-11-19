@@ -1,6 +1,9 @@
 """Control de costo de la IA (REQ-G-096, REQ-G-034, DEC-009, DEC-010 Q29; TC-AI-006/007).
 
-(1) Gasto mensual ≥ $5 → no se hacen llamadas (también a mitad de ciclo).
+(1) Gasto mensual ≥ $5 → no se hacen llamadas (también a mitad de ciclo). Tope duro: antes de
+    cada llamada se reserva su costo máximo posible (`try_reserve`) bajo un candado; la
+    llamada solo se envía si gasto + reservas en curso + su reserva ≤ $5, así que ni los
+    agentes en paralelo ni una llamada individual pueden superar el tope.
 (2) Al alcanzar $4 → AI_BUDGET_WARNING una sola vez por mes calendario.
 (3) EntryGate antes de la Fase 3: posición abierta, bloqueo de entradas o modo seguro →
     cero llamadas; estado no disponible → bloqueo (Fail-Closed, INV-012).
@@ -37,7 +40,8 @@ _DDL = """
 CREATE TABLE IF NOT EXISTS ai_usage (
     seq INTEGER PRIMARY KEY AUTOINCREMENT,
     month TEXT NOT NULL, recorded_at_utc TEXT NOT NULL, agent TEXT NOT NULL, model TEXT NOT NULL,
-    input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL, cost_usd REAL NOT NULL);
+    input_tokens INTEGER NOT NULL, output_tokens INTEGER NOT NULL, cost_usd REAL NOT NULL,
+    estimated INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS idx_ai_usage_month ON ai_usage(month);
 CREATE TABLE IF NOT EXISTS ai_budget_warnings (month TEXT PRIMARY KEY, sent_at_utc TEXT NOT NULL);
 CREATE TRIGGER IF NOT EXISTS ai_usage_no_update BEFORE UPDATE ON ai_usage
@@ -66,8 +70,15 @@ class AIBudget:
                  on_warning: Callable[[str, float], None] | None = None):
         self._db = sqlite3.connect(str(path), check_same_thread=False)
         self._db.executescript(_DDL)
+        cols = {r[1] for r in self._db.execute("PRAGMA table_info(ai_usage)")}
+        if "estimated" not in cols:  # migración de bases creadas antes de la columna
+            with self._db:
+                self._db.execute("ALTER TABLE ai_usage ADD COLUMN estimated INTEGER NOT NULL DEFAULT 0")
         self._tz, self._now, self._on_warning = tz, now, on_warning
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
+        # rid → (costo máximo, modelo, tokens de entrada máx., tokens de salida máx.)
+        self._inflight: dict[int, tuple[float, str, int, int]] = {}
+        self._next_rid = 0
 
     def close(self) -> None:
         self._db.close()
@@ -87,6 +98,39 @@ class AIBudget:
     def can_call(self) -> bool:
         return not self.cap_reached()
 
+    def try_reserve(self, model: str, max_input_tokens: int, max_output_tokens: int) -> int | None:
+        """Reserva atómica del costo máximo de una llamada. None = no cabe bajo el tope."""
+        est = call_cost_usd(model, max_input_tokens, max_output_tokens)
+        with self._lock:
+            committed = self.spent_this_month() + sum(r[0] for r in self._inflight.values())
+            if committed + est > MONTHLY_CAP_USD:
+                return None
+            self._next_rid += 1
+            self._inflight[self._next_rid] = (est, model, max_input_tokens, max_output_tokens)
+            return self._next_rid
+
+    def release(self, rid: int) -> None:
+        with self._lock:
+            self._inflight.pop(rid, None)
+
+    def settle(self, rid: int, agent: str, model: str | None, input_tokens: int | None,
+               output_tokens: int | None) -> float:
+        """Registra el costo real y libera la reserva. Si el costo real no se puede medir
+        (modelo sin precio o usage incompleto), registra el costo máximo reservado marcado
+        como estimado — la llamada ya se cobró y no puede quedar fuera del tope — y relanza
+        el error para que el agente falle cerrado."""
+        try:
+            return self.record(agent, model, input_tokens, output_tokens)
+        except (KeyError, ValueError):
+            with self._lock:
+                res = self._inflight.get(rid)
+            if res is not None:
+                est, rmodel, rin, rout = res
+                self._insert(agent, rmodel, rin, rout, est, estimated=True)
+            raise
+        finally:
+            self.release(rid)
+
     def record(self, agent: str, model: str | None, input_tokens: int | None,
                output_tokens: int | None) -> float:
         """Registra una llamada con respuesta. Sin modelo o tokens, o con un modelo sin
@@ -94,15 +138,19 @@ class AIBudget:
         if model is None or input_tokens is None or output_tokens is None:
             raise ValueError("usage incompleto: no se puede medir el costo")
         cost = call_cost_usd(model, input_tokens, output_tokens)
+        self._insert(agent, model, input_tokens, output_tokens, cost, estimated=False)
+        return cost
+
+    def _insert(self, agent: str, model: str, input_tokens: int, output_tokens: int,
+                cost: float, *, estimated: bool) -> None:
         month = self._month()
         with self._lock, self._db:
             self._db.execute(
-                "INSERT INTO ai_usage(month,recorded_at_utc,agent,model,input_tokens,output_tokens,cost_usd)"
-                " VALUES (?,?,?,?,?,?,?)",
+                "INSERT INTO ai_usage(month,recorded_at_utc,agent,model,input_tokens,output_tokens,"
+                "cost_usd,estimated) VALUES (?,?,?,?,?,?,?,?)",
                 (month, self._now().astimezone(timezone.utc).isoformat(), agent, model,
-                 input_tokens, output_tokens, cost))
+                 input_tokens, output_tokens, cost, int(estimated)))
         self._maybe_warn(month)
-        return cost
 
     def _maybe_warn(self, month: str) -> None:
         spent = self.spent_this_month()

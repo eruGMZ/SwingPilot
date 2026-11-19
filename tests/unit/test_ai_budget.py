@@ -235,3 +235,171 @@ def test_unpriced_model_response_fails_closed(budget):
     r = adapter.call_agent("market_analyst", system="s", user_content=json.dumps({"agent": "market_analyst"}),
                            output_schema={"type": "object"})
     assert r.status == "ERROR" and r.error["code"] == "COST_UNMEASURABLE"
+
+
+# ---------------- QA ronda 1, hallazgo 3: tope duro y atómico ----------------
+import threading  # noqa: E402
+
+
+def test_reservation_refuses_call_that_could_exceed_cap(budget):
+    budget.record("x", "claude-sonnet-5-5", 0, 490_000)  # $4.90
+    # Sonnet con max_tokens 16000 puede costar hasta $0.16 → no cabe
+    assert budget.try_reserve("claude-sonnet-5-5", 1000, 16000) is None
+    # Haiku hasta ~$0.008 → cabe
+    assert budget.try_reserve("claude-haiku-5-5", 1000, 16000) is not None
+
+
+def test_inflight_reservations_count_against_cap(budget):
+    budget.record("x", "claude-sonnet-5-5", 0, 480_000)  # $4.80
+    r1 = budget.try_reserve("claude-sonnet-5-5", 0, 16000)  # $0.16 → 4.96
+    assert r1 is not None
+    assert budget.try_reserve("claude-sonnet-5-5", 0, 16000) is None  # 5.12 > 5
+    budget.release(r1)
+    assert budget.try_reserve("claude-sonnet-5-5", 0, 16000) is not None
+
+
+def test_parallel_calls_never_exceed_cap(budget):
+    budget.record("x", "claude-sonnet-5-5", 0, 498_000)  # $4.98: caben 2 reservas Haiku de ~$0.0081
+    barrier = threading.Barrier(3, timeout=5)
+
+    class WorstCase(RoutingClient):
+        def _create(self, **kw):
+            r = super()._create(**kw)
+            return NS(**{**vars(r), "usage": NS(input_tokens=1000, output_tokens=16000)})
+
+    c = WorstCase()
+    adapter = AIProviderAdapter(c, sleep=lambda s: None, budget=budget)
+    results = {}
+
+    def run(agent):
+        try:
+            barrier.wait()
+        except threading.BrokenBarrierError:
+            pass
+        results[agent] = adapter.call_agent(agent, system="s", user_content=json.dumps({"agent": agent}),
+                                            output_schema={"type": "object"})
+
+    ts = [threading.Thread(target=run, args=(a,)) for a in ("market_analyst", "macro_analyst", "strategy_analyst")]
+    [t.start() for t in ts]
+    [t.join() for t in ts]
+    refused = [a for a, r in results.items() if r.error and r.error["code"] == "AI_BUDGET_CAP_REACHED"]
+    assert len(c.calls) == 3 - len(refused) and refused
+    assert budget.spent_this_month() <= 5.0
+
+
+def test_sequential_calls_stop_before_exceeding_cap(budget):
+    budget.record("x", "claude-sonnet-5-5", 0, 450_000)  # $4.50
+
+    class WorstCase(RoutingClient):
+        def _create(self, **kw):
+            r = super()._create(**kw)
+            return NS(**{**vars(r), "usage": NS(input_tokens=5000, output_tokens=16000)})
+
+    adapter = AIProviderAdapter(WorstCase(decision_synthesis=lambda inp: {}), sleep=lambda s: None, budget=budget)
+    for _ in range(10):
+        r = adapter.call_agent("decision_synthesis", system="s",
+                               user_content=json.dumps({"agent": "decision_synthesis"}),
+                               output_schema={"type": "object"})
+        if r.error and r.error["code"] == "AI_BUDGET_CAP_REACHED":
+            break
+    else:
+        raise AssertionError("se esperaba rechazo por tope")
+    assert budget.spent_this_month() <= 5.0
+
+
+def test_reservation_released_after_failed_call(budget):
+    import anthropic
+    import httpx2 as httpx
+    req = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+    err = anthropic.InternalServerError("x", response=httpx.Response(529, request=req), body=None)
+    c = RoutingClient(market_analyst=[err, err])
+    adapter = AIProviderAdapter(c, sleep=lambda s: None, budget=budget)
+    adapter.call_agent("market_analyst", system="s", user_content=json.dumps({"agent": "market_analyst"}),
+                       output_schema={"type": "object"})
+    assert budget._inflight == {} and len(c.calls) == 2
+
+
+def test_reservation_released_on_unexpected_exception(budget):
+    c = RoutingClient(market_analyst=[RuntimeError("boom")])
+    adapter = AIProviderAdapter(c, sleep=lambda s: None, budget=budget)
+    with pytest.raises(RuntimeError):
+        adapter.call_agent("market_analyst", system="s", user_content=json.dumps({"agent": "market_analyst"}),
+                           output_schema={"type": "object"})
+    assert budget._inflight == {}
+
+
+# ---------------- QA ronda 2 ----------------
+# Menor 1: COST_UNMEASURABLE registra el costo máximo reservado como estimado
+def test_unmeasurable_cost_records_conservative_estimate(budget):
+    c = RoutingClient(market_analyst=[NS(stop_reason="end_turn", stop_details=None, model="claude-unknown",
+                                         content=[NS(type="text", text="{}")],
+                                         usage=NS(input_tokens=1, output_tokens=1))])
+    adapter = AIProviderAdapter(c, sleep=lambda s: None, budget=budget)
+    r = adapter.call_agent("market_analyst", system="s", user_content=json.dumps({"agent": "market_analyst"}),
+                           output_schema={"type": "object"})
+    assert r.error["code"] == "COST_UNMEASURABLE"
+    row = budget._db.execute("SELECT model, output_tokens, cost_usd, estimated FROM ai_usage").fetchone()
+    assert row[0] == "claude-haiku-5-5" and row[1] == 16000 and row[3] == 1
+    assert row[2] >= call_cost_usd("claude-haiku-5-5", 0, 16000)
+    assert budget.spent_this_month() == pytest.approx(row[2]) and budget._inflight == {}
+
+
+def test_incomplete_usage_records_conservative_estimate(budget):
+    c = RoutingClient(decision_synthesis=[NS(stop_reason="end_turn", stop_details=None, model="claude-sonnet-5-5",
+                                             content=[NS(type="text", text="{}")],
+                                             usage=NS(input_tokens=None, output_tokens=5))])
+    adapter = AIProviderAdapter(c, sleep=lambda s: None, budget=budget)
+    r = adapter.call_agent("decision_synthesis", system="s",
+                           user_content=json.dumps({"agent": "decision_synthesis"}), output_schema={"type": "object"})
+    assert r.error["code"] == "COST_UNMEASURABLE"
+    assert budget._db.execute("SELECT estimated FROM ai_usage").fetchone()[0] == 1
+    assert budget.spent_this_month() >= call_cost_usd("claude-sonnet-5-5", 0, 16000)
+
+
+def test_measured_calls_are_not_marked_estimated(budget):
+    budget.record("x", "claude-haiku-5-5", 10, 10)
+    assert budget._db.execute("SELECT estimated FROM ai_usage").fetchone()[0] == 0
+
+
+def test_old_database_is_migrated(tmp_path, clock):
+    path = tmp_path / "old.db"
+    raw = sqlite3.connect(path)
+    raw.executescript("""CREATE TABLE ai_usage (seq INTEGER PRIMARY KEY AUTOINCREMENT, month TEXT NOT NULL,
+        recorded_at_utc TEXT NOT NULL, agent TEXT NOT NULL, model TEXT NOT NULL, input_tokens INTEGER NOT NULL,
+        output_tokens INTEGER NOT NULL, cost_usd REAL NOT NULL);
+        INSERT INTO ai_usage(month,recorded_at_utc,agent,model,input_tokens,output_tokens,cost_usd)
+        VALUES ('2026-11','x','a','claude-haiku-5-5',1,1,0.5);""")
+    raw.commit(); raw.close()
+    b = AIBudget(path, now=clock)
+    assert b.spent_this_month() == pytest.approx(0.5)
+    b.record("x", "claude-haiku-5-5", 10, 10)
+    assert [r[0] for r in b._db.execute("SELECT estimated FROM ai_usage ORDER BY seq")] == [0, 0]
+
+
+# Menor 2: cota de tokens de entrada por byte UTF-8
+from swingpilot.ai.provider import _max_input_tokens  # noqa: E402
+
+
+@pytest.mark.parametrize("text,min_bytes", [("a" * 1000, 1000), ("ñ" * 1000, 2000),
+                                            ("漢" * 1000, 3000), ("🙂" * 1000, 4000)])
+def test_input_bound_counts_utf8_bytes(text, min_bytes):
+    assert _max_input_tokens("", text, {}) >= min_bytes + 2000
+
+
+def test_input_bound_includes_system_and_schema():
+    schema = {"type": "object", "properties": {"campo_largo_" * 20: {"type": "string"}}}
+    base = _max_input_tokens("", "", {})
+    assert _max_input_tokens("x" * 500, "", schema) >= base + 500 + len("campo_largo_" * 20)
+
+
+def test_reservation_grows_with_non_ascii_content(budget):
+    c = RoutingClient()
+    adapter = AIProviderAdapter(c, sleep=lambda s: None, budget=budget)
+    seen = []
+    orig = budget.try_reserve
+    budget.try_reserve = lambda m, i, o: seen.append(i) or orig(m, i, o)
+    for text in ("a" * 3000, "漢" * 3000):
+        adapter.call_agent("market_analyst", system="s",
+                           user_content=json.dumps({"agent": "market_analyst", "t": text}, ensure_ascii=False),
+                           output_schema={"type": "object"})
+    assert seen[1] - seen[0] >= 6000  # 3 bytes por carácter CJK frente a 1

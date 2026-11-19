@@ -115,7 +115,7 @@ def test_cycle_with_leaked_secret_fails_closed_without_sending(vault):
     req = new_message(source="trading_engine", destination="ai_orchestrator",
                       message_type="ANALYSIS_REQUESTED", data_timestamp_utc=req["data_timestamp_utc"],
                       timeframe="H4", correlation_id=req["correlation_id"],
-                      payload={"market_context": {"note": VALUES["BINANCE_API_SECRET"]}, "macro_context": {}})
+                      payload={"market_context": {"data_source": VALUES["BINANCE_API_SECRET"]}, "macro_context": {}})
     o = AIOrchestrator(AIProviderAdapter(c, sleep=lambda s: None, leak_check=vault.contains_secret))
     r = o.run_cycle(req, p2)
     assert r.outcome == "FAILED" and r.outputs["market_analyst"]["error"]["code"] == "SECRET_LEAK_BLOCKED"

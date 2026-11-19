@@ -116,21 +116,28 @@ class AIProviderAdapter:
             if remaining <= 0:
                 res.status, res.error = "TIMEOUT", {"code": "CYCLE_DEADLINE", "message": "límite del ciclo agotado"}
                 return res
-            if self._budget is not None and not self._budget.can_call():
-                res.status = "ERROR"
-                res.error = {"code": "AI_BUDGET_CAP_REACHED", "message": "tope mensual de IA alcanzado"}
-                return res  # sin llamada (REQ-G-034, REQ-G-096 (1))
+            rid = None
+            if self._budget is not None:
+                rid = self._budget.try_reserve(AGENT_MODELS[agent],
+                                               _max_input_tokens(system, user_content, output_schema),
+                                               MAX_TOKENS)
+                if rid is None:
+                    res.status = "ERROR"
+                    res.error = {"code": "AI_BUDGET_CAP_REACHED", "message": "tope mensual de IA alcanzado"}
+                    return res  # sin llamada (REQ-G-034, REQ-G-096 (1))
             res.attempts = attempt
             try:
                 resp = self._client.messages.create(
                     **self._request(agent, system, user_content, output_schema,
                                     min(CLIENT_TIMEOUT_SECONDS, remaining)))
-                res.model_id = getattr(resp, "model", None) or AGENT_MODELS[agent]
+                # Modelo efectivo de la respuesta, sin sustituirlo por el pedido: si falta,
+                # la salida no valida contra el contrato (model_id obligatorio).
+                res.model_id = getattr(resp, "model", None)
                 res.usage.append(_usage(resp))
                 if self._budget is not None:
-                    u = res.usage[-1]
+                    u, rid_done, rid = res.usage[-1], rid, None
                     try:
-                        self._budget.record(agent, u["model"], u["input_tokens"], u["output_tokens"])
+                        self._budget.settle(rid_done, agent, u["model"], u["input_tokens"], u["output_tokens"])
                     except (KeyError, ValueError) as e:
                         res.status = "ERROR"
                         res.error = {"code": "COST_UNMEASURABLE", "message": str(e)}
@@ -150,6 +157,9 @@ class AIProviderAdapter:
             except anthropic.APIError as e:  # 400/401/403/404...: no transitorio
                 res.status, res.error = "ERROR", {"code": "API_ERROR", "message": type(e).__name__}
                 return res
+            finally:
+                if rid is not None:  # llamada fallida sin respuesta: se libera la reserva
+                    self._budget.release(rid)
             if attempt == 1:
                 self._sleep(RETRY_PAUSE_SECONDS)
         return res
@@ -170,6 +180,15 @@ class AIProviderAdapter:
         if errs:
             raise _OutOfContract("; ".join(f"{'/'.join(map(str, e.path)) or '<root>'}: {e.message}" for e in errs))
         return data
+
+
+def _max_input_tokens(system: str, user_content: str, schema: dict) -> int:
+    """Cota superior de tokens de entrada para la reserva: 1 token por BYTE UTF-8 (texto,
+    datos y esquema) + 2 000 de margen para el formato de la petición. Un tokenizador de
+    nivel byte nunca produce más tokens que bytes, así que la cota vale también para texto
+    no ASCII (acentos, CJK, emoji)."""
+    size = sum(len(s.encode("utf-8")) for s in (system, user_content, json.dumps(schema, ensure_ascii=False)))
+    return size + 2000
 
 
 def _usage(resp: Any) -> dict:

@@ -40,3 +40,6 @@ trades.db
 Thumbs.db
 .venv/
 .pytest_cache/
+
+# Datos locales de ejecución (presupuesto de IA, registros)
+var/

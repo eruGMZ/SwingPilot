@@ -308,4 +308,218 @@ def test_output_with_unknown_version_rejected():
 
 def test_prompts_are_versioned_for_every_agent():
     assert set(PROMPTS) == set(AGENT_MODELS)
-    assert all(p.version == "0.1.0" for p in PROMPTS.values())
+    assert {a: p.version for a, p in PROMPTS.items()} == {
+        "market_analyst": "0.1.0", "macro_analyst": "0.1.0", "strategy_analyst": "0.1.0",
+        "risk_analyst": "0.1.0", "decision_synthesis": "0.1.1"}
+
+
+# ---------------- QA ronda 1 ----------------
+class Clock:
+    def __init__(self): self.t = 0.0
+    def __call__(self): return self.t
+
+
+# Hallazgo 1: el sobre registra el modelo efectivo devuelto por la API
+def test_envelope_uses_effective_model_from_response():
+    variant = lambda inp: ok(BODIES["market_analyst"], "claude-haiku-5-5-variante")  # noqa: E731
+    c = RoutingClient(market_analyst=variant, **SYNTH)
+    r = orch(c).run_cycle(*make_cycle())
+    assert r.outputs["market_analyst"]["model_id"] == "claude-haiku-5-5-variante"
+
+
+def test_response_without_model_is_out_of_contract():
+    def no_model(inp):
+        x = ok(BODIES["market_analyst"], "x")
+        del x.model
+        return x
+    c = RoutingClient(market_analyst=no_model, **SYNTH)
+    r = orch(c).run_cycle(*make_cycle())
+    assert r.outcome == "FAILED" and r.outputs["market_analyst"]["error"]["code"] == "OUT_OF_CONTRACT"
+
+
+# Hallazgo 2: una excepción en un agente produce FAILED auditable, no una excepción
+class ExplodingAdapter(AIProviderAdapter):
+    def __init__(self, client, explode_for):
+        super().__init__(client, sleep=lambda s: None)
+        self.explode_for = explode_for
+
+    def call_agent(self, agent, **kw):
+        if agent in self.explode_for:
+            raise RuntimeError(f"fallo inesperado en {agent}")
+        return super().call_agent(agent, **kw)
+
+
+def test_unexpected_exception_in_phase3_agent_yields_failed_cycle_with_events(tmp_path):
+    store = EventStore(tmp_path / "a.db")
+    c = RoutingClient(**SYNTH)
+    req, p2 = make_cycle()
+    for m in [req, *p2]:
+        store.append(m)
+    r = AIOrchestrator(ExplodingAdapter(c, {"macro_analyst"}), store).run_cycle(req, p2)
+    assert r.outcome == "FAILED" and r.reason == "AGENT_FAILURE:macro_analyst"
+    err = r.outputs["macro_analyst"]["error"]
+    assert err["code"] == "INTERNAL_ERROR" and "RuntimeError" in err["message"]
+    types = [e["message_type"] for e in r.events]
+    assert types == ["MARKET_ANALYSIS_COMPLETED", "MACRO_ANALYSIS_COMPLETED", "STRATEGY_ANALYSIS_COMPLETED"]
+    assert next(e for e in r.events if e["message_type"] == "MACRO_ANALYSIS_COMPLETED")["status"] == "FAILED"
+    assert "decision_synthesis" not in c.agents_called()
+    assert store.get_chain(req["correlation_id"]).complete
+
+
+def test_unexpected_exception_in_synthesis_yields_failed_cycle():
+    r = AIOrchestrator(ExplodingAdapter(RoutingClient(**SYNTH), {"decision_synthesis"})).run_cycle(*make_cycle())
+    assert r.outcome == "FAILED" and r.outputs["decision_synthesis"]["error"]["code"] == "INTERNAL_ERROR"
+    assert r.events[-1]["message_type"] == "DECISION_SYNTHESIS_COMPLETED" and r.events[-1]["status"] == "FAILED"
+
+
+def test_unexpected_exception_in_risk_analyst_yields_failed_result():
+    r = AIOrchestrator(ExplodingAdapter(RoutingClient(), {"risk_analyst"})).run_risk_analysis(_risk_approved(), {}, {})
+    assert r.outcome == "FAILED" and r.events[0]["status"] == "FAILED"
+
+
+def test_invalid_agent_input_is_reported_as_input_out_of_contract(monkeypatch):
+    import swingpilot.ai.orchestrator as om
+
+    def bad_input(doc):
+        raise om.AgentContractError("entrada inválida")
+    monkeypatch.setattr(om, "validate_agent_input", bad_input)
+    c = RoutingClient(**SYNTH)
+    r = orch(c).run_cycle(*make_cycle())
+    assert r.outcome == "FAILED" and c.calls == []
+    assert {o["error"]["code"] for o in r.outputs.values()} == {"INPUT_OUT_OF_CONTRACT"}
+
+
+# Hallazgo 4: contexto filtrado a los campos de api_contracts.md §3.1 y §3.4
+def test_extra_context_fields_are_not_forwarded():
+    c = RoutingClient(**SYNTH)
+    req, p2 = make_cycle()
+    req = new_message(source="trading_engine", destination="ai_orchestrator",
+                      message_type="ANALYSIS_REQUESTED", data_timestamp_utc=TS, timeframe="H4",
+                      correlation_id=req["correlation_id"],
+                      payload={"market_context": {"asset": "BTC/USDT", "ohlcv": {}, "indicators": {},
+                                                  "timeframes": ["H4"], "data_source": "binance",
+                                                  "balances": {"USDT": 1000}, "orders": ["x"]},
+                               "macro_context": {"news_sources": [], "macro_data": {}, "time_window": {},
+                                                 "portfolio": {"BTC": 1}},
+                               "risk_limits": {"max": 0.015}})
+    orch(c).run_cycle(req, p2)
+    ctx = {a: inp["context"] for a, _, inp in c.calls}
+    assert set(ctx["market_analyst"]) == {"asset", "ohlcv", "indicators", "timeframes", "data_source"}
+    assert set(ctx["macro_analyst"]) == {"news_sources", "macro_data", "time_window"}
+    blob = json.dumps([inp for _, _, inp in c.calls])
+    assert "balances" not in blob and "portfolio" not in blob and "risk_limits" not in blob
+
+
+def test_non_dict_context_becomes_empty():
+    c = RoutingClient(**SYNTH)
+    req, p2 = make_cycle()
+    req = new_message(source="trading_engine", destination="ai_orchestrator",
+                      message_type="ANALYSIS_REQUESTED", data_timestamp_utc=TS, timeframe="H4",
+                      correlation_id=req["correlation_id"],
+                      payload={"market_context": "texto libre", "macro_context": None})
+    orch(c).run_cycle(req, p2)
+    ctx = {a: inp["context"] for a, _, inp in c.calls}
+    assert ctx["market_analyst"] == {} and ctx["macro_analyst"] == {}
+
+
+# Hallazgo 5 (TC-AC-06): Synthesis recibe íntegras las limitaciones y los desacuerdos
+def test_synthesis_receives_limitations_and_disagreements_verbatim():
+    macro = {**BODIES["macro_analyst"], "status": "INSUFFICIENT_DATA", "missing_data": ["sin datos de CPI"]}
+    market = {**BODIES["market_analyst"], "trend_assessment": {"D1": "BULLISH", "H4": "BULLISH"}}
+    strat = {**BODIES["strategy_analyst"]}
+    strat["evaluations"] = [{**strat["evaluations"][0], "discard_reasons": ["tendencia agotada"],
+                             "weakening_conditions": ["divergencia RSI"]}]
+    c = RoutingClient(market_analyst=[market], macro_analyst=[macro], strategy_analyst=[strat], **SYNTH)
+    r = orch(c).run_cycle(*make_cycle())
+    synth_in = next(inp for a, _, inp in c.calls if a == "decision_synthesis")["context"]["inputs"]
+    assert synth_in["macro_analyst"]["status"] == "INSUFFICIENT_DATA"
+    assert synth_in["macro_analyst"]["missing_data"] == ["sin datos de CPI"]
+    assert synth_in["market_analyst"]["trend_assessment"] == {"D1": "BULLISH", "H4": "BULLISH"}
+    assert synth_in["strategy_analyst"]["evaluations"][0]["discard_reasons"] == ["tendencia agotada"]
+    for a in ("market_analyst", "macro_analyst", "strategy_analyst"):
+        assert synth_in[a] == r.outputs[a]  # sin resumir ni alterar
+
+
+# Hallazgo 6: casos sin prueba
+def test_no_setup_together_with_candidate_makes_no_calls():
+    c = RoutingClient(**SYNTH)
+    req, p2 = make_cycle(n_candidates=1, no_setup=True)
+    r = orch(c).run_cycle(req, p2)
+    assert r.outcome == "NOT_RUN" and r.reason == "NO_SETUP" and c.calls == []
+
+
+def test_cycle_deadline_is_shared_between_phase3_and_phase4():
+    clock = Clock()
+
+    class Slow(RoutingClient):
+        def _create(self, **kw):
+            with self.lock:
+                clock.t += 100.0  # cada analista consume 100 s del ciclo de 300 s
+            return super()._create(**kw)
+    c = Slow(**SYNTH)
+    o = AIOrchestrator(AIProviderAdapter(c, sleep=lambda s: None, clock=clock), clock=clock)
+    r = o.run_cycle(*make_cycle())
+    assert r.outcome == "FAILED" and r.reason == "AGENT_FAILURE:decision_synthesis"
+    assert r.outputs["decision_synthesis"]["error"]["code"] == "CYCLE_DEADLINE"
+    assert "decision_synthesis" not in c.agents_called()
+
+
+def test_synthesis_timeout_is_capped_by_remaining_cycle_time():
+    clock = Clock()
+
+    class Slow(RoutingClient):
+        def _create(self, **kw):
+            with self.lock:
+                clock.t += 80.0  # 3 × 80 = 240 s → quedan 60 s, cap 60
+            return super()._create(**kw)
+    c = Slow(**SYNTH)
+    AIOrchestrator(AIProviderAdapter(c, sleep=lambda s: None, clock=clock), clock=clock).run_cycle(*make_cycle())
+    synth_kw = next(kw for a, kw, _ in c.calls if a == "decision_synthesis")
+    assert synth_kw["timeout"] == pytest.approx(60.0)
+
+
+@pytest.mark.parametrize("pick,valid", [
+    (lambda ids: [], False),                                          # vacío
+    (lambda ids: ids[:2], False),                                     # falta uno
+    (lambda ids: ids + ["00000000-0000-4000-8000-000000000000"], False),  # uno ajeno
+    (lambda ids: list(reversed(ids)), True),                          # los tres, otro orden
+])
+def test_synthesis_must_cite_exactly_the_three_analyses(pick, valid):
+    c = RoutingClient(decision_synthesis=lambda inp: synthesis(
+        pick([v["analysis_id"] for v in inp["context"]["inputs"].values()])))
+    r = orch(c).run_cycle(*make_cycle())
+    if valid:
+        assert r.outcome == "COMPLETED"
+    else:
+        assert r.outcome == "FAILED"
+        assert r.outputs["decision_synthesis"]["error"]["code"] == "OUT_OF_CONTRACT"
+        assert r.outputs["decision_synthesis"]["model_id"] == "claude-sonnet-5-5"
+
+
+# QA ronda 2, menor 3 (TC-AC-06, lado salida): limitaciones de la Fase 3 propagadas de forma determinista
+def test_phase3_limitations_are_propagated_to_synthesis_output():
+    macro = {**BODIES["macro_analyst"], "status": "INSUFFICIENT_DATA", "missing_data": ["sin datos de CPI"]}
+    strat = {**BODIES["strategy_analyst"], "status": "INSUFFICIENT_DATA", "missing_data": []}
+    def synth_ignores(inp):  # el LLM omite las limitaciones
+        return {**default_synth(inp), "missing_data": ["volumen H1"]}
+    c = RoutingClient(macro_analyst=[macro], strategy_analyst=[strat], decision_synthesis=synth_ignores)
+    r = orch(c).run_cycle(*make_cycle())
+    md = r.outputs["decision_synthesis"]["missing_data"]
+    assert md == ["volumen H1", "macro_analyst: sin datos de CPI", "strategy_analyst: INSUFFICIENT_DATA"]
+    evt = next(e for e in r.events if e["message_type"] == "DECISION_SYNTHESIS_COMPLETED")
+    assert evt["payload"]["missing_data"] == md  # lo registrado es lo propagado
+
+
+def test_no_limitations_leaves_synthesis_missing_data_unchanged():
+    c = RoutingClient(**SYNTH)
+    r = orch(c).run_cycle(*make_cycle())
+    assert r.outputs["decision_synthesis"]["missing_data"] == []
+
+
+def test_propagation_does_not_duplicate_items():
+    macro = {**BODIES["macro_analyst"], "status": "INSUFFICIENT_DATA", "missing_data": ["sin CPI"]}
+    def synth_already(inp):
+        return {**default_synth(inp), "missing_data": ["macro_analyst: sin CPI"]}
+    c = RoutingClient(macro_analyst=[macro], decision_synthesis=synth_already)
+    r = orch(c).run_cycle(*make_cycle())
+    assert r.outputs["decision_synthesis"]["missing_data"] == ["macro_analyst: sin CPI"]

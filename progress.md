@@ -801,3 +801,67 @@
 **Límites conocidos:** solo se detecta la credencial literal; tracebacks con variables locales pueden mostrar la clave; falta el punto de arranque de la aplicación que conecte vault, EventStore, orquestador y comprobaciones de arranque.
 
 **Siguiente acción:** prueba de humo real contra la API de Anthropic (requiere `ANTHROPIC_API_KEY` en `.env` con permisos 600).
+
+---
+
+## 2026-11-19 | FASE 2 | Prueba de humo contra la API real de Anthropic | COMPLETADO
+
+**Actividad:** con autorización del propietario («dale, escríbelo y córrelo») y `.env` en 600, se escribió y ejecutó `tests/integration/test_anthropic_live.py` (solo corre con `RUN_ANTHROPIC_LIVE=1`). Modo RESEARCH, datos sintéticos, sin Binance ni órdenes. Resultados: (paso 2) Haiku 5.5 y Sonnet 5.5 aceptan la petición tal como la arma el adaptador y devuelven el ID exacto del modelo; (pasos 3-4) los esquemas de los 5 agentes funcionan como salida estructurada; ciclo completo con E5-E8 y E11, cadena completa de 10 eventos sin huérfanos; la instrucción inyectada en una noticia se trató como contenido no fiable. Los agentes respondieron INSUFFICIENT_DATA y la síntesis INSUFFICIENT_INFO, coherente con solo dos velas H4 sintéticas.
+
+**Costo:** $0.026997 USD, registrado en `var/ai_budget.db` (nuevo directorio local, ignorado por git).
+
+**Estado:** FEAT-004 y FEAT-005 pasan a READY_FOR_REVIEW (no DONE: requieren revisión independiente, AGENTS.md). Observación para calibración de prompts: el Macro Analyst listó como «evento» una nota de método y marcó como FACT un ítem SPECULATION.
+
+**Archivos:** `tests/integration/test_anthropic_live.py`, `tests/integration/results/anthropic_live_2026-11-19.json`, `.gitignore` (`var/`), `feature_list.json` (v0.11.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** prueba real → 3 passed (35 s); `.venv/bin/pytest -q tests` → 181 passed, 3 skipped.
+
+**Siguiente acción:** revisión independiente de FEAT-004/005 (QA o propietario); calibración de prompts y `effort`; decidir el cierre de IMPL-1 e inicio de IMPL-2.
+
+---
+
+## 2026-11-19 | FASE 2 | Revisión QA independiente de FEAT-004/005 | COMPLETADO
+
+**Actividad:** a petición del propietario se lanzó un QA Agent independiente (sub-agente `sonnet`, contexto: solo contrato v1.4, código, pruebas y salida bruta de la prueba live; sin historial ni conclusiones del implementador). Veredicto: FEAT-004 y FEAT-005 **APROBADAS CON OBSERVACIONES**, sin hallazgos bloqueantes. 6 hallazgos MENORES registrados en `feature_list.json` (`qa_review`): falta de test de model_id efectivo distinto del pedido; excepción en `_run_agent` sin CycleResult FAILED; carrera can_call/record en paralelo; contexto de mercado/macro sin filtrar; cobertura parcial de TC-AC-06; casos sin prueba (NO_SETUP + candidato, límite de 5 min compartido, input_analysis_ids vacío).
+
+**Pruebas ejecutadas por QA:** `.venv/bin/pytest -q tests/unit` → 181 passed.
+
+**Estado:** FEAT-004/005 siguen READY_FOR_REVIEW hasta que el propietario decida corregir los menores antes o pasarlas a DONE con observaciones.
+
+**Sub-agentes en la sesión:** 1 (QA, sonnet, ~83K tokens, ~1 min).
+
+---
+
+## 2026-11-19 | FASE 2 | Corrección de hallazgos QA, re-auditoría y FEAT-004/005 → DONE | COMPLETADO
+
+**Actividad:** por instrucción del propietario se corrigieron los 6 hallazgos de la QA ronda 1, con pruebas que fallan si se revierten: (1) `model_id` = modelo de la respuesta sin sustitución; (2) excepciones dentro de un agente → salida ERROR con evento FAILED y ciclo FAILED; (3) tope de $5 duro y atómico mediante reservas del costo máximo por llamada bajo candado (`AIBudget.try_reserve/settle/release`); (4) contexto de Market/Macro filtrado a los campos de api_contracts.md §3.1/§3.4; (5) prueba de que Synthesis recibe íntegras limitaciones y desacuerdos; (6) pruebas de NO_SETUP + candidato, límite de 5 min compartido entre Fase 3 y 4 y `input_analysis_ids` que debe citar exactamente los 3 análisis (prompt decision_synthesis 0.1.1). Prueba real re-ejecutada: 3 passed, $0.026509 (acumulado del mes $0.053506), Synthesis cita los 3 analysis_id.
+
+**Decisión de implementación:** el tope de $5 es duro: una llamada se rechaza si su costo máximo posible no cabe bajo el tope (con gasto cercano a $5 se rechaza Sonnet aunque el tope no se haya alcanzado).
+
+**Re-auditoría:** QA independiente nuevo (sonnet): 6/6 hallazgos CORREGIDOS; FEAT-004 y FEAT-005 **CONFORMES**. 3 menores nuevos registrados como pendientes (costo no registrado ante COST_UNMEASURABLE; cota de tokens con texto no ASCII; TC-AC-06 lado salida depende del prompt).
+
+**Aprobación:** FEAT-004 y FEAT-005 → **DONE** (instrucción del propietario condicionada a conformidad de QA; condición cumplida).
+
+**Archivos:** `src/swingpilot/ai/{provider,orchestrator,prompts,budget}.py`, `tests/unit/{test_ai_provider,test_orchestrator,test_ai_budget,test_credentials}.py`, `tests/integration/test_anthropic_live.py`, `tests/integration/results/anthropic_live_2026-11-19T2120Z.json` (renombrado) y `…T2131Z.json`, `feature_list.json` (v0.13.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests` → 205 passed, 3 skipped; prueba real → 3 passed.
+
+**Sub-agentes en la sesión:** 2 (QA ronda 1 y ronda 2, sonnet; ~176K tokens en total, ~2 min).
+
+**Siguiente acción:** atender los 3 menores; cerrar FEAT-001/002/003/006/007 (hoy PARTIAL por dependencias de fases posteriores) o acordar con el propietario el criterio de salida de IMPL-1.
+
+---
+
+## 2026-11-19 | FASE 2 | Corrección de los 3 menores de la QA ronda 2 | COMPLETADO
+
+**Actividad:** a petición del propietario: (1) ante `COST_UNMEASURABLE` se registra en `ai_usage` el costo máximo reservado de la llamada, marcado `estimated=1` (nueva columna con migración automática de bases previas; `var/ai_budget.db` se migra al abrirse), para que una llamada cobrada nunca quede fuera del tope; (2) la cota de tokens de entrada de la reserva se calcula por byte UTF-8 (+2000), válida para texto no ASCII; (3) el AI Orchestrator añade de forma determinista al `missing_data` de la síntesis los datos faltantes declarados por la Fase 3 (y un INSUFFICIENT_DATA sin detalle), con el agente de origen y sin duplicados.
+
+**Decisión de implementación:** la propagación de (3) modifica lo que registra la síntesis respecto de la respuesta literal del LLM: solo añade elementos que la Fase 3 declaró; no inventa ni elimina.
+
+**Archivos:** `src/swingpilot/ai/{budget,provider,orchestrator}.py`, `tests/unit/{test_ai_budget,test_orchestrator}.py`, `feature_list.json` (v0.14.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests` → 218 passed, 3 skipped. Prueba live no re-ejecutada (los cambios no alteran la petición a la API ni los prompts).
+
+**Estado:** FEAT-004/005 siguen DONE; los cambios posteriores a la aprobación están registrados en `post_approval_changes` con re-auditoría PENDING.
+
+**Siguiente acción:** re-auditoría QA de los cambios (opcional, recomendada); acordar criterio de salida de IMPL-1.

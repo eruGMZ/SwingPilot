@@ -42,6 +42,14 @@ EVENT_FOR_AGENT = {
     "risk_analyst": "RISK_ANALYSIS_COMPLETED",
 }
 ALLOWED_EMITS = frozenset(EVENT_FOR_AGENT.values())
+# Campos de `context` por agente según api_contracts.md §3.1 y §3.4; el resto se descarta
+# (contexto mínimo, REQ-G-051, TC-AC-01).
+CONTEXT_FIELDS = {
+    "market_analyst": ("asset", "timeframes", "ohlcv", "indicators", "data_source"),
+    "macro_analyst": ("news_sources", "macro_data", "time_window"),
+}
+_ENVELOPE_KEYS = ("analysis_id", "correlation_id", "causation_id", "schema_version", "agent",
+                  "model_id", "prompt_version", "data_timestamp_utc", "analysis_timestamp_utc")
 # Destino según api_contracts.md §2 (consumidor principal).
 DESTINATION = {"RISK_ANALYSIS_COMPLETED": "telegram_bot"}
 
@@ -58,6 +66,26 @@ class CycleResult:
     def decision(self) -> str | None:
         s = self.outputs.get("decision_synthesis")
         return s.get("decision") if s and s["status"] != "ERROR" else None
+
+
+def _propagate_limitations(synth: dict, outs: dict) -> dict:
+    """REQ-G-056 («identifica datos faltantes»; «no oculta incertidumbre»), TC-AC-06:
+    los datos faltantes declarados por la Fase 3 se añaden de forma determinista al
+    `missing_data` de la síntesis (con el agente de origen), sin depender del prompt. Un
+    análisis de la Fase 3 en INSUFFICIENT_DATA sin datos faltantes declarados queda
+    registrado igualmente. No se inventa nada: solo se copia lo que la Fase 3 declaró."""
+    declared = []
+    for a in PHASE3_AGENTS:
+        items = [f"{a}: {m}" for m in outs[a].get("missing_data", [])]
+        if outs[a]["status"] == "INSUFFICIENT_DATA" and not items:
+            items = [f"{a}: INSUFFICIENT_DATA"]
+        declared += items
+    merged = list(dict.fromkeys([*synth["missing_data"], *declared]))
+    return {**synth, "missing_data": merged}
+
+
+def _pick(ctx, fields) -> dict:
+    return {k: ctx[k] for k in fields if k in ctx} if isinstance(ctx, dict) else {}
 
 
 def _now() -> str:
@@ -89,6 +117,32 @@ class AIOrchestrator:
 
     def _run_agent(self, agent: str, cause: dict, data_ts: str, context: dict,
                    deadline: float) -> dict:
+        """Nunca lanza por fallos del agente: cualquier excepción se convierte en una salida
+        ERROR registrable (Fail-Closed, REQ-G-034)."""
+        try:
+            return self._run_agent_unsafe(agent, cause, data_ts, context, deadline)
+        except Exception as e:  # noqa: BLE001 — se registra como fallo del agente
+            code = "INPUT_OUT_OF_CONTRACT" if isinstance(e, AgentContractError) else "INTERNAL_ERROR"
+            return self._error_output(agent, cause, data_ts, None,
+                                      {"code": code, "message": f"{type(e).__name__}: {e}"})
+
+    def _envelope(self, agent: str, cause: dict, data_ts: str, model_id: str | None) -> dict:
+        return {"analysis_id": str(uuid.uuid4()), "correlation_id": cause["correlation_id"],
+                "causation_id": cause["message_id"], "schema_version": AGENT_CONTRACT_VERSION,
+                "agent": agent, "model_id": model_id, "prompt_version": PROMPTS[agent].version,
+                "data_timestamp_utc": data_ts, "analysis_timestamp_utc": _now()}
+
+    def _error_output(self, agent: str, cause: dict, data_ts: str, model_id: str | None,
+                      error: dict, envelope: dict | None = None) -> dict:
+        out = {**(envelope or self._envelope(agent, cause, data_ts, model_id)),
+               "sources": [], "missing_data": [], "status": "ERROR",
+               "error": {"code": error.get("code") or "UNKNOWN",
+                         "message": self._redact(error.get("message") or "")}}
+        validate_agent_output(agent, out)
+        return out
+
+    def _run_agent_unsafe(self, agent: str, cause: dict, data_ts: str, context: dict,
+                          deadline: float) -> dict:
         prompt = PROMPTS[agent]
         agent_input = {"correlation_id": cause["correlation_id"], "causation_id": cause["message_id"],
                        "schema_version": AGENT_CONTRACT_VERSION, "agent": agent,
@@ -97,10 +151,7 @@ class AIOrchestrator:
         call = self._adapter.call_agent(
             agent, system=prompt.text, user_content=json.dumps(agent_input, ensure_ascii=False),
             output_schema=body_schema(agent), deadline=deadline)
-        envelope = {"analysis_id": str(uuid.uuid4()), "correlation_id": cause["correlation_id"],
-                    "causation_id": cause["message_id"], "schema_version": AGENT_CONTRACT_VERSION,
-                    "agent": agent, "model_id": call.model_id, "prompt_version": prompt.version,
-                    "data_timestamp_utc": data_ts, "analysis_timestamp_utc": _now()}
+        envelope = self._envelope(agent, cause, data_ts, call.model_id)
         if call.ok:
             out = {**call.output, **envelope}  # el sobre determinista prevalece
             try:
@@ -108,11 +159,7 @@ class AIOrchestrator:
                 return out
             except AgentContractError as e:
                 call.error = {"code": "OUT_OF_CONTRACT", "message": str(e)}
-        out = {**envelope, "sources": [], "missing_data": [], "status": "ERROR",
-               "error": call.error or {"code": "UNKNOWN", "message": ""}}
-        out["error"] = {**out["error"], "message": self._redact(out["error"]["message"])}
-        validate_agent_output(agent, out)
-        return out
+        return self._error_output(agent, cause, data_ts, call.model_id, call.error or {}, envelope)
 
     def _emit_agent(self, res: CycleResult, agent: str, out: dict, cause: dict) -> dict:
         etype = EVENT_FOR_AGENT[agent]
@@ -152,8 +199,8 @@ class AIOrchestrator:
         data_ts = request["data_timestamp_utc"]
         payload = request["payload"]
         contexts = {
-            "market_analyst": dict(payload.get("market_context", {})),
-            "macro_analyst": dict(payload.get("macro_context", {})),
+            "market_analyst": _pick(payload.get("market_context"), CONTEXT_FIELDS["market_analyst"]),
+            "macro_analyst": _pick(payload.get("macro_context"), CONTEXT_FIELDS["macro_analyst"]),
             "strategy_analyst": {"strategy_candidates": [candidate["payload"]]},
         }
         with ThreadPoolExecutor(max_workers=len(PHASE3_AGENTS)) as pool:
@@ -176,12 +223,15 @@ class AIOrchestrator:
                      "inputs": {a: outs[a] for a in PHASE3_AGENTS}}
         synth = self._run_agent("decision_synthesis", primary, data_ts, synth_ctx, deadline)
         given = {outs[a]["analysis_id"] for a in PHASE3_AGENTS}
-        if synth["status"] != "ERROR" and not set(synth["input_analysis_ids"]) <= given:
-            synth = {k: synth[k] for k in ("analysis_id", "correlation_id", "causation_id",
-                                            "schema_version", "agent", "model_id", "prompt_version",
-                                            "data_timestamp_utc", "analysis_timestamp_utc")} | {
-                "sources": [], "missing_data": [], "status": "ERROR",
-                "error": {"code": "OUT_OF_CONTRACT", "message": "input_analysis_ids no recibidos"}}
+        if synth["status"] != "ERROR":
+            synth = _propagate_limitations(synth, outs)
+        # REQ-G-056/073: integra los tres análisis de la Fase 3 → los cita todos y solo esos.
+        if synth["status"] != "ERROR" and set(synth["input_analysis_ids"]) != given:
+            synth = self._error_output(
+                "decision_synthesis", primary, data_ts, synth["model_id"],
+                {"code": "OUT_OF_CONTRACT",
+                 "message": "input_analysis_ids debe citar exactamente los 3 análisis de la Fase 3"},
+                {k: synth[k] for k in _ENVELOPE_KEYS})
         res.outputs["decision_synthesis"] = synth
         self._emit_agent(res, "decision_synthesis", synth, primary)
         if synth["status"] == "ERROR":

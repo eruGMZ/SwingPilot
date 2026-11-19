@@ -231,3 +231,20 @@ def test_no_api_keys_referenced_in_src():
                 if re.search(r"sk-ant-[A-Za-z0-9]|\d{8,10}:[A-Za-z0-9_-]{30,}|['\"][A-Za-z0-9]{64}['\"]",
                              p.read_text(encoding="utf-8"))]
     assert names == [] and literals == []
+
+
+# QA ronda 1, hallazgo 1: model_id = modelo de la respuesta aunque difiera del pedido
+def test_model_id_records_response_model_even_if_different_from_requested():
+    c = FakeClient(resp(model="claude-haiku-5-5-variante-servidor"))
+    a, _ = adapter(c)
+    r = call(a)
+    assert c.calls[0]["model"] == "claude-haiku-5-5"
+    assert r.model_id == "claude-haiku-5-5-variante-servidor"
+    assert r.usage[0]["model"] == "claude-haiku-5-5-variante-servidor"
+
+
+def test_missing_response_model_is_not_replaced_by_requested():
+    r0 = resp()
+    del r0.model
+    a, _ = adapter(FakeClient(r0))
+    assert call(a).model_id is None

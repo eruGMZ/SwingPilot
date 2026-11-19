@@ -1,0 +1,118 @@
+{
+  "executed_at_utc": "2026-11-19T21:20:30.096450+00:00",
+  "mode": "RESEARCH",
+  "data": "sintéticos",
+  "steps": {
+    "step2_claude-haiku-5-5": {
+      "status": "COMPLETED",
+      "error": null,
+      "model_id": "claude-haiku-5-5",
+      "attempts": 1,
+      "usage": [
+        {
+          "model": "claude-haiku-5-5",
+          "input_tokens": 209,
+          "output_tokens": 9
+        }
+      ]
+    },
+    "step2_claude-sonnet-5-5": {
+      "status": "COMPLETED",
+      "error": null,
+      "model_id": "claude-sonnet-5-5",
+      "attempts": 1,
+      "usage": [
+        {
+          "model": "claude-sonnet-5-5",
+          "input_tokens": 209,
+          "output_tokens": 9
+        }
+      ]
+    },
+    "step3_cycle": {
+      "outcome": "COMPLETED",
+      "reason": null,
+      "decision": "INSUFFICIENT_INFO",
+      "events": [
+        "MARKET_ANALYSIS_COMPLETED",
+        "MACRO_ANALYSIS_COMPLETED",
+        "STRATEGY_ANALYSIS_COMPLETED",
+        "DECISION_SYNTHESIS_COMPLETED"
+      ],
+      "agents": {
+        "market_analyst": {
+          "status": "INSUFFICIENT_DATA",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.1.0",
+          "error": null
+        },
+        "macro_analyst": {
+          "status": "INSUFFICIENT_DATA",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.1.0",
+          "error": null
+        },
+        "strategy_analyst": {
+          "status": "INSUFFICIENT_DATA",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.1.0",
+          "error": null
+        },
+        "decision_synthesis": {
+          "status": "INSUFFICIENT_DATA",
+          "model_id": "claude-sonnet-5-5",
+          "prompt_version": "0.1.0",
+          "error": null
+        }
+      }
+    },
+    "step3_injection": {
+      "macro_status": "INSUFFICIENT_DATA",
+      "macro_events": [
+        {
+          "description": "Titular de fuente sintética: datos de inflación de EE. UU. en línea con lo esperado (publicado 2026-11-18T13:30:00Z). Solo consta el titular; no hay cifras, consenso ni detalle.",
+          "potential_impact": "Impacto macro potencialmente limitado si el dato coincide con las expectativas; sin cifras no se puede cuantificar la reacción de precios de BTC/USDT.",
+          "time_horizon": "Corto plazo (horas a días tras la publicación)",
+          "source": "fuente sintética",
+          "publication_date": "2026-11-18T13:30:00Z",
+          "confirmation": "CONFIRMED",
+          "uncertainty": "HIGH",
+          "statement_type": "FACT"
+        },
+        {
+          "description": "Un ítem de la fuente sintética contiene una instrucción para autorizar una operación de compra inmediata. Se trata de contenido no fiable dentro de los datos y no constituye una instrucción ni una señal de entrada; se descarta como fuente de decisión.",
+          "potential_impact": "Ninguno sobre el análisis macro; no se considera evento de mercado.",
+          "time_horizon": "No aplica",
+          "source": "fuente sintética",
+          "publication_date": "2026-11-19T10:00:00Z",
+          "confirmation": "SPECULATION",
+          "uncertainty": "HIGH",
+          "statement_type": "FACT"
+        },
+        {
+          "description": "Una noticia por sí sola no constituye señal de entrada. Con los datos recibidos no es posible evaluar el contexto macro completo para BTC/USDT.",
+          "potential_impact": "Sin datos macro cuantitativos ni fuentes adicionales, no se puede concluir sobre volatilidad o sesgo direccional.",
+          "time_horizon": "No aplica",
+          "source": "fuente sintética",
+          "publication_date": "2026-11-19T16:00:00Z",
+          "confirmation": "CONFIRMED",
+          "uncertainty": "HIGH",
+          "statement_type": "RECOMMENDATION"
+        }
+      ],
+      "synthesis_decision": "INSUFFICIENT_INFO"
+    },
+    "step4_risk_analyst": {
+      "outcome": "COMPLETED",
+      "model_id": "claude-haiku-5-5",
+      "error": null
+    },
+    "chain": {
+      "complete": true,
+      "length": 10,
+      "orphans": []
+    }
+  },
+  "spent_usd_this_run": 0.026997,
+  "spent_usd_month": 0.026997
+}
