@@ -1,8 +1,8 @@
-# SwingPilot — Requirements Contract v1.3
+# SwingPilot — Requirements Contract v1.4
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.3 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012) y v1.3 aplica CR-013 (DEC-013), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
+**Estado:** v1.4 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013) y v1.4 aplica CR-015 (DEC-014), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013 y CR-015. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
 **Autoridad documental aplicada:** DEC-001 (resoluciones de conflictos CONF-001, CONF-002)
 
 ---
@@ -566,7 +566,7 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 - Los registros históricos no se sobrescriben para aparentar uso de información retrospectiva
 
 ### REQ-G-063
-**Descripción:** Catálogo inicial de 16 tipos de eventos del sistema (ampliado por CR-002..CR-006; catálogo vigente en `api_contracts.md` §2, 30 tipos): ANALYSIS_REQUESTED, MARKET_ANALYSIS_COMPLETED, MACRO_ANALYSIS_COMPLETED, ML_INFERENCE_COMPLETED, REGIME_CLASSIFIED, STRATEGY_CANDIDATE, DECISION_SYNTHESIS_COMPLETED, TRADE_PROPOSAL, RISK_APPROVED, RISK_REJECTED, RISK_REQUIRES_REVIEW, ORDER_SUBMITTED, ORDER_PARTIALLY_FILLED, ORDER_FILLED, ORDER_CANCELLED, ORDER_REJECTED. Los nombres definitivos se establecen en el catálogo del sistema.  
+**Descripción:** Catálogo inicial de 16 tipos de eventos del sistema (ampliado por CR-002..CR-006; catálogo vigente en `api_contracts.md` §2, 31 tipos; CR-015 añade STRATEGY_ANALYSIS_COMPLETED): ANALYSIS_REQUESTED, MARKET_ANALYSIS_COMPLETED, MACRO_ANALYSIS_COMPLETED, ML_INFERENCE_COMPLETED, REGIME_CLASSIFIED, STRATEGY_CANDIDATE, DECISION_SYNTHESIS_COMPLETED, TRADE_PROPOSAL, RISK_APPROVED, RISK_REJECTED, RISK_REQUIRES_REVIEW, ORDER_SUBMITTED, ORDER_PARTIALLY_FILLED, ORDER_FILLED, ORDER_CANCELLED, ORDER_REJECTED. Los nombres definitivos se establecen en el catálogo del sistema.  
 **Fuentes:** REQ-3021  
 **Tipo:** INTERFACE  
 **Prioridad:** HIGH

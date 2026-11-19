@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "0.2.0",
+    "version": "0.8.0",
     "phase": "FASE 2",
     "status": "IMPL-1_REGISTRADA",
-    "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.3. Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
+    "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.4. Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
     "last_updated": "2026-11-19",
     "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-2..IMPL-6 se registran al iniciarlas."
   },
@@ -27,10 +27,27 @@
         "TC-AC-02",
         "TC-AC-03"
       ],
-      "implementation_paths": [],
-      "test_paths": [],
-      "status": "NOT_STARTED",
-      "evidence": null
+      "implementation_paths": [
+        "src/swingpilot/contracts/message.py"
+      ],
+      "test_paths": [
+        "tests/unit/test_message_contract.py"
+      ],
+      "status": "PARTIAL",
+      "evidence": {
+        "command": ".venv/bin/pytest -q tests/unit",
+        "result": "128 passed",
+        "executed_at": "2026-11-19",
+        "covered": [
+          "Mensaje universal validado por JSON Schema (13 campos, UUID v4, UTC, enums, asset BTC/USDT)",
+          "Mensaje sin correlation_id rechazado (TC-MSG-001)",
+          "Cadena correlation_id/causation_id (TC-MSG-003, TC-AC-03)",
+          "Catálogo de 31 eventos (CR-015) = api_contracts.md §2"
+        ],
+        "not_covered": [
+          "Contratos de entrada/salida versionados de cada agente (api_contracts.md §3): se implementan con el Adapter/Orchestrator (FEAT-004/005)"
+        ]
+      }
     },
     {
       "id": "FEAT-002",
@@ -47,10 +64,24 @@
         "TC-MSG-002",
         "TC-AC-15"
       ],
-      "implementation_paths": [],
-      "test_paths": [],
-      "status": "NOT_STARTED",
-      "evidence": null
+      "implementation_paths": [
+        "src/swingpilot/contracts/versioning.py"
+      ],
+      "test_paths": [
+        "tests/unit/test_message_contract.py"
+      ],
+      "status": "PARTIAL",
+      "evidence": {
+        "command": ".venv/bin/pytest -q tests/unit",
+        "result": "128 passed",
+        "executed_at": "2026-11-19",
+        "covered": [
+          "Versión mayor incompatible rechazada; menor/patch aceptado; semver mal formado rechazado (TC-MSG-002)"
+        ],
+        "not_covered": [
+          "Versionado de prompts y modelos (TC-AC-15 completo; depende de FEAT-004)"
+        ]
+      }
     },
     {
       "id": "FEAT-003",
@@ -69,11 +100,31 @@
         "TC-MSG-003",
         "TC-AC-04"
       ],
-      "implementation_paths": [],
-      "test_paths": [],
-      "status": "NOT_STARTED",
-      "evidence": null,
-      "notes": "Catálogo vigente: api_contracts.md §2 (30 tipos). Esquema del evento de señal de salida: PENDING de FASE 2 (requiere decisión del propietario si el contrato no lo define)."
+      "implementation_paths": [
+        "src/swingpilot/audit/event_store.py"
+      ],
+      "test_paths": [
+        "tests/unit/test_event_store.py",
+        "tests/unit/test_message_contract.py"
+      ],
+      "status": "PARTIAL",
+      "evidence": {
+        "command": ".venv/bin/pytest -q tests/unit",
+        "result": "128 passed",
+        "executed_at": "2026-11-19",
+        "covered": [
+          "Almacén append-only (SQLite audit_events); UPDATE/DELETE abortados por trigger (TC-SEC-004)",
+          "Reconstrucción ordenada por correlation_id con detección de huérfanos y origen único (TC-MSG-003)",
+          "Idempotencia; mismo message_id con contenido distinto rechazado; mensaje inválido no se guarda",
+          "Persistencia tras reabrir",
+          "Catálogo de eventos = api_contracts.md §2 (FEAT-001)"
+        ],
+        "not_covered": [
+          "TC-AC-04 completo: reconstrucción con modelo/prompt/versión de cada agente, propuesta, Risk Manager y órdenes; requiere FEAT-004/005 y fases posteriores",
+          "Protección frente a manipulación directa del archivo SQLite fuera de la aplicación (DROP TRIGGER); fuera del alcance de IMPL-1"
+        ]
+      },
+      "notes": "Catálogo vigente: api_contracts.md §2 (31 tipos, CR-015). Esquema del evento de señal de salida: PENDING de FASE 2 (requiere decisión del propietario si el contrato no lo define)."
     },
     {
       "id": "FEAT-004",
@@ -95,10 +146,34 @@
         "TC-SEC-001",
         "TC-AC-02"
       ],
-      "implementation_paths": [],
-      "test_paths": [],
-      "status": "NOT_STARTED",
-      "evidence": null,
+      "implementation_paths": [
+        "src/swingpilot/ai/provider.py"
+      ],
+      "test_paths": [
+        "tests/unit/test_ai_provider.py"
+      ],
+      "status": "PARTIAL",
+      "evidence": {
+        "command": ".venv/bin/pytest -q tests/unit",
+        "result": "128 passed",
+        "executed_at": "2026-11-19",
+        "mode": "dobles de prueba (sin red ni API key)",
+        "covered": [
+          "Modelo exacto por agente (Haiku 5.5 x4, Sonnet 5.5 Decision Synthesis); model_id = modelo efectivo de la respuesta",
+          "Petición sin tools/tool_choice/fallbacks/betas/cache_control/thinking/sampling; output_config.format json_schema + effort explícito (medium)",
+          "Salida que no valida o stop_reason inesperado = fuera de contrato; 1 reintento y luego ERROR (REQ-G-034)",
+          "Errores transitorios (red, 429, 5xx) 1 reintento tras pausa; timeout -> TIMEOUT; errores no transitorios sin reintento",
+          "Refusal: ERROR AGENT_REFUSAL sin reintento ni cambio de modelo",
+          "Límite de ciclo de 5 min: sin llamada si vencido, sin reintento pasado el límite, timeout acotado al tiempo restante",
+          "Cliente por defecto con max_retries=0 y timeout 60 s; usage registrado por intento",
+          "TC-SEC-001 sobre src/: sin referencias a claves"
+        ],
+        "not_covered": [
+          "Verificación contra la API real de Anthropic (requiere ANTHROPIC_API_KEY): que Haiku 5.5/Sonnet 5.5 acepten output_config.effort + format json_schema tal como se envía",
+          "Esquemas concretos de cada agente (api_contracts.md §3) y versionado de prompts (FEAT-005 / TC-AC-02 completo)",
+          "Calibración de effort y costo real por ciclo (PENDING FASE 2)"
+        ]
+      },
       "notes": "Calibración de effort por agente: PENDING (modo de prueba FASE 2)."
     },
     {
@@ -115,10 +190,38 @@
       "test_cases": [
         "TC-AC-01"
       ],
-      "implementation_paths": [],
-      "test_paths": [],
-      "status": "NOT_STARTED",
-      "evidence": null,
+      "implementation_paths": [
+        "src/swingpilot/ai/orchestrator.py",
+        "src/swingpilot/ai/prompts.py",
+        "src/swingpilot/contracts/agents.py"
+      ],
+      "test_paths": [
+        "tests/unit/test_orchestrator.py"
+      ],
+      "status": "PARTIAL",
+      "evidence": {
+        "command": ".venv/bin/pytest -q tests/unit",
+        "result": "128 passed",
+        "executed_at": "2026-11-19",
+        "mode": "dobles de prueba (cliente falso con el adaptador real; sin red ni API key)",
+        "covered": [
+          "TC-AC-01: Market/Macro/Strategy Analyst en paralelo (Fase 3) y Decision Synthesis (Fase 4); ningún agente invoca a otro; NO_SETUP, sin candidato o 2+ candidatos = cero llamadas",
+          "Contratos de entrada/salida de los 5 agentes (api_contracts.md §3) con sobre determinista fijado por el Orchestrator; versión desconocida rechazada (TC-AC-02)",
+          "Contexto mínimo por agente; Decision Synthesis no recibe al Risk Analyst; sin herramientas ni credenciales (TC-AI-001/002, TC-SEC-002)",
+          "Fallo persistente, fuera de contrato o refusal de cualquier agente = ciclo sin propuesta y sin síntesis (TC-AI-003/004)",
+          "Eventos con correlation/causation coherentes y cadena completa en EventStore (TC-MSG-003)",
+          "Texto con 'orden' no genera órdenes ni TRADE_PROPOSAL hacia Risk Manager (TC-AC-05 a); señales en conflicto e incertidumbre conservadas (TC-AC-06 parcial)",
+          "Risk Analyst solo tras RISK_APPROVED, advisory_only obligatorio",
+          "Prompts versionados (0.1.0) registrados en prompt_version",
+          "Hook precheck antes de Fase 3 (lo usará FEAT-006)",
+          "E7 STRATEGY_ANALYSIS_COMPLETED emitido (CR-015; CONF-007 resuelta)"
+        ],
+        "not_covered": [
+          "TC-SEC-003 completo: comportamiento real del modelo ante prompt injection (requiere API real)",
+          "Prompts 0.1.0 son borrador sin calibrar; esquemas no probados contra structured outputs reales",
+          "Normalización de TRADE_PROPOSAL al contrato del Risk Manager (§4.1): IMPL-3/4"
+        ]
+      },
       "notes": "Sin lógica operativa de trading fuera de lo definido en el contrato; los motores deterministas quedan fuera de IMPL-1."
     },
     {
@@ -136,10 +239,35 @@
       "test_cases": [
         "TC-AC-14"
       ],
-      "implementation_paths": [],
-      "test_paths": [],
-      "status": "NOT_STARTED",
-      "evidence": null,
+      "implementation_paths": [
+        "src/swingpilot/ai/budget.py",
+        "src/swingpilot/ai/provider.py"
+      ],
+      "test_paths": [
+        "tests/unit/test_ai_budget.py"
+      ],
+      "status": "PARTIAL",
+      "evidence": {
+        "command": ".venv/bin/pytest -q tests/unit",
+        "result": "128 passed",
+        "executed_at": "2026-11-19",
+        "mode": "dobles de prueba",
+        "covered": [
+          "(1) Tope $5: sin llamadas antes del ciclo (EntryGate) ni a mitad de ciclo (adaptador)",
+          "(2) AI_BUDGET_WARNING a $4, una vez por mes calendario, persistente tras reinicio; registrado como evento (TC-AI-006 sin Telegram)",
+          "(3) EntryGate: posición abierta, 6 bloqueos de entrada, modo seguro, estado desconocido o no disponible = cero llamadas (TC-AI-007)",
+          "(5) usage y costo por llamada en tabla append-only; costo con precios DEC-009 (TC-AC-14)",
+          "Respuesta con modelo sin precio o usage incompleto = ERROR COST_UNMEASURABLE (Fail-Closed)",
+          "Mes calendario en America/Mexico_City (DEC-014 Q31)"
+        ],
+        "not_covered": [
+          "Envío del aviso por Telegram (fase posterior)",
+          "(4) Límite de gasto en la consola de Anthropic: configuración manual del propietario, PENDING",
+          "Llamadas que fallan sin respuesta (timeout, red) pueden facturarse y no se registran",
+          "Agentes en paralelo pueden superar ligeramente el tope de $5 en el ciclo en que se cruza",
+          "Precios verificados al 2026-11-03 (DEC-009); que la API devuelva model con el ID exacto se verifica en la prueba real"
+        ]
+      },
       "notes": "Aviso por Telegram depende del bot (fase posterior); en IMPL-1 se prueba el evento. Límite en consola Anthropic: PENDING."
     },
     {

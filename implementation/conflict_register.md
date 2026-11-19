@@ -106,3 +106,19 @@
 - **Severidad:** HIGH — afecta temporalidad de estrategias, ciclo de decisión, costo de IA y pruebas de datos.
 - **Estado:** RESUELTA — 2026-11-19 (DEC-013)
 - **Resolución (propietario):** opción B. Se mantiene el contrato: D1 contexto, H4 señal, H1 entrada. La propuesta de usar solo 1d se retira por haberse redactado sin revisar REQ-G-001/002. Fuente de datos y snapshot en DEC-013 / CR-013.
+
+---
+
+## Conflictos registrados en FASE 2
+
+### CONF-007
+
+- **Fecha de detección:** 2026-11-19 (detectado por el Orquestador de Desarrollo al implementar FEAT-005, AI Orchestrator)
+- **Documentos en conflicto:** `implementation/api_contracts.md` §2 (catálogo de 30 eventos) vs. `implementation/data_flow.md` §5 (cadena E1..E15) y REQ-G-061/062 (todo mensaje con tipo del catálogo; ciclo reconstruible por eventos)
+- **Sección doc1:** api_contracts.md §2: existen MARKET_ANALYSIS_COMPLETED y MACRO_ANALYSIS_COMPLETED, pero ningún tipo para la salida del Strategy Analyst.
+- **Sección doc2:** data_flow.md §5: «E7 análisis del Strategy Analyst (X, causation_id: E4)», sin nombre de evento; E8 (DECISION_SYNTHESIS_COMPLETED) lo cita como causa.
+- **Naturaleza del conflicto:** el flujo exige registrar el análisis del Strategy Analyst como evento de la cadena, pero el catálogo no define su tipo. Sin él, la salida del Strategy Analyst no queda en el registro de auditoría y la reconstrucción del ciclo (TC-AC-04) es incompleta. Añadir un tipo de evento modifica el contrato aprobado.
+- **Severidad:** MEDIUM — no afecta riesgo ni ejecución; afecta trazabilidad y auditoría.
+- **Estado:** RESUELTA — 2026-11-19 (DEC-014 Q30, CR-015 aplicada, contrato v1.4)
+- **Resolución (propietario):** se añade `STRATEGY_ANALYSIS_COMPLETED` al catálogo y se nombra E7. La mitigación provisional (salida validada pero no emitida como evento) se retiró del AI Orchestrator.
+- **Historial:** escalado el 2026-11-19; CR-015 (`harness/change_requests/CR-015_evento-analisis-strategy-analyst.md`) propuesta y aprobada el mismo día; añade `STRATEGY_ANALYSIS_COMPLETED` a api_contracts.md §2 y a data_flow.md §5 (E7).

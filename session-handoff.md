@@ -3,8 +3,14 @@
 ## Sesión 2026-11-19 (FASE 2) — AUTORIZADA
 
 - El propietario emitió "AUTORIZO INICIO DE FASE 2". feature_list.json poblada con FEAT-001..007 (IMPL-1), todas NOT_STARTED. Código: ninguno aún. G4..G7 PENDING.
-- Siguiente acción: implementar FEAT-001/002 (contrato universal + versionado) con pruebas en tests/unit/ y evidencia.
-- Pendiente: AGENTS.md aún marca FASE 2 BLOQUEADA; requiere CR para actualizarlo.
+- FEAT-001/002 implementadas parcialmente (39 tests pasan; .venv/bin/pytest -q tests/unit). AGENTS.md actualizado (CR-014).
+- FEAT-003 implementada parcialmente (EventStore SQLite append-only; 48 tests pasan).
+- FEAT-004 implementada con dobles (74 tests pasan); NO verificada contra la API real.
+- FEAT-005 implementada con dobles (96 tests pasan). CONF-007 ESCALADO (falta tipo de evento del Strategy Analyst).
+- CR-015 (PROPUESTA) redactada para CONF-007. FEAT-006 implementada con dobles (127 tests pasan).
+- CR-015 APLICADA (contrato v1.4, DEC-014); CONF-007 RESUELTA; presupuesto de IA en America/Mexico_City.
+- Pendiente del propietario: límite de gasto en consola Anthropic; zona horaria de otros cortes mensuales (al implementarlos).
+- Siguiente acción: FEAT-007 (aislamiento de credenciales); prueba de humo real (requiere ANTHROPIC_API_KEY en .env).
 - (Las secciones siguientes son del cierre anterior; su frase «FASE 2 BLOQUEADA» queda superada por esta autorización.)
 
 ## Cierre de sesión 2026-11-19 — siguiente acción

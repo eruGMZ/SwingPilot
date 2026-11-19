@@ -1,8 +1,8 @@
-# SwingPilot — API Contracts v1.3
+# SwingPilot — API Contracts v1.4
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.3 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012) y v1.3 aplica CR-013 (DEC-013), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.4 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013) y v1.4 aplica CR-015 (DEC-014), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013 y CR-015. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -71,6 +71,7 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
 | AUTHORIZATION_EXPIRED | Backend de Autorización | Telegram Bot / Audit | Autorización sin respuesta dentro de los 30 min; operación en AUTH_EXPIRED (REQ-G-039, CR-005) |
 | AI_BUDGET_WARNING | AI Orchestrator | Telegram Bot / Audit | Gasto mensual de IA alcanzó $4 (80% del tope de $5) (REQ-G-096, CR-006) |
 | PROTECTIVE_CLOSE_SUBMITTED | Execution Engine | Risk Manager / Telegram Bot / Audit | Venta a mercado por posición sin stop activo con el precio en o bajo el stop; pasa a MANUAL_REVIEW (REQ-G-031, CR-005) |
+| STRATEGY_ANALYSIS_COMPLETED | Strategy Analyst | AI Orchestrator | Evaluación de las estrategias candidatas (§3.6); consultiva, no modifica estrategias (REQ-G-054, CR-015) |
 
 **Identificador de cliente en órdenes (REQ-G-032, CR-003):** toda orden enviada a Binance (compra, venta, stop) incluye un identificador de cliente derivado de forma determinista del `correlation_id` y de la secuencia de la orden dentro del ciclo. Es la clave de idempotencia ante reintentos. No sustituye al `order_id` de Binance registrado en `trades.db`. Formato exacto: PENDING (FASE 2).
 

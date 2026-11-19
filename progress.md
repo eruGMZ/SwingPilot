@@ -677,3 +677,97 @@
 **Observación:** la tabla de fases de `AGENTS.md` aún dice FASE 2 «BLOQUEADA»; actualizarla requiere solicitud de cambio (precedente CR-010). No modificada.
 
 **Siguiente acción:** implementar FEAT-001/002 (contratos y validación) con pruebas en `tests/unit/`, registrando evidencia.
+
+---
+
+## 2026-11-19 | FASE 2 | FEAT-001/002 implementadas (parcial) y CR-014 aplicada | COMPLETADO
+
+**Actividad:** (1) CR-014 aplicada a petición explícita del propietario: `AGENTS.md` fila FASE 2 → «EN CURSO — autorizada (2026-11-19); IMPL-1 en desarrollo». (2) FEAT-001/002: contrato universal de mensajes con JSON Schema (`src/swingpilot/contracts/`), validación fail-closed, compatibilidad por versión mayor, construcción de cadenas correlation/causation, catálogo de 30 eventos verificado contra api_contracts.md. Entorno `.venv` con pytest y jsonschema (`requirements-dev.txt`).
+
+**Decisión de implementación (no del contrato):** versión inicial del esquema de mensaje `1.0.0`; receptor acepta solo la misma versión mayor (rechazo por defecto; escalación queda al llamador).
+
+**Archivos:** `AGENTS.md`, `harness/change_requests/CR-014_agents-estado-fase-2.md`, `src/swingpilot/**`, `tests/unit/test_message_contract.py`, `requirements-dev.txt`, `.gitignore`, `feature_list.json` (v0.3.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests/unit` → 39 passed.
+
+**Estado:** FEAT-001 y FEAT-002 en PARTIAL (no DONE): faltan los contratos de agentes (§3) y el versionado de prompts/modelos, que dependen de FEAT-004/005. G4 sigue PENDING.
+
+**Siguiente acción:** FEAT-003 (trazabilidad/almacén de eventos inmutable) o FEAT-004 (AI Provider Adapter).
+
+---
+
+## 2026-11-19 | FASE 2 | FEAT-003 implementada (parcial) | COMPLETADO
+
+**Actividad:** almacén de eventos de auditoría `EventStore` (`src/swingpilot/audit/`): SQLite append-only con triggers que prohíben UPDATE/DELETE, validación previa con el contrato universal, idempotencia por `message_id`, rechazo de contenido distinto con el mismo id, reconstrucción ordenada por `correlation_id` con detección de huérfanos y origen único.
+
+**Decisión de implementación (no del contrato):** SQLite para `audit_events` (misma tecnología de trades.db, architecture.md §5). No resuelve el pendiente «almacenamiento durable del estado», que sigue PENDING.
+
+**Archivos:** `src/swingpilot/audit/*`, `tests/unit/test_event_store.py`, `feature_list.json` (v0.4.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests/unit` → 48 passed.
+
+**Estado:** FEAT-003 PARTIAL: TC-AC-04 completo depende de FEAT-004/005; un DROP TRIGGER directo sobre el archivo no está cubierto. G4 PENDING.
+
+**Siguiente acción:** FEAT-004 (AI Provider Adapter).
+
+---
+
+## 2026-11-19 | FASE 2 | FEAT-004 implementada con dobles de prueba (parcial) | COMPLETADO
+
+**Actividad:** AI Provider Adapter (`src/swingpilot/ai/provider.py`) sobre el SDK `anthropic` 2.10: modelos exactos por agente (REQ-G-095), salida estructurada por esquema con validación local, sin herramientas/fallbacks/caching, rechazo = fallo del agente, un único reintento (SDK con max_retries=0, timeout 60 s, límite de ciclo 5 min; REQ-G-034), registro de `usage` por intento. Pruebas con un cliente falso y excepciones reales del SDK; ninguna llamada a la API.
+
+**Decisiones de implementación (no del contrato):** pausa de reintento 2 s; `max_tokens` 16000; `effort` = `medium` por agente (valor inicial de REQ-G-095); versión de `anthropic` sin fijar en requirements-dev.txt.
+
+**Archivos:** `src/swingpilot/ai/*`, `tests/unit/test_ai_provider.py`, `requirements-dev.txt`, `feature_list.json` (v0.5.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests/unit` → 74 passed.
+
+**Estado:** FEAT-004 PARTIAL. No verificado contra la API real (requiere API key del propietario en `.env`); no se usó ninguna clave.
+
+**Siguiente acción:** FEAT-005 (AI Orchestrator) o, con la API key, una prueba de humo real del adaptador.
+
+---
+
+## 2026-11-19 | FASE 2 | FEAT-005 implementada con dobles (parcial); CONF-007 escalado | COMPLETADO
+
+**Actividad:** AI Orchestrator (`src/swingpilot/ai/orchestrator.py`): Fase 3 en paralelo (Market, Macro, Strategy Analyst), Fase 4 (Decision Synthesis), Fase 5 consultiva (Risk Analyst tras RISK_APPROVED); cero llamadas sin exactamente un STRATEGY_CANDIDATE; Fail-Closed ante fallo de cualquier agente; eventos en EventStore. Contratos de los 5 agentes (`src/swingpilot/contracts/agents.py`, api_contracts.md §3). Prompts de sistema versionados 0.1.0 (`src/swingpilot/ai/prompts.py`), borrador derivado de REQ-G-052..056/059.
+
+**Decisiones de implementación (no del contrato):** el LLM produce solo el cuerpo del contrato; los campos deterministas de §3.0 los fija el Orchestrator (model_id = modelo efectivo). Payload de ANALYSIS_REQUESTED = {market_context, macro_context}. 2+ STRATEGY_CANDIDATE recibidos = sin llamadas (defensa; la regla es del Strategy Engine, CR-011). Synthesis que cita analysis_id no recibidos = fuera de contrato.
+
+**Conflicto:** CONF-007 registrado y ESCALADO: el catálogo de eventos no tiene tipo para el análisis del Strategy Analyst (data_flow.md §5, E7). Propuesta: CR para añadir `STRATEGY_ANALYSIS_COMPLETED`. Mitigación provisional: la salida se valida y se usa, pero no se emite como evento.
+
+**Archivos:** `src/swingpilot/ai/{orchestrator,prompts,__init__}.py`, `src/swingpilot/contracts/agents.py`, `tests/unit/test_orchestrator.py`, `implementation/conflict_register.md` (CONF-007), `feature_list.json` (v0.6.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests/unit` → 96 passed.
+
+**Siguiente acción:** decisión del propietario sobre CONF-007; FEAT-006 (control de costo) y FEAT-007 (aislamiento de credenciales).
+
+---
+
+## 2026-11-19 | FASE 2 | CR-015 redactada (PROPUESTA); FEAT-006 implementada (parcial) | COMPLETADO
+
+**Actividad:** (1) CR-015 redactada para CONF-007: añadir `STRATEGY_ANALYSIS_COMPLETED` al catálogo (api_contracts.md §2), nombrar E7 en data_flow.md §5, actualizar REQ-G-063; contrato v1.4. PROPUESTA, no aplicada. (2) FEAT-006 control de costo de IA (`src/swingpilot/ai/budget.py`): `AIBudget` (registro append-only de usage y costo con precios de DEC-009, tope $5, aviso $4 una vez por mes con evento AI_BUDGET_WARNING) y `EntryGate` (bloqueo previo a Fase 3 por posición abierta, bloqueos de entrada, modo seguro, estado desconocido o no disponible, o tope). El adaptador consulta el tope antes de cada intento y registra cada respuesta.
+
+**Decisiones de implementación (no del contrato):** tarifa alta de Haiku 5.5 (>100K tokens de entrada) aplicada a toda la llamada; un estado del Risk Manager desconocido bloquea; un modelo sin precio o usage incompleto = fallo del agente.
+
+**Pendientes para el propietario:** zona horaria del «mes calendario» (hoy parámetro, por defecto UTC; ¿America/Mexico_City?); límite de gasto en la consola de Anthropic (REQ-G-096 (4)); aprobación de CR-015.
+
+**Archivos:** `harness/change_requests/CR-015_evento-analisis-strategy-analyst.md` (nuevo), `implementation/conflict_register.md` (CONF-007 → CR-015), `src/swingpilot/ai/{budget,provider,__init__}.py`, `tests/unit/test_ai_budget.py`, `feature_list.json` (v0.7.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests/unit` → 127 passed.
+
+**Siguiente acción:** FEAT-007 (aislamiento de credenciales); decisiones del propietario arriba.
+
+---
+
+## 2026-11-19 | FASE 2 | CR-015 aplicada, DEC-014 registrada, CONF-007 resuelta, contrato v1.4 | COMPLETADO
+
+**Actividad:** El propietario aprobó CR-015 («CR-015: Aprobado. Aplica B.1–B.5») y fijó la zona horaria del presupuesto de IA en America/Mexico_City. Registrada DEC-014 (Q30: CR-015; Q31: zona horaria). Aplicado B.1–B.5: `STRATEGY_ANALYSIS_COMPLETED` en api_contracts.md §2 (31 tipos), E7 nombrado en data_flow.md §5, REQ-G-063 actualizado, los 5 documentos de `implementation/` pasan a v1.4. CONF-007 RESUELTA. Manifest 0.9.0 (FASE 2). Código: catálogo de eventos +1, el AI Orchestrator emite E7 (se retiró la mitigación provisional), `AIBudget` usa America/Mexico_City por defecto.
+
+**Archivos:** `docs/decisions/DEC-014_evento-strategy-analyst-zona-horaria.md` (nuevo), `harness/change_requests/CR-015_evento-analisis-strategy-analyst.md` (APLICADA), `implementation/*.md` (v1.4), `implementation/conflict_register.md`, `harness/manifest.json`, `src/swingpilot/contracts/message.py`, `src/swingpilot/ai/{orchestrator,budget}.py`, tests correspondientes, `feature_list.json` (v0.8.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests/unit` → 128 passed; validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
+
+**Nota:** la zona horaria de otros cortes mensuales (MonthlyBaseline, MONTHLY_TRADE_LIMIT_LOCK) sigue sin definir (PENDING para su implementación).
+
+**Siguiente acción:** FEAT-007 (aislamiento de credenciales y prohibiciones de agentes).
