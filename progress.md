@@ -663,3 +663,17 @@
 **Pendientes (siguen PENDING de FASE 2):** esquema del evento de señal de salida; nombres de motivos de NO_SETUP; reverificar el OCO contra el exchange real; tipo definitivo de la pierna TP; identificador de cliente de órdenes; almacenamiento durable del estado; servicios externos (vigilancia, IP); calibración de `effort` y costo real de IA; REQ-G-P08 (validación fiscal, diferido).
 
 **Siguiente acción autorizada:** esperar "AUTORIZO INICIO DE FASE 2". FASE 2 BLOQUEADA. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-19 | FASE 2 | INICIO AUTORIZADO; feature_list poblada para IMPL-1 | EN CURSO
+
+**Actividad:** El propietario emitió la frase exacta "AUTORIZO INICIO DE FASE 2". Se ejecutó el procedimiento de inicio (AGENTS.md, progress, handoff, gates, feature_list). Se pobló `feature_list.json` (v0.2.0) con FEAT-001..FEAT-007 de IMPL-1 (Fundamentos de integración, architecture.md §7), derivadas de REQ-G-050/051/058..064/090/091/095/096 y de TC-MSG, TC-SEC, TC-AC del test_plan. Todas NOT_STARTED, sin evidencia. G4..G7 siguen PENDING. No se creó código.
+
+**Archivos:** `feature_list.json`, `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** ninguna.
+
+**Observación:** la tabla de fases de `AGENTS.md` aún dice FASE 2 «BLOQUEADA»; actualizarla requiere solicitud de cambio (precedente CR-010). No modificada.
+
+**Siguiente acción:** implementar FEAT-001/002 (contratos y validación) con pruebas en `tests/unit/`, registrando evidencia.

@@ -1,5 +1,12 @@
 # session-handoff.md — SwingPilot Harness
 
+## Sesión 2026-11-19 (FASE 2) — AUTORIZADA
+
+- El propietario emitió "AUTORIZO INICIO DE FASE 2". feature_list.json poblada con FEAT-001..007 (IMPL-1), todas NOT_STARTED. Código: ninguno aún. G4..G7 PENDING.
+- Siguiente acción: implementar FEAT-001/002 (contrato universal + versionado) con pruebas en tests/unit/ y evidencia.
+- Pendiente: AGENTS.md aún marca FASE 2 BLOQUEADA; requiere CR para actualizarlo.
+- (Las secciones siguientes son del cierre anterior; su frase «FASE 2 BLOQUEADA» queda superada por esta autorización.)
+
 ## Cierre de sesión 2026-11-19 — siguiente acción
 
 - **G3 = PASS** (2026-11-18): el propietario aprobó el contrato técnico ("APRUEBO EL CONTRATO TÉCNICO v1.0"). Contrato v1.3 (CR-011..CR-013; 2026-11-19) en `implementation/`; pendientes de FASE 2: reverificar el OCO contra el exchange real, tipo de la pierna TP, esquema del evento de señal de salida, nombres de motivos de NO_SETUP.

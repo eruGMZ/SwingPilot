@@ -1,12 +1,167 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "0.1.0",
-    "phase": "FASE 0",
-    "status": "INITIALIZED_EMPTY",
-    "description": "Registro de criterios de aceptación de SwingPilot. Inicializado vacío en FASE 0. Las funcionalidades se registran en FASE 2 tras aprobación del contrato técnico.",
-    "last_updated": "2026-11-13",
-    "note": "No se inventan funcionalidades. Este archivo se poblará en FASE 2 a partir del contrato técnico aprobado."
+    "version": "0.2.0",
+    "phase": "FASE 2",
+    "status": "IMPL-1_REGISTRADA",
+    "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.3. Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
+    "last_updated": "2026-11-19",
+    "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-2..IMPL-6 se registran al iniciarlas."
   },
-  "features": []
+  "features": [
+    {
+      "id": "FEAT-001",
+      "title": "Contrato universal de mensajes y validación de esquema",
+      "implementation_phase": "IMPL-1 Fundamentos de integración (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-060",
+        "REQ-G-061"
+      ],
+      "acceptance_criteria": [
+        "Cada agente tiene contratos de entrada y salida versionados",
+        "Los mensajes tienen identificadores de correlación y causalidad",
+        "Un mensaje sin correlation_id es rechazado por validación de esquema"
+      ],
+      "test_cases": [
+        "TC-MSG-001",
+        "TC-AC-02",
+        "TC-AC-03"
+      ],
+      "implementation_paths": [],
+      "test_paths": [],
+      "status": "NOT_STARTED",
+      "evidence": null
+    },
+    {
+      "id": "FEAT-002",
+      "title": "Versionado y compatibilidad de contratos",
+      "implementation_phase": "IMPL-1 Fundamentos de integración (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-064"
+      ],
+      "acceptance_criteria": [
+        "Prompts, modelos, estrategias y contratos están versionados",
+        "Un mensaje con schema_version incompatible se rechaza o se escala"
+      ],
+      "test_cases": [
+        "TC-MSG-002",
+        "TC-AC-15"
+      ],
+      "implementation_paths": [],
+      "test_paths": [],
+      "status": "NOT_STARTED",
+      "evidence": null
+    },
+    {
+      "id": "FEAT-003",
+      "title": "Catálogo de eventos y trazabilidad por correlation_id/causation_id",
+      "implementation_phase": "IMPL-1 Fundamentos de integración (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-062",
+        "REQ-G-063"
+      ],
+      "acceptance_criteria": [
+        "Los resultados pueden reconstruirse históricamente",
+        "Los registros históricos no se sobrescriben",
+        "Todos los mensajes de una cadena comparten correlation_id"
+      ],
+      "test_cases": [
+        "TC-MSG-003",
+        "TC-AC-04"
+      ],
+      "implementation_paths": [],
+      "test_paths": [],
+      "status": "NOT_STARTED",
+      "evidence": null,
+      "notes": "Catálogo vigente: api_contracts.md §2 (30 tipos). Esquema del evento de señal de salida: PENDING de FASE 2 (requiere decisión del propietario si el contrato no lo define)."
+    },
+    {
+      "id": "FEAT-004",
+      "title": "AI Provider Adapter (Anthropic Messages API)",
+      "implementation_phase": "IMPL-1 Fundamentos de integración (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-090",
+        "REQ-G-091",
+        "REQ-G-095"
+      ],
+      "acceptance_criteria": [
+        "Cada agente usa el modelo asignado y lo registra en model_id",
+        "Ninguna llamada a un agente incluye herramientas",
+        "Una salida que no valida contra el esquema se trata como fuera de contrato",
+        "Un rechazo del modelo termina el ciclo sin propuesta y sin cambio de modelo",
+        "API key solo desde .env"
+      ],
+      "test_cases": [
+        "TC-SEC-001",
+        "TC-AC-02"
+      ],
+      "implementation_paths": [],
+      "test_paths": [],
+      "status": "NOT_STARTED",
+      "evidence": null,
+      "notes": "Calibración de effort por agente: PENDING (modo de prueba FASE 2)."
+    },
+    {
+      "id": "FEAT-005",
+      "title": "AI Orchestrator: coordinación, timeouts y errores",
+      "implementation_phase": "IMPL-1 Fundamentos de integración (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-050",
+        "REQ-G-051"
+      ],
+      "acceptance_criteria": [
+        "El Orchestrator coordina una solicitud y recibe respuestas estructuradas, validadas y auditables"
+      ],
+      "test_cases": [
+        "TC-AC-01"
+      ],
+      "implementation_paths": [],
+      "test_paths": [],
+      "status": "NOT_STARTED",
+      "evidence": null,
+      "notes": "Sin lógica operativa de trading fuera de lo definido en el contrato; los motores deterministas quedan fuera de IMPL-1."
+    },
+    {
+      "id": "FEAT-006",
+      "title": "Control y registro de costo de IA",
+      "implementation_phase": "IMPL-1 Fundamentos de integración (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-096"
+      ],
+      "acceptance_criteria": [
+        "Con gasto mensual de $4 el propietario recibe AI_BUDGET_WARNING",
+        "Con posición abierta o bloqueo de entradas activo no se realizan llamadas a LLM",
+        "El costo de cada llamada queda registrado"
+      ],
+      "test_cases": [
+        "TC-AC-14"
+      ],
+      "implementation_paths": [],
+      "test_paths": [],
+      "status": "NOT_STARTED",
+      "evidence": null,
+      "notes": "Aviso por Telegram depende del bot (fase posterior); en IMPL-1 se prueba el evento. Límite en consola Anthropic: PENDING."
+    },
+    {
+      "id": "FEAT-007",
+      "title": "Aislamiento de credenciales y prohibiciones de agentes",
+      "implementation_phase": "IMPL-1 Fundamentos de integración (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-058",
+        "REQ-G-059"
+      ],
+      "acceptance_criteria": [
+        "Agentes IA no tienen autoridad de ejecución",
+        "Los componentes LLM no tienen credenciales de Binance en su scope"
+      ],
+      "test_cases": [
+        "TC-SEC-002",
+        "TC-AC-05"
+      ],
+      "implementation_paths": [],
+      "test_paths": [],
+      "status": "NOT_STARTED",
+      "evidence": null
+    }
+  ]
 }

@@ -38,3 +38,5 @@ trades.db
 *.swp
 .DS_Store
 Thumbs.db
+.venv/
+.pytest_cache/
