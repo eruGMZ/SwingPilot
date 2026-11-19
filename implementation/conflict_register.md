@@ -93,3 +93,16 @@
 - **Severidad:** HIGH — afecta directamente al invariante INV-001 y a todas las pruebas de position sizing
 - **Estado:** RESUELTA — 2026-11-15 (DEC-002)
 - **Resolución provisional (aplicada por Merger per DEC-001):** Límite vinculante = **1.5%** (máximo). La jerarquía DEC-001 establece que OWNER_CONTEXT y RISK_POLICY tienen precedencia sobre AI_INTEGRATION en parámetros operativos. El "1–2%" de DOC-003 se interpreta como rango referencial; el límite máximo es 1.5%. **Confirmado por el propietario (DEC-002):** 1.5% máximo vinculante, no es rango; la referencia "1–2%" de AI_INTEGRATION es incorrecta y debe eliminarse (CR-001).
+
+---
+
+### CONF-006
+
+- **Fecha de detección:** 2026-11-19 (detectado por el Orquestador de Desarrollo al revisar la propuesta de fuente de datos históricos del propietario)
+- **Documentos en conflicto:** propuesta del propietario (sesión 2026-11-19: klines BTC/USDT `interval 1d` y `btcusdt@kline_1d` para backtesting y live) vs. contrato v1.2 (REQ-G-001/002 temporalidades D1/H4/H1; DEC-006 P18; DEC-008 Q24; DEC-009; TC-DATA-001/002) y AI_INTEGRATION.md («Estructura y señal: H4»)
+- **Sección doc1:** propuesta del propietario — datos y operación live solo en velas diarias (1d).
+- **Sección doc2:** REQ-G-001/002: D1 = contexto, H4 = estructura y señal, H1 = evaluación de entrada; «no se extrapolan resultados de una temporalidad a otra sin validación». DEC-006 P18: la IA se invoca solo al cierre de vela H4 con setup. DEC-009: estimación de costo con 180 ciclos H4/mes. TC-DATA-001/002: vela H4 cerrada.
+- **Naturaleza del conflicto:** el contrato define H4 como temporalidad de señal; la propuesta usa solo 1d. Un backtest en 1d no valida estrategias H4, y el diseño de costos/ciclos de IA y las pruebas de datos asumen H4.
+- **Severidad:** HIGH — afecta temporalidad de estrategias, ciclo de decisión, costo de IA y pruebas de datos.
+- **Estado:** RESUELTA — 2026-11-19 (DEC-013)
+- **Resolución (propietario):** opción B. Se mantiene el contrato: D1 contexto, H4 señal, H1 entrada. La propuesta de usar solo 1d se retira por haberse redactado sin revisar REQ-G-001/002. Fuente de datos y snapshot en DEC-013 / CR-013.

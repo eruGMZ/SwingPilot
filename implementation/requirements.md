@@ -1,8 +1,8 @@
-# SwingPilot — Requirements Contract v1.2
+# SwingPilot — Requirements Contract v1.3
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.2 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011) y v1.2 aplica CR-012 (DEC-012), ambas aprobadas el 2026-11-19; incorpora CR-001..CR-012. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
+**Estado:** v1.3 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012) y v1.3 aplica CR-013 (DEC-013), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
 **Autoridad documental aplicada:** DEC-001 (resoluciones de conflictos CONF-001, CONF-002)
 
 ---
@@ -732,6 +732,20 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 
 ---
 
+### REQ-G-097
+**Descripción:** Datos de mercado en vivo (CR-013, DEC-013; complementa REQ-G-070). Fuente: WebSocket de Binance `kline_4h` (señal), `kline_1d` (contexto) y `kline_1h` (evaluación de entrada, REQ-G-002); solo se consumen velas cerradas (flag `x`), nunca la vela en curso. Al reconectar, el sistema consulta por REST (`GET /api/v3/klines`) con `startTime` = `open_time` de la última vela persistida + 1, recupera todas las velas cerradas faltantes (no solo la última) y verifica el timestamp contra el último candle en memoria; hasta resincronizar aplica Fail-Closed (no se generan señales ni propuestas). Las velas recuperadas se persisten con la misma fuente y timestamp.  
+**Fuentes:** DEC-013; CR-013 §A.6, §B.3, §B.4; REQ-G-070  
+**Tipo:** FUNCTIONAL  
+**Prioridad:** CRITICAL  
+**Estado:** APPROVED-CR-013  
+**Dependencias:** REQ-G-070, REQ-G-002  
+**Criterios de aceptación:**
+- Una vela en formación nunca produce señal
+- Tras una desconexión de más de un intervalo, se recuperan todas las velas faltantes antes de operar
+- Mientras no se resincroniza, no se generan señales (Fail-Closed)
+
+---
+
 ## Módulo 10: Investigación Cuantitativa y Framework ML
 
 ### REQ-G-100
@@ -759,7 +773,7 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 - Las pruebas de auditoría verifican ausencia de look-ahead bias y leakage en las 7 categorías
 
 ### REQ-G-103
-**Descripción:** Preregistro obligatorio antes de cualquier backtest confirmatorio o entrenamiento formal. El preregistro incluye: pregunta de investigación, hipótesis principal, hipótesis nula, justificación, universo de activos, temporalidad, periodo, variables, reglas de entrada/salida, modelo/configuración inicial, división de datos, métricas, costes, criterios de aceptación/rechazo y limitaciones. El preregistro se congela ANTES de la evaluación confirmatoria. Las desviaciones se documentan y justifican. **CR-011 (DEC-011):** el preregistro congela además la longitud de entrenamiento, la de prueba, el embargo, el step size, la frecuencia de roll y el número de ventanas Walk-Forward antes de cualquier evaluación OOS; cambiarlos tras ver resultados OOS es una desviación y el experimento deja de ser confirmatorio. Debe calcular y documentar el histórico mínimo requerido para cumplir los mínimos de trades (REQ-G-P15) en todas las particiones y ventanas, usando la tasa real de trades observada en el backtest piloto (estimada solo con datos de Train) y no solo el máximo teórico de 8/mes (REQ-G-004). Si el histórico disponible no alcanza para 2 ventanas WF + OOS + LOCKBOX, el preregistro documenta la limitación y propone un ajuste (decisión del propietario); los mínimos no se relajan por sí solos y el experimento no pasa de DESIGN.  
+**Descripción:** Preregistro obligatorio antes de cualquier backtest confirmatorio o entrenamiento formal. El preregistro incluye: pregunta de investigación, hipótesis principal, hipótesis nula, justificación, universo de activos, temporalidad, periodo, variables, reglas de entrada/salida, modelo/configuración inicial, división de datos, métricas, costes, criterios de aceptación/rechazo y limitaciones. El preregistro se congela ANTES de la evaluación confirmatoria. Las desviaciones se documentan y justifican. **CR-011 (DEC-011):** el preregistro congela además la longitud de entrenamiento, la de prueba, el embargo, el step size, la frecuencia de roll y el número de ventanas Walk-Forward antes de cualquier evaluación OOS; cambiarlos tras ver resultados OOS es una desviación y el experimento deja de ser confirmatorio. Debe calcular y documentar el histórico mínimo requerido para cumplir los mínimos de trades (REQ-G-P15) en todas las particiones y ventanas, usando la tasa real de trades observada en el backtest piloto (estimada solo con datos de Train) y no solo el máximo teórico de 8/mes (REQ-G-004). Los datos y el modelo de ejecución siguen REQ-G-109 (CR-013). Si el histórico disponible no alcanza para 2 ventanas WF + OOS + LOCKBOX, el preregistro documenta la limitación y propone un ajuste (decisión del propietario); los mínimos no se relajan por sí solos y el experimento no pasa de DESIGN.  
 **Fuentes:** REQ-4005, REQ-4013  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** HIGH  
@@ -801,6 +815,20 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 **Tipo:** CONSTRAINT  
 **Prioridad:** CRITICAL  
 **Estado:** APPROVED-DEC-001
+
+### REQ-G-109
+**Descripción:** Datos históricos de investigación y snapshot (CR-013, DEC-013). Fuente: Binance REST `GET /api/v3/klines`, BTC/USDT, intervalos `1d`, `4h` y `1h`, desde 2017-08-17 hasta la fecha de snapshot, con paginación `limit=1000` iterando con `startTime`. La snapshot se descarga una vez al iniciar FASE 2, se guarda con timestamp de descarga y es fija para el backtest piloto y el Walk-Forward; actualizar = nueva snapshot versionada. Formato Parquet, un archivo por partición (`train_val`, `oos`, `lockbox`), cada uno con su SHA-256, e inmutable una vez hasheado; cada archivo incluye una columna `interval` y las fechas de corte de las particiones (50/20/15/15, cronológicas, DEC-005 P10) se fijan una sola vez por fecha y se aplican igual a los tres intervalos. Las características de OOS pueden leer la cola de `train_val` (datos pasados); nada de `lockbox` se carga durante el desarrollo, solo en la evaluación final única. Huecos: NaN sin interpolar; el backtest salta ese periodo. El preregistro (REQ-G-103) registra: hash de cada archivo y versión de la librería que lo escribió, conteo de huecos, tasa de trades observada, modelo de ejecución y declaración de régimen. **Modelo de ejecución (preregistrado):** señal sobre vela cerrada → entrada a la apertura de la vela siguiente, con comisión y slippage; stop tocado dentro de la vela → se llena al precio del stop con slippage 0.10% adverso (REQ-G-P04); hueco (apertura < stop) → se llena a la apertura, también con slippage adverso; mismo criterio para el take-profit; si una vela toca stop y TP se asume que se tocó primero el stop; la autorización humana se asume instantánea y la tolerancia de 0.5% (P20) se aplica como en vivo. **Declaración de régimen:** el preregistro declara que el histórico incluye regímenes distintos al actual; el criterio de aceptación usa todas las ventanas Walk-Forward y las recientes se reportan por separado, salvo que el preregistro congele de antemano una ponderación por recencia. **LOCKBOX consumido:** un LOCKBOX evaluado queda registrado como consumido; en una snapshot nueva no puede volver a usarse como LOCKBOX y solo los datos posteriores al final de la snapshot anterior pueden constituir un LOCKBOX nuevo; un modelo evaluado en un LOCKBOX no se reevalúa en uno que lo contenga.  
+**Fuentes:** DEC-013; CR-013 §A, §B.1, §B.2, §B.5, §B.6, §B.7; DEC-005 (P10, P15); REQ-G-103  
+**Tipo:** FUNCTIONAL  
+**Prioridad:** HIGH  
+**Estado:** APPROVED-CR-013  
+**Dependencias:** REQ-G-102, REQ-G-103, REQ-G-106  
+**Criterios de aceptación:**
+- Cada archivo de partición tiene SHA-256 registrado en el preregistro y no se modifica después
+- El LOCKBOX no se carga antes de la evaluación final única
+- Las fechas de corte son idénticas para los tres intervalos
+- Los huecos se marcan como NaN y no se interpolan; el conteo queda en el preregistro
+- El modelo de ejecución del backtest está preregistrado y no cambia tras ver resultados OOS
 
 ---
 

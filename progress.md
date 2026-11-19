@@ -625,3 +625,41 @@
 **Pendientes (siguen PENDING de FASE 2):** reverificar el OCO con STOP_LOSS de mercado contra el exchange real; tipo definitivo de la pierna TP (TAKE_PROFIT_LIMIT, se fija en implementación); esquema del evento de señal de salida; nombres de motivos de NO_SETUP; REQ-G-P08 (validación fiscal, diferido).
 
 **Siguiente acción autorizada:** esperar "AUTORIZO INICIO DE FASE 2". FASE 2 BLOQUEADA. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-19 | FASE 1 (post-G3) | CONF-006 registrado: temporalidad 1d vs contrato D1/H4/H1 | ESCALADO
+
+**Actividad:** El propietario propuso la fuente de datos históricos (klines BTC/USDT 1d, snapshot versionada con SHA-256, huecos como NaN, live por websocket `kline_1d`). Al contrastarla con el contrato se detectó un conflicto de temporalidad (el contrato usa H4 para señal y la IA se invoca al cierre H4). Registrado como CONF-006 en `conflict_register.md`, escalado al propietario. No se modificó el contrato.
+
+**Archivos:** `implementation/conflict_register.md`, `progress.md`.
+
+**Pruebas ejecutadas:** ninguna.
+
+**Siguiente acción autorizada:** decisión del propietario sobre la temporalidad; luego CR/DEC para la fuente de datos. FASE 2 BLOQUEADA. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-19 | FASE 1 (post-G3) | DEC-013 registrada y CR-013 redactada (PROPUESTA); CONF-006 resuelta | PENDIENTE DE APROBACIÓN
+
+**Actividad:** El propietario eligió la opción B (se mantiene H4 como señal; 1d solo contexto) y fijó la fuente de datos: klines BTC/USDT en 1d/4h/1h, snapshot única versionada en Parquet por partición (train_val/oos/lockbox, SHA-256 propio), huecos NaN, modelo de ejecución del backtest, datos en vivo por WebSocket con respaldo REST. Se registró DEC-013 y se resolvió CONF-006. CR-013 redactada como PROPUESTA con 7 aclaraciones propuestas (B.1–B.7: granularidad de particiones, huecos del modelo de ejecución, resincronización con startTime, H1 en vivo, «prioriza ventanas recientes» vs preregistro, LOCKBOX consumido, reproducibilidad del hash). NO aplicada; contrato sigue en v1.2.
+
+**Archivos:** `docs/decisions/DEC-013_fuente-datos-historicos-snapshot.md` (nuevo), `harness/change_requests/CR-013_fuente-datos-historicos.md` (nuevo), `implementation/conflict_register.md` (CONF-006 RESUELTA), `progress.md`.
+
+**Pruebas ejecutadas:** ninguna (solo documentación).
+
+**Siguiente acción autorizada:** decisión del propietario sobre B.1–B.7 y aprobación de CR-013; luego aplicar (v1.3). FASE 2 BLOQUEADA. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-19 | FASE 1 (post-G3) | CR-013 aplicada, DEC-013 registrada, CONF-006 resuelta, contrato v1.3 | COMPLETADO
+
+**Actividad:** El propietario aceptó B.1–B.7 y ordenó aplicar CR-013. Aplicado: nuevos REQ-G-097 (datos en vivo: solo vela cerrada, respaldo REST con startTime, Fail-Closed hasta resincronizar, `kline_1h` incluido) y REQ-G-109 (snapshot Parquet por partición con SHA-256, columna `interval`, fechas de corte únicas, LOCKBOX sellado y «consumido», huecos NaN, modelo de ejecución del backtest, declaración de régimen); ampliación de REQ-G-103; Fase 1 de `data_flow.md`; pruebas TC-DATA-003..004 y TC-ML-015..019. CONF-006 RESUELTA (DEC-013, opción B: se mantiene H4 como señal). Los 5 documentos de `implementation/` pasan a v1.3. Manifest 0.8.0.
+
+**Archivos:** `docs/decisions/DEC-013_fuente-datos-historicos-snapshot.md`, `harness/change_requests/CR-013_fuente-datos-historicos.md` (APLICADA), `implementation/requirements.md`, `data_flow.md`, `test_plan.md`, `api_contracts.md` y `architecture.md` (versión), `implementation/conflict_register.md`, `harness/manifest.json`, `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK). Sin pruebas de código (no existe código).
+
+**Pendientes (siguen PENDING de FASE 2):** esquema del evento de señal de salida; nombres de motivos de NO_SETUP; reverificar el OCO contra el exchange real; tipo definitivo de la pierna TP; identificador de cliente de órdenes; almacenamiento durable del estado; servicios externos (vigilancia, IP); calibración de `effort` y costo real de IA; REQ-G-P08 (validación fiscal, diferido).
+
+**Siguiente acción autorizada:** esperar "AUTORIZO INICIO DE FASE 2". FASE 2 BLOQUEADA. Código funcional creado: NINGUNO.

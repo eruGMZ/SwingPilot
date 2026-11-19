@@ -1,8 +1,8 @@
-# SwingPilot — Test Plan v1.2
+# SwingPilot — Test Plan v1.3
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.2 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011) y v1.2 aplica CR-012 (DEC-012), ambas aprobadas el 2026-11-19; incorpora CR-001..CR-012. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.3 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012) y v1.3 aplica CR-013 (DEC-013), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -295,6 +295,26 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Input: preregistro con tasa de trades del backtest piloto estimada solo con datos de Train; histórico disponible menor al requerido
 - Expected: el preregistro documenta el histórico mínimo calculado con la tasa real; si no alcanza 2 ventanas WF + OOS + LOCKBOX, documenta la limitación y propone ajuste; el experimento no pasa de DESIGN; la estimación no usa OOS ni LOCKBOX
 
+### TC-ML-015 — Snapshot sellada y particiones (REQ-G-109, CR-013)
+- Input: snapshot descargada y particionada
+- Expected: tres archivos Parquet (`train_val`, `oos`, `lockbox`) con SHA-256 propio registrado; fechas de corte idénticas para 1d, 4h y 1h; modificar un archivo hasheado se detecta; la versión de la librería escritora queda registrada
+
+### TC-ML-016 — LOCKBOX no cargado en desarrollo (REQ-G-109, CR-013)
+- Input: ejecución de desarrollo, entrenamiento y Walk-Forward
+- Expected: `lockbox.parquet` no se abre ni se lee; `oos.parquet` solo en la evaluación final única; las características de OOS pueden leer la cola de `train_val`, nunca al revés
+
+### TC-ML-017 — Huecos como NaN (REQ-G-109, CR-013)
+- Input: snapshot con velas faltantes
+- Expected: las velas faltantes son NaN (sin interpolación); el backtest las salta; el conteo de huecos queda en el preregistro
+
+### TC-ML-018 — Modelo de ejecución del backtest (REQ-G-109, CR-013)
+- Input: velas que (a) tocan el stop dentro de la vela, (b) abren por debajo del stop, (c) tocan stop y TP en la misma vela, (d) señal en la vela cerrada
+- Expected: (a) relleno al precio del stop con slippage 0.10% adverso; (b) relleno a la apertura con slippage adverso; (c) se asume el stop primero; (d) entrada a la apertura de la vela siguiente; ninguna regla cambia tras ver resultados OOS
+
+### TC-ML-019 — LOCKBOX consumido (REQ-G-109, CR-013)
+- Input: snapshot nueva tras haber evaluado un LOCKBOX
+- Expected: el LOCKBOX evaluado queda registrado como consumido; no se reutiliza como LOCKBOX; solo datos posteriores al final de la snapshot anterior pueden formar un LOCKBOX nuevo; la declaración de régimen y el criterio con todas las ventanas WF constan en el preregistro
+
 ---
 
 ## 6. Pruebas del Fiscal Ledger (C2)
@@ -416,6 +436,14 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 ### TC-DATA-002 — Falta la última vela cerrada
 - Input: no está disponible la última vela H4 cerrada esperada
 - Expected: DATA_UNAVAILABLE; no se genera propuesta
+
+### TC-DATA-003 — Resincronización tras reconexión (REQ-G-097, CR-013)
+- Input: desconexión del WebSocket durante más de un intervalo (4h) con velas cerradas perdidas
+- Expected: al reconectar se consultan por REST todas las velas cerradas faltantes desde `startTime` = último `open_time` + 1; no se generan señales hasta resincronizar (Fail-Closed); las velas recuperadas se persisten
+
+### TC-DATA-004 — Flujos de 1d, 4h y 1h solo con vela cerrada (REQ-G-097, CR-013)
+- Input: mensajes `kline_1d`, `kline_4h` y `kline_1h` con `x` = false y `x` = true
+- Expected: solo los mensajes con `x` = true se consumen; ninguno con `x` = false produce señal
 
 ## 8.3 Pruebas de Flujo de Decisión (C1 — CR-004)
 

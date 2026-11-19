@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "0.7.0",
+    "version": "0.8.0",
     "phase": "FASE 1",
     "status": "G3_PASS_CONTRACT_APPROVED_AWAITING_PHASE2_AUTHORIZATION",
     "description": "Inventario de fuentes documentales de SwingPilot. Registrado en FASE 1 tras depósito de documentos por el propietario.",

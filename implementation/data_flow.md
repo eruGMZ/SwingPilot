@@ -1,8 +1,8 @@
-# SwingPilot — Data Flow v1.2
+# SwingPilot — Data Flow v1.3
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.2 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011) y v1.2 aplica CR-012 (DEC-012), ambas aprobadas el 2026-11-19; incorpora CR-001..CR-012. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.3 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012) y v1.3 aplica CR-013 (DEC-013), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -17,7 +17,10 @@ Disparador externo (señal periódica o solicitud manual)
 ┌─────────────────────────────────────────────────────────────────────────┐
 │ Trading Engine + Market Intelligence                                     │
 │                                                                         │
-│  - Obtener OHLCV de Binance: D1, H4, H1 para BTC/USDT                  │
+│  - Obtener OHLCV de Binance: D1, H4, H1 para BTC/USDT (WebSocket       │
+│    kline_1d/4h/1h; respaldo REST con startTime al reconectar:          │
+│    recuperar TODAS las velas cerradas faltantes; mientras no se        │
+│    resincroniza → Fail-Closed; REQ-G-097, CR-013)                      │
 │  - Solo velas cerradas: descartar la vela en formación; cierre según   │
 │    hora del servidor de Binance (REQ-G-070, CR-003)                     │
 │  - Validar integridad: completitud, timestamps, duplicados              │

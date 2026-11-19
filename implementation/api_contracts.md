@@ -1,8 +1,8 @@
-# SwingPilot — API Contracts v1.2
+# SwingPilot — API Contracts v1.3
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.2 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011) y v1.2 aplica CR-012 (DEC-012), ambas aprobadas el 2026-11-19; incorpora CR-001..CR-012. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.3 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012) y v1.3 aplica CR-013 (DEC-013), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
