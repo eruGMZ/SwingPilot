@@ -10,6 +10,7 @@ import json
 import sqlite3
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 from swingpilot.contracts import validate_message
 
@@ -37,6 +38,10 @@ class EventStoreError(RuntimeError):
     pass
 
 
+class SecretLeakError(EventStoreError):
+    """El mensaje contiene una credencial: no se guarda (el registro es inmutable)."""
+
+
 @dataclass
 class ChainReport:
     correlation_id: str
@@ -55,7 +60,10 @@ def _canonical(msg: dict) -> str:
 
 
 class EventStore:
-    def __init__(self, path: str | Path):
+    def __init__(self, path: str | Path, *, secret_check: Callable[[str], bool] | None = None):
+        """`secret_check` (p. ej. CredentialVault.contains_secret): si devuelve True para
+        el mensaje serializado, se rechaza antes de escribir (REQ-G-033, TC-SEC-006)."""
+        self._secret_check = secret_check
         self._db = sqlite3.connect(str(path))
         self._db.executescript(_DDL)
 
@@ -69,6 +77,8 @@ class EventStore:
         la excepción de validación y no se guarda nada."""
         validate_message(message)
         body = _canonical(message)
+        if self._secret_check is not None and self._secret_check(body):
+            raise SecretLeakError(f"mensaje {message['message_id']} contiene una credencial; no se registra")
         row = self._db.execute(
             "SELECT message_json FROM audit_events WHERE message_id=?",
             (message["message_id"],)).fetchone()

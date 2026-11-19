@@ -1,3 +1,3 @@
-from .event_store import EventStore, EventStoreError, ChainReport
+from .event_store import ChainReport, EventStore, EventStoreError, SecretLeakError
 
-__all__ = ["EventStore", "EventStoreError", "ChainReport"]
+__all__ = ["EventStore", "EventStoreError", "ChainReport", "SecretLeakError"]

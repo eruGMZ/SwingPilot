@@ -67,7 +67,11 @@ def _now() -> str:
 class AIOrchestrator:
     def __init__(self, adapter: AIProviderAdapter, store: EventStore | None = None, *,
                  precheck: Callable[[], str | None] | None = None,
-                 clock: Callable[[], float] = time.monotonic):
+                 clock: Callable[[], float] = time.monotonic,
+                 redact: Callable[[str], str] | None = None):
+        """`redact` (p. ej. CredentialVault.redact) se aplica a los mensajes de error antes
+        de registrarlos: pueden contener fragmentos de texto externo o del modelo."""
+        self._redact = redact or (lambda s: s)
         self._adapter, self._store = adapter, store
         self._precheck, self._clock = precheck, clock
 
@@ -106,6 +110,7 @@ class AIOrchestrator:
                 call.error = {"code": "OUT_OF_CONTRACT", "message": str(e)}
         out = {**envelope, "sources": [], "missing_data": [], "status": "ERROR",
                "error": call.error or {"code": "UNKNOWN", "message": ""}}
+        out["error"] = {**out["error"], "message": self._redact(out["error"]["message"])}
         validate_agent_output(agent, out)
         return out
 

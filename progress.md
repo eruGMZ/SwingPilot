@@ -787,3 +787,17 @@
 **Estado de IMPL-1:** FEAT-001..007 implementadas, todas PARTIAL (ninguna DONE). Bloqueo común: verificación contra la API real de Anthropic (requiere `ANTHROPIC_API_KEY` en `.env`). G4 sigue PENDING.
 
 **Siguiente acción:** prueba de humo real (con la clave del propietario) para cerrar FEAT-004/005; decidir con el propietario el criterio de salida de IMPL-1 y el inicio de IMPL-2.
+
+---
+
+## 2026-11-19 | FASE 2 | Prevención de fugas de credenciales a registros (FEAT-003/FEAT-007) | COMPLETADO
+
+**Actividad:** a pregunta del propietario sobre fugas por logs, se revisaron las rutas y se cerraron tres huecos: (1) `EventStore(secret_check=...)` rechaza antes de escribir cualquier mensaje que contenga una credencial (el registro es inmutable); (2) `AIOrchestrator(redact=...)` redacta los mensajes de error de agentes antes de registrarlos (verificado que sin redacción un valor citado por jsonschema se filtraba); (3) `security/startup.py` con `startup_violations`: `.env` ausente o con permisos para grupo/otros, credenciales de Binance/Telegram en el entorno del proceso, `ANTHROPIC_LOG=debug` en modo LIVE o modo desconocido impiden arrancar. Verificado localmente que los logs debug del SDK de Anthropic no incluyen la clave.
+
+**Archivos:** `src/swingpilot/audit/{event_store,__init__}.py`, `src/swingpilot/ai/orchestrator.py`, `src/swingpilot/security/{startup,__init__}.py`, `tests/unit/test_leak_prevention.py`, `feature_list.json` (v0.10.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests/unit` → 181 passed.
+
+**Límites conocidos:** solo se detecta la credencial literal; tracebacks con variables locales pueden mostrar la clave; falta el punto de arranque de la aplicación que conecte vault, EventStore, orquestador y comprobaciones de arranque.
+
+**Siguiente acción:** prueba de humo real contra la API de Anthropic (requiere `ANTHROPIC_API_KEY` en `.env` con permisos 600).
