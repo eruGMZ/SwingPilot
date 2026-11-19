@@ -221,8 +221,13 @@ def test_default_client_disables_sdk_retries_and_sets_timeout(monkeypatch):
     assert a._client.timeout == CLIENT_TIMEOUT_SECONDS
 
 
-# TC-SEC-001 sobre src/
+# TC-SEC-001 sobre src/: los nombres solo en el módulo que lee .env; ningún valor literal
 def test_no_api_keys_referenced_in_src():
-    hits = [p for p in (ROOT / "src").rglob("*.py")
-            if re.search(r"BINANCE_API_KEY|ANTHROPIC_API_KEY|sk-ant-", p.read_text(encoding="utf-8"))]
-    assert hits == []
+    allowed = ROOT / "src" / "swingpilot" / "security" / "credentials.py"
+    names = [p for p in (ROOT / "src").rglob("*.py") if p != allowed
+             and re.search(r"BINANCE_API_KEY|ANTHROPIC_API_KEY|BINANCE_API_SECRET|TELEGRAM_BOT_TOKEN",
+                           p.read_text(encoding="utf-8"))]
+    literals = [p for p in (ROOT / "src").rglob("*.py")
+                if re.search(r"sk-ant-[A-Za-z0-9]|\d{8,10}:[A-Za-z0-9_-]{30,}|['\"][A-Za-z0-9]{64}['\"]",
+                             p.read_text(encoding="utf-8"))]
+    assert names == [] and literals == []

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "0.8.0",
+    "version": "0.9.0",
     "phase": "FASE 2",
     "status": "IMPL-1_REGISTRADA",
     "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.4. Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
@@ -36,7 +36,7 @@
       "status": "PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "128 passed",
+        "result": "162 passed",
         "executed_at": "2026-11-19",
         "covered": [
           "Mensaje universal validado por JSON Schema (13 campos, UUID v4, UTC, enums, asset BTC/USDT)",
@@ -73,7 +73,7 @@
       "status": "PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "128 passed",
+        "result": "162 passed",
         "executed_at": "2026-11-19",
         "covered": [
           "Versión mayor incompatible rechazada; menor/patch aceptado; semver mal formado rechazado (TC-MSG-002)"
@@ -110,7 +110,7 @@
       "status": "PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "128 passed",
+        "result": "162 passed",
         "executed_at": "2026-11-19",
         "covered": [
           "Almacén append-only (SQLite audit_events); UPDATE/DELETE abortados por trigger (TC-SEC-004)",
@@ -155,7 +155,7 @@
       "status": "PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "128 passed",
+        "result": "162 passed",
         "executed_at": "2026-11-19",
         "mode": "dobles de prueba (sin red ni API key)",
         "covered": [
@@ -166,7 +166,8 @@
           "Refusal: ERROR AGENT_REFUSAL sin reintento ni cambio de modelo",
           "Límite de ciclo de 5 min: sin llamada si vencido, sin reintento pasado el límite, timeout acotado al tiempo restante",
           "Cliente por defecto con max_retries=0 y timeout 60 s; usage registrado por intento",
-          "TC-SEC-001 sobre src/: sin referencias a claves"
+          "TC-SEC-001 sobre src/: nombres de credenciales solo en security/credentials.py; ningún valor literal",
+          "from_vault: clave desde CredentialVault (ámbito ai_provider); leak_check bloquea el envío si un secreto aparece en el contenido"
         ],
         "not_covered": [
           "Verificación contra la API real de Anthropic (requiere ANTHROPIC_API_KEY): que Haiku 5.5/Sonnet 5.5 acepten output_config.effort + format json_schema tal como se envía",
@@ -201,7 +202,7 @@
       "status": "PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "128 passed",
+        "result": "162 passed",
         "executed_at": "2026-11-19",
         "mode": "dobles de prueba (cliente falso con el adaptador real; sin red ni API key)",
         "covered": [
@@ -249,7 +250,7 @@
       "status": "PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "128 passed",
+        "result": "162 passed",
         "executed_at": "2026-11-19",
         "mode": "dobles de prueba",
         "covered": [
@@ -286,10 +287,39 @@
         "TC-SEC-002",
         "TC-AC-05"
       ],
-      "implementation_paths": [],
-      "test_paths": [],
-      "status": "NOT_STARTED",
-      "evidence": null
+      "implementation_paths": [
+        "src/swingpilot/security/credentials.py",
+        "src/swingpilot/ai/provider.py",
+        "src/swingpilot/ai/orchestrator.py",
+        ".env.example"
+      ],
+      "test_paths": [
+        "tests/unit/test_credentials.py",
+        "tests/unit/test_ai_provider.py"
+      ],
+      "status": "PARTIAL",
+      "evidence": {
+        "command": ".venv/bin/pytest -q tests/unit",
+        "result": "162 passed",
+        "executed_at": "2026-11-19",
+        "mode": "dobles de prueba",
+        "covered": [
+          "TC-SEC-002: credenciales de Binance solo en el ámbito execution_engine; AI Orchestrator y los 5 agentes sin acceso a credenciales",
+          "Secretos leídos de .env sin copiarse a os.environ; Secret no se filtra por repr/str/JSON/pickle (TC-SEC-006 parcial)",
+          "process_env_violations: Binance/Telegram en el entorno del proceso = violación (Fail-Closed al arrancar)",
+          "leak_check: si un secreto aparece en prompt o datos, la llamada al LLM no se envía y el ciclo termina sin propuesta",
+          "TC-AC-05: la capa de IA solo puede emitir los 5 eventos de análisis; órdenes, TRADE_PROPOSAL, RISK_* y autorizaciones rechazadas",
+          "Aislamiento estático: módulos de IA sin imports fuera de la lista permitida ni del módulo de credenciales",
+          "TC-SEC-001: nombres de credenciales solo en security/credentials.py; sin valores literales en src/"
+        ],
+        "not_covered": [
+          "Aislamiento a nivel de proceso (mismo proceso Python: el aislamiento es por diseño y pruebas, no por el sistema operativo)",
+          "Verificación de permisos de la clave de Binance por API y restricción por IP (REQ-G-093): Execution Engine, fase posterior",
+          "Token de Telegram en registros generados (TC-SEC-006 completo) y remitente no autorizado (TC-SEC-007): Telegram Bot, fase posterior",
+          "Prohibiciones de REQ-G-059 sobre capital, límites de riesgo y registros: se cumplen por ausencia de acceso; se reverifican al existir Risk Manager y Fiscal Ledger"
+        ],
+        "notes": "Nombres BINANCE_API_SECRET y TELEGRAM_BOT_TOKEN son de implementación (el contrato solo nombra BINANCE_API_KEY y ANTHROPIC_API_KEY)."
+      }
     }
   ]
 }

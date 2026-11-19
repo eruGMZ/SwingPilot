@@ -41,6 +41,7 @@ EVENT_FOR_AGENT = {
     "decision_synthesis": "DECISION_SYNTHESIS_COMPLETED",
     "risk_analyst": "RISK_ANALYSIS_COMPLETED",
 }
+ALLOWED_EMITS = frozenset(EVENT_FOR_AGENT.values())
 # Destino según api_contracts.md §2 (consumidor principal).
 DESTINATION = {"RISK_ANALYSIS_COMPLETED": "telegram_bot"}
 
@@ -72,6 +73,10 @@ class AIOrchestrator:
 
     # ---------- utilidades ----------
     def _emit(self, res: CycleResult, msg: dict) -> dict:
+        # REQ-G-058/059: la capa de IA solo publica análisis; nunca órdenes, propuestas al
+        # Risk Manager, decisiones de riesgo ni autorizaciones.
+        if msg["message_type"] not in ALLOWED_EMITS:
+            raise PermissionError(f"el AI Orchestrator no puede emitir {msg['message_type']}")
         validate_message(msg)
         if self._store is not None:
             self._store.append(msg)

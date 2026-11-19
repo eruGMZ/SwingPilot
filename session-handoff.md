@@ -10,7 +10,8 @@
 - CR-015 (PROPUESTA) redactada para CONF-007. FEAT-006 implementada con dobles (127 tests pasan).
 - CR-015 APLICADA (contrato v1.4, DEC-014); CONF-007 RESUELTA; presupuesto de IA en America/Mexico_City.
 - Pendiente del propietario: límite de gasto en consola Anthropic; zona horaria de otros cortes mensuales (al implementarlos).
-- Siguiente acción: FEAT-007 (aislamiento de credenciales); prueba de humo real (requiere ANTHROPIC_API_KEY en .env).
+- FEAT-007 implementada (162 tests pasan). IMPL-1: FEAT-001..007 todas PARTIAL.
+- Siguiente acción: prueba de humo real contra la API de Anthropic (requiere ANTHROPIC_API_KEY en .env, ver .env.example); luego cierre de IMPL-1 e inicio de IMPL-2 con autorización del propietario.
 - (Las secciones siguientes son del cierre anterior; su frase «FASE 2 BLOQUEADA» queda superada por esta autorización.)
 
 ## Cierre de sesión 2026-11-19 — siguiente acción

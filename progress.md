@@ -771,3 +771,19 @@
 **Nota:** la zona horaria de otros cortes mensuales (MonthlyBaseline, MONTHLY_TRADE_LIMIT_LOCK) sigue sin definir (PENDING para su implementación).
 
 **Siguiente acción:** FEAT-007 (aislamiento de credenciales y prohibiciones de agentes).
+
+---
+
+## 2026-11-19 | FASE 2 | FEAT-007 implementada (parcial); IMPL-1 completa en código | COMPLETADO
+
+**Actividad:** aislamiento de credenciales (`src/swingpilot/security/credentials.py`): `CredentialVault` lee `.env` sin copiarlo a `os.environ` y entrega credenciales por ámbito (execution_engine: Binance; ai_provider: Anthropic; telegram_bot: Telegram); el AI Orchestrator y los agentes no tienen ámbito. `Secret` no se imprime ni se serializa. `process_env_violations` detecta credenciales de Binance/Telegram en el entorno del proceso. El adaptador obtiene la clave con `from_vault` y bloquea el envío si un secreto aparece en el contenido (`leak_check`). El AI Orchestrator solo puede emitir los 5 eventos de análisis. `.env.example` con nombres y sin valores.
+
+**Decisiones de implementación (no del contrato):** nombres `BINANCE_API_SECRET` y `TELEGRAM_BOT_TOKEN`; TC-SEC-001 interpretado como «los nombres solo aparecen en el módulo que lee `.env`; ningún valor literal en `src/`».
+
+**Archivos:** `src/swingpilot/security/*`, `src/swingpilot/ai/{provider,orchestrator}.py`, `.env.example`, `tests/unit/test_credentials.py`, `tests/unit/test_ai_provider.py`, `feature_list.json` (v0.9.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests/unit` → 162 passed.
+
+**Estado de IMPL-1:** FEAT-001..007 implementadas, todas PARTIAL (ninguna DONE). Bloqueo común: verificación contra la API real de Anthropic (requiere `ANTHROPIC_API_KEY` en `.env`). G4 sigue PENDING.
+
+**Siguiente acción:** prueba de humo real (con la clave del propietario) para cerrar FEAT-004/005; decidir con el propietario el criterio de salida de IMPL-1 y el inicio de IMPL-2.

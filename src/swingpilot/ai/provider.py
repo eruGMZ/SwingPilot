@@ -14,7 +14,10 @@ Reglas del contrato implementadas:
   del ciclo; timeout de 60 s en el cliente. Fallo persistente → resultado ERROR/TIMEOUT
   (el llamador termina el ciclo sin propuesta: Fail-Closed).
 - Se registra `usage` de cada llamada (REQ-G-096 (5)).
-- La API key la lee el SDK del entorno (.env); este módulo no la referencia (TC-SEC-001).
+- La API key llega desde CredentialVault (ámbito «ai_provider», `from_vault`); este módulo no
+  nombra variables de credenciales (TC-SEC-001).
+- `leak_check`: si un secreto aparece en el prompt o los datos, no se llama al modelo
+  (REQ-G-033, TC-SEC-002).
 """
 import json
 import time
@@ -66,12 +69,23 @@ class _Refusal(Exception):
 class AIProviderAdapter:
     def __init__(self, client: Any = None, *, efforts: dict[str, str] | None = None,
                  sleep: Callable[[float], None] = time.sleep,
-                 clock: Callable[[], float] = time.monotonic, budget: Any = None):
+                 clock: Callable[[], float] = time.monotonic, budget: Any = None,
+                 leak_check: Callable[[str], bool] | None = None):
         # max_retries=0: el único reintento es el propio (REQ-G-034).
         self._client = client or anthropic.Anthropic(max_retries=0, timeout=CLIENT_TIMEOUT_SECONDS)
         self._efforts = {a: DEFAULT_EFFORT for a in AGENT_MODELS} | (efforts or {})
         self._sleep, self._clock = sleep, clock
         self._budget = budget  # AIBudget opcional (REQ-G-096): tope y registro de costo
+        self._leak_check = leak_check
+
+    @classmethod
+    def from_vault(cls, vault: Any, **kwargs) -> "AIProviderAdapter":
+        """Cliente real con la clave del ámbito «ai_provider» y control de fugas activo."""
+        (key,) = vault.for_component("ai_provider").values()
+        client = anthropic.Anthropic(api_key=key.reveal(), max_retries=0,
+                                     timeout=CLIENT_TIMEOUT_SECONDS)
+        kwargs.setdefault("leak_check", vault.contains_secret)
+        return cls(client, **kwargs)
 
     def _request(self, agent: str, system: str, user_content: str, schema: dict, timeout: float) -> dict:
         return dict(
@@ -91,6 +105,10 @@ class AIProviderAdapter:
         if agent not in AGENT_MODELS:
             raise ValueError(f"agente desconocido: {agent!r}")
         Draft202012Validator.check_schema(output_schema)
+        res0 = AgentCallResult(agent=agent, status="ERROR")
+        if self._leak_check is not None and (self._leak_check(system) or self._leak_check(user_content)):
+            res0.error = {"code": "SECRET_LEAK_BLOCKED", "message": "credencial en el contenido para el LLM"}
+            return res0  # nunca se envía
         deadline = self._clock() + CYCLE_DEADLINE_SECONDS if deadline is None else deadline
         res = AgentCallResult(agent=agent, status="ERROR")
         for attempt in (1, 2):
