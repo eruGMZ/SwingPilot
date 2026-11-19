@@ -1,8 +1,8 @@
-# SwingPilot — Requirements Contract v1.1
+# SwingPilot — Requirements Contract v1.2
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.1 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplica CR-011 aprobada el 2026-11-19 (DEC-011); incorpora CR-001..CR-011. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
+**Estado:** v1.2 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011) y v1.2 aplica CR-012 (DEC-012), ambas aprobadas el 2026-11-19; incorpora CR-001..CR-012. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
 **Autoridad documental aplicada:** DEC-001 (resoluciones de conflictos CONF-001, CONF-002)
 
 ---
@@ -302,11 +302,11 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 
 ### REQ-G-031
 **Descripción:** Stop-loss colocado en el exchange. Al confirmarse la ejecución de una compra (ORDER_FILLED, incluidas ejecuciones parciales), el Execution Engine coloca de inmediato en Binance una orden de stop por la cantidad ejecutada y al precio de stop autorizado. El monitoreo del stop en software se mantiene como segunda capa. Toda modificación de stop permitida por REQ-G-027 se aplica cancelando y reemplazando la orden en Binance. Si la orden de stop no puede colocarse, el sistema emite STOP_ORDER_FAILED, avisa al propietario por Telegram y aplica Fail-Closed (bloqueo de nuevas entradas). La reconciliación verifica que toda posición abierta tenga su stop activo en Binance. **Cierre protector (CR-005, DEC-008 Q25):** en la reconciliación de arranque, en la periódica y en el monitoreo de segunda capa, si hay posición abierta sin stop activo en Binance: (a) con el precio sobre el stop, se recoloca el stop sin nueva autorización (STOP_ORDER_PLACED; si falla, STOP_ORDER_FAILED); (b) con el precio en o por debajo del stop, se envía de inmediato una venta a mercado por la cantidad en posición con identificador de cliente determinista (PROTECTIVE_CLOSE_SUBMITTED), sin nueva autorización por ejecutar la salida ya autorizada (INV-007); después, aviso por Telegram y MANUAL_REVIEW (sin nuevas entradas) hasta revisión del propietario; (c) si el precio no puede obtenerse, Fail-Closed (DATA_UNAVAILABLE), aviso inmediato e intento de recolocar el stop; nunca se cierra a ciegas.  
-**Fuentes:** REQ-5011, REQ-5021; DEC-006 (Q17); CR-002; DEC-008 (Q25); CR-005 §D  
+**Fuentes:** REQ-5011, REQ-5021; DEC-006 (Q17); CR-002; DEC-008 (Q25); CR-005 §D; CR-012  
 **Tipo:** RISK_MANAGEMENT  
 **Prioridad:** CRITICAL  
 **Estado:** APPROVED-CR-002; ampliado CR-005  
-**PENDING (FASE 2):** tipo de orden (stop-limit vs OCO) y manejo de huecos de precio con stop-limit, con datos reales de Binance.  
+**Tipo de orden (CR-012, DEC-012):** OCO de Binance Spot con pierna de stop **STOP_LOSS de mercado** (no stop-limit) y, si hay take-profit, pierna TP limit (`TAKE_PROFIT_LIMIT` en una long; el tipo definitivo se fija en la implementación). Sin TP: orden `STOP_LOSS` individual (el OCO exige dos piernas). Al ejecutarse una pierna, la otra se cancela automáticamente. Modificar el stop = cancelar y reemplazar la lista OCO completa. Contingencia: si Binance no permitiera OCO con STOP_LOSS de mercado, documentar la limitación y usar STOP_LIMIT con precio límite a 0.5% del precio de stop (un hueco mayor a 0.5% lo cubre el cierre protector). La orden de mercado siempre llena pero no acota el deslizamiento: la pérdida queda acotada por «stop + slippage real»; el deslizamiento por encima de la reserva de sizing (REQ-G-P04) es riesgo residual aceptado y documentado, no cota dura. Verificar contra el exchange real en FASE 2.  
 **Criterios de aceptación:**
 - Tras cada compra ejecutada existe en Binance una orden de stop activa por la cantidad ejecutada
 - Con SwingPilot detenido y una posición abierta, la orden de stop sigue activa en Binance

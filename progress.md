@@ -599,3 +599,29 @@
 **Pendientes (siguen PENDING de FASE 2):** tipo de orden del stop (stop-limit vs OCO, REQ-G-031); esquema del evento de señal de salida; nombres de los motivos de NO_SETUP; REQ-G-P08 (validación fiscal, diferido). `gate_status.json` no se modificó (G3 PASS se refiere a v1.0; v1.1 aprobado por el propietario mediante CR-011).
 
 **Siguiente acción autorizada:** esperar "AUTORIZO INICIO DE FASE 2". FASE 2 BLOQUEADA. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-19 | FASE 1 (post-G3) | CR-012 redactada (PROPUESTA): tipo de orden del stop | PENDIENTE DE APROBACIÓN
+
+**Actividad:** El propietario decidió el tipo de orden del stop (REQ-G-031): OCO con STOP_LOSS de mercado, TP limit opcional; contingencia STOP_LIMIT al 0.5%. Se verificó en la documentación oficial de Binance Spot que el OCO admite `belowType=STOP_LOSS` (la contingencia no se activa). Se redactó CR-012 con tres observaciones (slippage no acotado vs reserva de 0.10%; tipo de la pierna TP = LIMIT_MAKER; límite de la contingencia). NO aplicada; contrato sigue en v1.1.
+
+**Archivos:** `harness/change_requests/CR-012_tipo-orden-stop-oco.md` (nuevo), `progress.md`.
+
+**Pruebas ejecutadas:** ninguna (solo documentación).
+
+**Siguiente acción autorizada:** aprobación de CR-012; luego DEC-012 y aplicación (v1.2). FASE 2 BLOQUEADA. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-19 | FASE 1 (post-G3) | CR-012 aplicada, DEC-012 registrada, contrato v1.2 | COMPLETADO
+
+**Actividad:** El propietario aprobó CR-012 ("Aprobado"), confirmó el riesgo residual de slippage (no cota dura) y TAKE_PROFIT_LIMIT para la pierna TP, y ordenó aplicar. Se registró DEC-012 y se resolvió el PENDING de REQ-G-031: stop como OCO con pierna STOP_LOSS de mercado y TP limit opcional (sin TP: STOP_LOSS individual); contingencia STOP_LIMIT al 0.5% documentada pero no activa (verificado en la documentación oficial de Binance Spot). Los 5 documentos de `implementation/` pasan a v1.2. Manifest 0.7.0.
+
+**Archivos:** `docs/decisions/DEC-012_tipo-orden-stop-oco.md` (nuevo), `harness/change_requests/CR-012_tipo-orden-stop-oco.md` (APLICADA), `implementation/requirements.md` (REQ-G-031), `data_flow.md`, `test_plan.md` (TC-STOP-009..012), `api_contracts.md` y `architecture.md` (versión), `harness/manifest.json`, `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK). Sin pruebas de código (no existe código).
+
+**Pendientes (siguen PENDING de FASE 2):** reverificar el OCO con STOP_LOSS de mercado contra el exchange real; tipo definitivo de la pierna TP (TAKE_PROFIT_LIMIT, se fija en implementación); esquema del evento de señal de salida; nombres de motivos de NO_SETUP; REQ-G-P08 (validación fiscal, diferido).
+
+**Siguiente acción autorizada:** esperar "AUTORIZO INICIO DE FASE 2". FASE 2 BLOQUEADA. Código funcional creado: NINGUNO.

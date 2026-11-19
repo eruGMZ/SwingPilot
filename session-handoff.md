@@ -2,8 +2,8 @@
 
 ## Cierre de sesión 2026-11-19 — siguiente acción
 
-- **G3 = PASS** (2026-11-18): el propietario aprobó el contrato técnico ("APRUEBO EL CONTRATO TÉCNICO v1.0"). Contrato v1.1 (CR-011, 2026-11-19) en `implementation/`; pendientes de FASE 2: tipo de orden del stop (stop-limit vs OCO), esquema del evento de señal de salida, nombres de motivos de NO_SETUP.
-- Decisiones: DEC-001..DEC-011. Change requests CR-001..CR-011 aprobadas y aplicadas (CR-011, 2026-11-19: candidatos en conflicto, estructura Walk-Forward, sizing; contrato v1.1). Verificación: G2 (2026-11-13) y VER-003 (re-verificación y cierre).
+- **G3 = PASS** (2026-11-18): el propietario aprobó el contrato técnico ("APRUEBO EL CONTRATO TÉCNICO v1.0"). Contrato v1.2 (CR-011, CR-012; 2026-11-19) en `implementation/`; pendientes de FASE 2: reverificar el OCO contra el exchange real, esquema del evento de señal de salida, nombres de motivos de NO_SETUP.
+- Decisiones: DEC-001..DEC-012. Change requests CR-001..CR-012 aprobadas y aplicadas (CR-011: candidatos en conflicto, Walk-Forward, sizing; CR-012: stop OCO con STOP_LOSS de mercado; ambas 2026-11-19; contrato v1.2). Verificación: G2 (2026-11-13) y VER-003 (re-verificación y cierre).
 - Producción en Laptop B; desarrollo e investigación en Laptop A; vigilancia con servicio externo (DEC-007). IA: Haiku 5.5 en 4 agentes, Sonnet 5.5 en Decision Synthesis (DEC-009).
 - Pendiente diferido: REQ-G-P08 (validación fiscal con contador); bloquea cálculos fiscales, no FASE 2.
 - Cambios al contrato desde ahora: solo con solicitud de cambio aprobada y versionado (v1.x).

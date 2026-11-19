@@ -1,8 +1,8 @@
-# SwingPilot — Data Flow v1.1
+# SwingPilot — Data Flow v1.2
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.1 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplica CR-011 aprobada el 2026-11-19 (DEC-011); incorpora CR-001..CR-011. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.2 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011) y v1.2 aplica CR-012 (DEC-012), ambas aprobadas el 2026-11-19; incorpora CR-001..CR-012. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -181,7 +181,9 @@ Estado: SIN_POSICION
 ▼ Autorización humana → ORDER_SUBMITTED
 │
 ├─ ORDER_FILLED (parcial o completo)
-│    ├─ Colocación inmediata de stop en Binance (REQ-G-031, CR-002)
+│    ├─ Colocación inmediata de stop en Binance (REQ-G-031, CR-002; OCO con
+│    │    pierna STOP_LOSS de mercado y TP limit opcional, CR-012, DEC-012;
+│    │    sin TP: orden STOP_LOSS individual)
 │    │    - Éxito → STOP_ORDER_PLACED
 │    │    - Fallo → STOP_ORDER_FAILED → aviso Telegram + Fail-Closed
 │    │      (bloqueo de nuevas entradas; tratamiento según REQ-G-031:

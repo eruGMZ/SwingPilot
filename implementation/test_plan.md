@@ -1,8 +1,8 @@
-# SwingPilot — Test Plan v1.1
+# SwingPilot — Test Plan v1.2
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.1 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplica CR-011 aprobada el 2026-11-19 (DEC-011); incorpora CR-001..CR-011. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.2 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011) y v1.2 aplica CR-012 (DEC-012), ambas aprobadas el 2026-11-19; incorpora CR-001..CR-012. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -140,6 +140,22 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 **TC-STOP-008 — Sin stop y sin precio (CR-005):**
 - Input: posición abierta sin stop activo; precio actual no disponible
 - Expected: Fail-Closed (DATA_UNAVAILABLE); aviso inmediato; intento de recolocar el stop; ninguna venta a ciegas
+
+**TC-STOP-009 — OCO con pierna STOP_LOSS de mercado (CR-012):**
+- Input: ORDER_FILLED (BUY) con take-profit definido
+- Expected: lista OCO activa en Binance con pierna de stop de tipo STOP_LOSS (mercado, sin precio límite) por la cantidad ejecutada y al precio autorizado, y pierna TP limit; STOP_ORDER_PLACED
+
+**TC-STOP-010 — Una pierna cancela la otra (CR-012):**
+- Input: se ejecuta la pierna de stop (o la de TP) del OCO
+- Expected: la otra pierna queda cancelada por Binance; el sistema registra el cierre y confirma que no quedan órdenes abiertas ni posición residual
+
+**TC-STOP-011 — Sin take-profit (CR-012):**
+- Input: ORDER_FILLED (BUY) sin take-profit
+- Expected: orden STOP_LOSS individual (no OCO) activa en Binance; STOP_ORDER_PLACED
+
+**TC-STOP-012 — Hueco de precio y reemplazo del stop (CR-012):**
+- Input: (a) el precio abre por debajo del precio de stop; (b) modificación permitida del stop (REQ-G-027)
+- Expected: (a) la pierna STOP_LOSS se ejecuta a mercado (no queda sin ejecutar); el slippage real se registra y se compara con la reserva de sizing; (b) la lista OCO se cancela y se reemplaza por completo, STOP_ORDER_REPLACED, sin ventana sin stop
 
 ### INV-008: Sin ejecución sin autorización humana
 
