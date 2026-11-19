@@ -1,8 +1,8 @@
-# SwingPilot — API Contracts v1.4
+# SwingPilot — API Contracts v1.5
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.4 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013) y v1.4 aplica CR-015 (DEC-014), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013 y CR-015. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -112,14 +112,18 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
   "data_timestamp_utc": "<ISO8601>",
   "analysis_timestamp_utc": "<ISO8601>",
   "sources": ["<fuentes y referencias utilizadas>"],
-  "missing_data": ["<datos faltantes declarados; nunca inventados>"],
+  "missing_data": ["<datos faltantes declarados por el agente o, en Decision Synthesis, propagados desde la Fase 3 (§3.3); nunca inventados>"],
   "status": "COMPLETED|INSUFFICIENT_DATA|ERROR"
 }
 ```
 
 Cada afirmación de una salida lleva `statement_type`: `FACT|INFERENCE|RECOMMENDATION`. Los errores se representan de forma estructurada (`status: ERROR` con `error: {code, message}`). Las secciones 3.1–3.7 muestran solo los campos específicos de cada agente, que se añaden a los comunes.
 
+**Campos comunes fijados por el Orchestrator (CR-016 E.1):** `analysis_id`, `correlation_id`, `causation_id`, `schema_version`, `agent`, `model_id` (modelo efectivo devuelto por la API), `prompt_version`, `data_timestamp_utc` y `analysis_timestamp_utc` los fija el AI Orchestrator, no el LLM. El LLM produce solo el cuerpo de su contrato (campos específicos, `sources`, `missing_data` y `status` COMPLETED o INSUFFICIENT_DATA); `status: ERROR` y `error` también los fija el Orchestrator.
+
 ### 3.1 Contrato de Entrada — Market Analyst
+
+**Contexto mínimo (CR-016 E.3):** el AI Orchestrator entrega en `context` solo los campos de este contrato (`asset`, `timeframes`, `ohlcv`, `indicators`, `data_source`); cualquier otro campo se descarta.
 
 ```json
 {
@@ -174,6 +178,10 @@ Cada afirmación de una salida lleva `statement_type`: `FACT|INFERENCE|RECOMMEND
 
 Entrada: las salidas de Fase 2 (REGIME_CLASSIFIED, ML_INFERENCE_COMPLETED, STRATEGY_CANDIDATE) y de Fase 3 (Market, Macro y Strategy Analyst), referenciadas por su `analysis_id` en `context.inputs`. No recibe la salida del Risk Analyst (CR-004).
 
+**Datos faltantes propagados (CR-016):** el AI Orchestrator añade de forma determinista al `missing_data` de esta salida los datos faltantes declarados por la Fase 3, con el formato `"<agente>: <elemento>"` (`<agente>` ∈ `market_analyst`, `macro_analyst`, `strategy_analyst`). Si un agente respondió `INSUFFICIENT_DATA` sin detallar, se añade `"<agente>: INSUFFICIENT_DATA"`. Los elementos propagados van después de los que declaró la síntesis y sin duplicados. No se inventa ni se elimina nada: solo se copia lo declarado por la Fase 3. La salida ampliada se valida de nuevo contra este contrato; si no valida, la síntesis queda en `ERROR` (`OUT_OF_CONTRACT`).
+
+**Análisis citados (CR-016 E.2):** `input_analysis_ids` debe contener exactamente los `analysis_id` de los tres análisis de la Fase 3 (Market, Macro y Strategy Analyst), en cualquier orden; vacío, incompleto o con identificadores ajenos se trata como fuera de contrato (`ERROR`, `OUT_OF_CONTRACT`).
+
 ```json
 {
   "decision": "TRADE_PROPOSAL|INSUFFICIENT_INFO|DISCARD|DISAGREEMENT",
@@ -194,11 +202,13 @@ Entrada: las salidas de Fase 2 (REGIME_CLASSIFIED, ML_INFERENCE_COMPLETED, STRAT
     "macro_analyst": {"key_finding": "<>", "confidence": "HIGH|MEDIUM|LOW"},
     "strategy_analyst": {"key_finding": "<>", "confidence": "HIGH|MEDIUM|LOW"}
   },
-  "input_analysis_ids": ["<analysis_id de cada entrada usada>"]
+  "input_analysis_ids": ["<analysis_id de los tres análisis de la Fase 3 (CR-016 E.2)>"]
 }
 ```
 
 ### 3.4 Contrato de Entrada — Macro Analyst
+
+**Contexto mínimo (CR-016 E.3):** el AI Orchestrator entrega en `context` solo `news_sources`, `macro_data` y `time_window`; cualquier otro campo se descarta.
 
 ```json
 {

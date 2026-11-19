@@ -1,8 +1,8 @@
-# SwingPilot — Requirements Contract v1.4
+# SwingPilot — Requirements Contract v1.5
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.4 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013) y v1.4 aplica CR-015 (DEC-014), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013 y CR-015. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
+**Estado:** v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
 **Autoridad documental aplicada:** DEC-001 (resoluciones de conflictos CONF-001, CONF-002)
 
 ---
@@ -469,8 +469,8 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 - El Orchestrator puede coordinar una solicitud y recibir respuestas estructuradas, validadas y auditables
 
 ### REQ-G-051
-**Descripción:** Responsabilidades del Orchestrator: recibir solicitudes de análisis; determinar qué agentes participan; preparar y distribuir contexto; administrar correlation_ids; coordinar análisis paralelos y secuenciales; validar respuestas contra contratos; enviar resultados a Decision Synthesis; registrar interacciones; gestionar errores, timeouts y respuestas incompletas.  
-**Fuentes:** REQ-3002, REQ-3003  
+**Descripción:** Responsabilidades del Orchestrator: recibir solicitudes de análisis; determinar qué agentes participan; preparar y distribuir contexto; administrar correlation_ids; coordinar análisis paralelos y secuenciales; validar respuestas contra contratos; enviar resultados a Decision Synthesis; registrar interacciones; gestionar errores, timeouts y respuestas incompletas. Fija los campos comunes de cada salida (api_contracts.md §3.0) y entrega a Market y Macro Analyst solo los campos de contexto de su contrato (§3.1, §3.4) (CR-016 E.1, E.3).  
+**Fuentes:** REQ-3002, REQ-3003; CR-016  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** CRITICAL  
 **Estado:** APPROVED-DEC-001
@@ -603,7 +603,7 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 **Prioridad:** HIGH
 
 ### REQ-G-073
-**Descripción:** Fase 4 — Síntesis: Decision Synthesis integra los resultados de las Fases 2 y 3 (no los del Risk Analyst, CR-004) y determina si generar TRADE_PROPOSAL, solicitar info adicional, descartar oportunidad o indicar desacuerdo. TRADE_PROPOSAL no es una orden ni autorización.  
+**Descripción:** Fase 4 — Síntesis: Decision Synthesis integra los resultados de las Fases 2 y 3 (no los del Risk Analyst, CR-004) y determina si generar TRADE_PROPOSAL, solicitar info adicional, descartar oportunidad o indicar desacuerdo. TRADE_PROPOSAL no es una orden ni autorización. Cita en `input_analysis_ids` exactamente los tres análisis de la Fase 3. Los datos faltantes declarados en la Fase 3 se propagan de forma determinista a la salida de la síntesis (api_contracts.md §3.3, CR-016).  
 **Fuentes:** REQ-3025  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** CRITICAL

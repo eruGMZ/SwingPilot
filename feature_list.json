@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "0.16.0",
+    "version": "0.17.0",
     "phase": "FASE 2",
     "status": "IMPL-1_REGISTRADA",
-    "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.4. Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
+    "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5. Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
     "last_updated": "2026-11-19",
     "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-2..IMPL-6 se registran al iniciarlas. READY_FOR_REVIEW = criterios con implementación, prueba y evidencia; pasa a DONE tras revisión independiente (QA o propietario), porque ningún agente aprueba su propio trabajo (AGENTS.md)."
   },
@@ -218,8 +218,9 @@
       "approval": {
         "approved_at": "2026-11-19",
         "basis": "Instrucción del propietario: «Si ambas funcionalidades cumplen todos los criterios de aceptación y QA confirma su conformidad, procede con su aprobación y cambio a DONE»; QA ronda 2 = CONFORME.",
-        "open_minor_items": [
-          "MENOR: el texto '<agente>: INSUFFICIENT_DATA' lo genera el orquestador, no la Fase 3; conviene documentarlo en api_contracts.md §3.3 (requiere CR: cambio de contrato) (orchestrator.py:79-81)"
+        "open_minor_items": [],
+        "closed_minor_items": [
+          "Menor 1 (QA ronda 3): texto '<agente>: INSUFFICIENT_DATA' documentado en api_contracts.md §3.3 mediante CR-016 (DEC-015, contrato v1.5)"
         ]
       },
       "post_approval_changes": {
@@ -349,8 +350,9 @@
       "approval": {
         "approved_at": "2026-11-19",
         "basis": "Instrucción del propietario: «Si ambas funcionalidades cumplen todos los criterios de aceptación y QA confirma su conformidad, procede con su aprobación y cambio a DONE»; QA ronda 2 = CONFORME.",
-        "open_minor_items": [
-          "MENOR: el texto '<agente>: INSUFFICIENT_DATA' lo genera el orquestador, no la Fase 3; conviene documentarlo en api_contracts.md §3.3 (requiere CR: cambio de contrato) (orchestrator.py:79-81)"
+        "open_minor_items": [],
+        "closed_minor_items": [
+          "Menor 1 (QA ronda 3): texto '<agente>: INSUFFICIENT_DATA' documentado en api_contracts.md §3.3 mediante CR-016 (DEC-015, contrato v1.5)"
         ]
       },
       "post_approval_changes": {

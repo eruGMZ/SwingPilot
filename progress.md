@@ -891,3 +891,27 @@
 **Estado:** FEAT-004/005 siguen DONE; cambios registrados en `post_approval_changes_2` (re-auditoría PENDING). Abierto: menor 1 (documentar en api_contracts.md §3.3 el texto `<agente>: INSUFFICIENT_DATA`; requiere CR).
 
 **Siguiente acción:** CR para el menor 1 (si el propietario lo decide); acordar criterio de salida de IMPL-1.
+
+---
+
+## 2026-11-19 | FASE 2 | CR-016 redactada (PROPUESTA) para el menor 1 de la QA ronda 3 | PENDIENTE DE APROBACIÓN
+
+**Actividad:** redactada `harness/change_requests/CR-016_propagacion-datos-faltantes-sintesis.md`: documenta en api_contracts.md §3.0/§3.3, REQ-G-073 y TC-AC-06 la propagación determinista de los datos faltantes de la Fase 3 a la salida de Decision Synthesis (formato `"<agente>: …"` y `"<agente>: INSUFFICIENT_DATA"`); contrato v1.5. Sin cambios de código. Alternativa D.1 (campo separado). Sección E: otras tres prácticas implementadas no documentadas (sobre determinista fijado por el Orchestrator; `input_analysis_ids` exactamente los 3 análisis; filtrado de contexto) para que el propietario decida si se incluyen. NO aplicada; contrato sigue en v1.4.
+
+**Archivos:** `harness/change_requests/CR-016_propagacion-datos-faltantes-sintesis.md` (nuevo), `feature_list.json`, `progress.md`.
+
+**Pruebas ejecutadas:** ninguna (solo documentación).
+
+**Siguiente acción:** decisión del propietario sobre CR-016 (B tal cual o D.1; incluir E.1–E.3 o no).
+
+---
+
+## 2026-11-19 | FASE 2 | CR-016 aplicada, DEC-015 registrada, contrato v1.5 | COMPLETADO
+
+**Actividad:** el propietario aprobó CR-016 («CR-016: Aprobado. Propagación en missing_data (sin campo aparte). Incluir E.1, E.2 y E.3»). Registrada DEC-015 (Q32–Q35). Aplicado: api_contracts.md §3.0 (definición de `missing_data`; campos comunes fijados por el Orchestrator, E.1), §3.1 y §3.4 (contexto mínimo, E.3), §3.3 (propagación de datos faltantes, B.1; `input_analysis_ids` = exactamente los 3 análisis, E.2); REQ-G-051 (E.1, E.3) y REQ-G-073 (B.3, E.2); TC-AC-06 (B.4). Los 5 documentos de `implementation/` pasan a v1.5. Manifest 0.10.0. Sin cambios funcionales de código (solo referencias en comentarios). Cerrado el menor 1 de la QA ronda 3; FEAT-004/005 sin menores abiertos.
+
+**Archivos:** `docs/decisions/DEC-015_propagacion-datos-faltantes-sintesis.md` (nuevo), `harness/change_requests/CR-016_propagacion-datos-faltantes-sintesis.md` (APLICADA), `implementation/*.md` (v1.5), `harness/manifest.json`, `src/swingpilot/ai/orchestrator.py` (comentarios), `feature_list.json` (v0.17.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests` → 223 passed, 3 skipped; validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
+
+**Pendiente:** re-auditoría de `post_approval_changes_2` de FEAT-004/005 (PENDING); criterio de salida de IMPL-1.

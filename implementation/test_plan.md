@@ -1,8 +1,8 @@
-# SwingPilot — Test Plan v1.4
+# SwingPilot — Test Plan v1.5
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.4 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013) y v1.4 aplica CR-015 (DEC-014), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013 y CR-015. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -630,7 +630,7 @@ Numeración igual a la fuente: AI_INTEGRATION.md, «¿Cuándo se considera termi
 
 ### TC-AC-06 — Incertidumbre y desacuerdos preservados (REQ-G-056, REQ-G-073)
 - Input: Market Analyst alcista y Macro Analyst con riesgo alto contradictorio; por separado, un analista con INSUFFICIENT_DATA.
-- Expected: la salida de Decision Synthesis registra el desacuerdo (o `DISAGREEMENT`) y la limitación de datos; no presenta la propuesta como consenso; los desacuerdos se muestran en Telegram con la propuesta.
+- Expected: la salida de Decision Synthesis registra el desacuerdo (o `DISAGREEMENT`) y la limitación de datos; no presenta la propuesta como consenso; los desacuerdos se muestran en Telegram con la propuesta. Los datos faltantes de la Fase 3 aparecen en `missing_data` de la síntesis con el prefijo del agente, aunque el LLM los omita (CR-016).
 
 ### TC-AC-07 — Motores deterministas separados de los LLM (REQ-G-057, REQ-G-071)
 - Input: (a) Strategy Engine y ML Engine con la misma entrada dos veces; (b) inspección de dependencias.

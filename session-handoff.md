@@ -8,10 +8,10 @@
 - FEAT-004 implementada con dobles (74 tests pasan); NO verificada contra la API real.
 - FEAT-005 implementada con dobles (96 tests pasan). CONF-007 ESCALADO (falta tipo de evento del Strategy Analyst).
 - CR-015 (PROPUESTA) redactada para CONF-007. FEAT-006 implementada con dobles (127 tests pasan).
-- CR-015 APLICADA (contrato v1.4, DEC-014); CONF-007 RESUELTA; presupuesto de IA en America/Mexico_City.
+- CR-015 APLICADA (contrato v1.4, DEC-014); CR-016 APLICADA (contrato v1.5, DEC-015); CONF-007 RESUELTA; presupuesto de IA en America/Mexico_City.
 - Pendiente del propietario: límite de gasto en consola Anthropic; zona horaria de otros cortes mensuales (al implementarlos).
 - FEAT-007 implementada; prevención de fugas a registros añadida (181 tests pasan). IMPL-1: FEAT-001..007 todas PARTIAL.
-- Prueba real contra Anthropic: 3 passed, $0.027 (tests/integration/results/anthropic_live_2026-11-19.json). FEAT-004/005 DONE tras QA ronda 2 CONFORME; 3 menores corregidos después y re-auditados (SE MANTIENE DONE); menores 2 y 3 de la ronda 3 corregidos (223 tests pasan, sin re-auditar); abierto el menor 1 (requiere CR).
+- Prueba real contra Anthropic: 3 passed, $0.027 (tests/integration/results/anthropic_live_2026-11-19.json). FEAT-004/005 DONE tras QA ronda 2 CONFORME; 3 menores corregidos después y re-auditados (SE MANTIENE DONE); menores 2 y 3 de la ronda 3 corregidos (223 tests pasan, sin re-auditar); menor 1 cerrado con CR-016 (contrato v1.5, DEC-015).
 - Siguiente acción: revisión independiente de FEAT-004/005; calibración de prompts/effort; cierre de IMPL-1 e inicio de IMPL-2 con autorización del propietario.
 - (Las secciones siguientes son del cierre anterior; su frase «FASE 2 BLOQUEADA» queda superada por esta autorización.)
 

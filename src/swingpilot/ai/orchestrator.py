@@ -43,7 +43,7 @@ EVENT_FOR_AGENT = {
 }
 ALLOWED_EMITS = frozenset(EVENT_FOR_AGENT.values())
 # Campos de `context` por agente según api_contracts.md §3.1 y §3.4; el resto se descarta
-# (contexto mínimo, REQ-G-051, TC-AC-01).
+# (contexto mínimo, REQ-G-051, TC-AC-01; CR-016 E.3).
 CONTEXT_FIELDS = {
     "market_analyst": ("asset", "timeframes", "ohlcv", "indicators", "data_source"),
     "macro_analyst": ("news_sources", "macro_data", "time_window"),
@@ -73,7 +73,8 @@ def _propagate_limitations(synth: dict, outs: dict) -> dict:
     los datos faltantes declarados por la Fase 3 se añaden de forma determinista al
     `missing_data` de la síntesis (con el agente de origen), sin depender del prompt. Un
     análisis de la Fase 3 en INSUFFICIENT_DATA sin datos faltantes declarados queda
-    registrado igualmente. No se inventa nada: solo se copia lo que la Fase 3 declaró."""
+    registrado igualmente. No se inventa nada: solo se copia lo que la Fase 3 declaró.
+    Documentado en api_contracts.md §3.3 (CR-016, DEC-015)."""
     declared = []
     for a in PHASE3_AGENTS:
         items = [f"{a}: {m}" for m in outs[a].get("missing_data", [])]
