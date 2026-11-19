@@ -1,9 +1,9 @@
 # session-handoff.md — SwingPilot Harness
 
-## Cierre de sesión 2026-11-18 — siguiente acción
+## Cierre de sesión 2026-11-19 — siguiente acción
 
-- **G3 = PASS** (2026-11-18): el propietario aprobó el contrato técnico ("APRUEBO EL CONTRATO TÉCNICO v1.0"). Contrato v1.0 en `implementation/`.
-- Decisiones: DEC-001..DEC-010. Change requests CR-001..CR-010 aprobadas y aplicadas (CR-010: FASE 1 COMPLETADA en AGENTS.md). Verificación: G2 (2026-11-13) y VER-003 (re-verificación y cierre).
+- **G3 = PASS** (2026-11-18): el propietario aprobó el contrato técnico ("APRUEBO EL CONTRATO TÉCNICO v1.0"). Contrato v1.1 (CR-011, 2026-11-19) en `implementation/`; pendientes de FASE 2: tipo de orden del stop (stop-limit vs OCO), esquema del evento de señal de salida, nombres de motivos de NO_SETUP.
+- Decisiones: DEC-001..DEC-011. Change requests CR-001..CR-011 aprobadas y aplicadas (CR-011, 2026-11-19: candidatos en conflicto, estructura Walk-Forward, sizing; contrato v1.1). Verificación: G2 (2026-11-13) y VER-003 (re-verificación y cierre).
 - Producción en Laptop B; desarrollo e investigación en Laptop A; vigilancia con servicio externo (DEC-007). IA: Haiku 5.5 en 4 agentes, Sonnet 5.5 en Decision Synthesis (DEC-009).
 - Pendiente diferido: REQ-G-P08 (validación fiscal con contador); bloquea cálculos fiscales, no FASE 2.
 - Cambios al contrato desde ahora: solo con solicitud de cambio aprobada y versionado (v1.x).

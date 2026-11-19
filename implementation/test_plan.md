@@ -1,8 +1,8 @@
-# SwingPilot — Test Plan v1.0
+# SwingPilot — Test Plan v1.1
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.0 — APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); incorpora CR-001..CR-009. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.1 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplica CR-011 aprobada el 2026-11-19 (DEC-011); incorpora CR-001..CR-011. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -211,6 +211,14 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Input: Mismos inputs ejecutados dos veces
 - Expected: Exactamente el mismo Q ambas veces
 
+### TC-PS-005 — Registro del riesgo efectivo en el rechazo por mínimos (CR-011)
+- Input: minNotional/minQty impide ejecutar el 1.5% como tal
+- Expected: la operación se rechaza sin ajustar el presupuesto; el registro incluye presupuesto, cantidad y riesgo efectivo tras redondeo, cantidad y riesgo exigidos por el mínimo y el filtro causante
+
+### TC-PS-006 — Riesgo efectivo menor tras redondeo (CR-011)
+- Input: tras redondear hacia abajo a stepSize, el riesgo efectivo queda por debajo del presupuesto y cumple los mínimos
+- Expected: se acepta y se registra el riesgo efectivo real (≤ presupuesto)
+
 ---
 
 ## 5. Pruebas de Segregación de Datos ML (C1)
@@ -254,6 +262,22 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 ### TC-ML-010 — Registro de experimentos rechazados
 - Input: experimento REJECTED o INCONCLUSIVE
 - Expected: queda registrado con sus resultados; no se elimina ni se oculta
+
+### TC-ML-011 — Estructura Walk-Forward y embargo (REQ-G-106, CR-011)
+- Input: diseño de validación de un experimento
+- Expected: el Walk-Forward opera solo dentro de Train+Val; cada ventana respeta entrenamiento 24 m → embargo 2 m → prueba 6 m (paso 6 m); ninguna observación de entrenamiento cae en el embargo ni en la prueba; el embargo es ≥ el horizonte de etiquetas o el experimento se rechaza
+
+### TC-ML-012 — OOS y LOCKBOX de evaluación única (REQ-G-106, CR-011)
+- Input: segunda evaluación sobre OOS o LOCKBOX
+- Expected: bloqueada y registrada como desviación; el mínimo de 30 trades OOS se evalúa sobre el agregado; se exigen ≥ 2 ventanas de prueba WF
+
+### TC-ML-013 — Preregistro congela el diseño de ventanas (REQ-G-103, CR-011)
+- Input: preregistro de un experimento; intento de cambiar longitudes de ventana, embargo, step size, frecuencia de roll o nº de ventanas tras ver resultados OOS
+- Expected: el preregistro contiene esos campos congelados; el cambio posterior se registra como desviación y el experimento deja de ser confirmatorio
+
+### TC-ML-014 — Cálculo del histórico mínimo (REQ-G-103, CR-011)
+- Input: preregistro con tasa de trades del backtest piloto estimada solo con datos de Train; histórico disponible menor al requerido
+- Expected: el preregistro documenta el histórico mínimo calculado con la tasa real; si no alcanza 2 ventanas WF + OOS + LOCKBOX, documenta la limitación y propone ajuste; el experimento no pasa de DESIGN; la estimación no usa OOS ni LOCKBOX
 
 ---
 
@@ -390,6 +414,26 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 ### TC-FLOW-003 — Evaluación del Risk Analyst visible al propietario
 - Input: TRADE_PROPOSAL con RISK_APPROVED
 - Expected: el mensaje de Telegram incluye la evaluación del Risk Analyst junto con la propuesta
+
+### TC-FLOW-004 — Dos candidatos de entrada → NO_SETUP (CR-011)
+- Input: el Strategy Engine produce 2 candidatos de entrada long en el mismo ciclo, tanto discrepantes en estrategia como coincidentes
+- Expected: NO_SETUP con motivo de conflicto y candidatos descartados registrados; cero llamadas a LLM; no se suman tamaños
+
+### TC-FLOW-005 — Un solo candidato de entrada (CR-011)
+- Input: exactamente 1 candidato de entrada
+- Expected: STRATEGY_CANDIDATE; el ciclo continúa a Fase 3
+
+### TC-FLOW-006 — Entrada + salida simultáneas (CR-011)
+- Input: posición abierta; en el mismo ciclo, señal de salida y un candidato de entrada
+- Expected: se procesa primero la salida (sin autorización humana); el candidato de entrada no se ejecuta en ese ciclo y se re-evalúa en el siguiente
+
+### TC-FLOW-007 — Sin puntuación de confianza (CR-011)
+- Input: candidatos con distinto valor de confianza del ML Engine
+- Expected: la resolución no usa confianza; el resultado es idéntico al de la regla binaria
+
+### TC-FLOW-008 — Solo las entradas requieren autorización (CR-011)
+- Input: señal de salida de estrategia y cierre protector
+- Expected: ambos se ejecutan sin solicitud de autorización humana; una entrada sin autorización válida se rechaza (INV-008)
 
 ## 8.4 Pruebas de Reintentos y Fallo de Agentes (C1 — REQ-G-034)
 

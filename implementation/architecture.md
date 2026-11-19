@@ -1,8 +1,8 @@
-# SwingPilot — Architecture Contract v1.0
+# SwingPilot — Architecture Contract v1.1
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.0 — APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); incorpora CR-001..CR-009. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
+**Estado:** v1.1 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplica CR-011 aprobada el 2026-11-19 (DEC-011); incorpora CR-001..CR-011. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
 **Autoridad documental:** DEC-001 — AI_INTEGRATION.md v1.0 (principios D1–D4 aprobados)
 
 ---

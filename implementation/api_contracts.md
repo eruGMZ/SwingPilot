@@ -1,8 +1,8 @@
-# SwingPilot — API Contracts v1.0
+# SwingPilot — API Contracts v1.1
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.0 — APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); incorpora CR-001..CR-009. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.1 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplica CR-011 aprobada el 2026-11-19 (DEC-011); incorpora CR-001..CR-011. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -63,7 +63,7 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
 | STARTUP_RECONCILIATION_COMPLETED | Execution Engine | Risk Manager / Telegram Bot / Audit | Resultado de la reconciliación de arranque: órdenes adoptadas por identificador de cliente, autorizaciones invalidadas, stops verificados (REQ-G-032) |
 | AUTHORIZATION_INVALIDATED | Execution Engine | Audit / Telegram Bot | Autorización humana no enviada invalidada al reiniciar (REQ-G-032) |
 | UNAUTHORIZED_APPROVAL_ATTEMPT | Telegram Bot | Audit | Mensaje de aprobación de un remitente distinto al propietario; ignorado (REQ-G-033) |
-| NO_SETUP | Strategy Engine | AI Orchestrator / Audit | Sin STRATEGY_CANDIDATE en el filtro determinista; fin del ciclo sin llamadas a LLM (CR-004) |
+| NO_SETUP | Strategy Engine | AI Orchestrator / Audit | Sin STRATEGY_CANDIDATE en el filtro determinista; fin del ciclo sin llamadas a LLM (CR-004). También se emite con 2+ candidatos de entrada en el mismo ciclo (aunque coincidan); el evento registra los candidatos descartados y el motivo (CR-011; los nombres definitivos de los motivos son PENDING de FASE 2) |
 | RISK_ANALYSIS_COMPLETED | Risk Analyst | Telegram Bot / Audit | Evaluación consultiva sobre una propuesta con RISK_APPROVED (REQ-G-055, CR-004) |
 | HEARTBEAT | Trading Engine | Servicio externo de vigilancia | Latido periódico sin datos sensibles (REQ-G-035) |
 | PUBLIC_IP_CHANGED | Trading Engine | Risk Manager / Telegram Bot / Audit | IP pública distinta a la registrada en Binance; dispara Fail-Closed (REQ-G-036) |

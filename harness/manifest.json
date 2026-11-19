@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "0.5.0",
+    "version": "0.6.0",
     "phase": "FASE 1",
     "status": "G3_PASS_CONTRACT_APPROVED_AWAITING_PHASE2_AUTHORIZATION",
     "description": "Inventario de fuentes documentales de SwingPilot. Registrado en FASE 1 tras depósito de documentos por el propietario.",
-    "last_updated": "2026-11-18",
+    "last_updated": "2026-11-19",
     "g0_notes": [
       "CONF-001: TRACEABILITY_MATRIX.md presenta contradicción interna — encabezado indica 'BORRADOR — pendiente de aprobación humana' pero la tabla de control de cambios indica 'Aprobada'. Registrado en conflict_register.md.",
       "NOTA: PROFILE_AND_OPERATIONAL_POLICIES.md indica Estado: 'Propuesta documental para aprobación' — pendiente de confirmar estado de aprobación con el propietario.",

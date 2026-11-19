@@ -561,3 +561,41 @@
 **Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
 
 **Siguiente acción autorizada:** esperar "AUTORIZO INICIO DE FASE 2". Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-19 | FASE 1 (post-G3) | CR-011 redactada (PROPUESTA) | PENDIENTE DE APROBACIÓN
+
+**Actividad:** El propietario pidió definir, antes de autorizar FASE 2, (A) resolución de candidatos en conflicto, (B) Walk-Forward (embargo, ventanas OOS, histórico mínimo) y (C) confirmación de sizing/minNotional. Se redactó CR-011 con los valores dados por el propietario. NO aplicada: el contrato v1.0 no se modificó. Se dejaron 5 decisiones pendientes explícitas (colocación del embargo, consenso⇒NO_SETUP, autorización de salidas por estrategia, combinación 50/20/15/15 con WF, mínimo de 30 trades por ventana).
+
+**Archivos:** `harness/change_requests/CR-011_conflictos-walk-forward-sizing.md` (nuevo), `progress.md`.
+
+**Pruebas ejecutadas:** ninguna (solo documentación).
+
+**Siguiente acción autorizada:** esperar la respuesta del propietario a las decisiones pendientes y la aprobación de CR-011; luego registrar DEC-011 y aplicar. FASE 2 sigue BLOQUEADA. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-19 | FASE 1 (post-G3) | CR-011 aprobada con valores; aplicación en espera | PARCIAL
+
+**Actividad:** El propietario aprobó CR-011 con valores (embargo interpretación A; consenso⇒NO_SETUP; salida por estrategia autónoma; WF dentro de Train+Val, OOS y LOCKBOX de evaluación única; 30 trades OOS agregado; histórico mínimo con tasa real del backtest piloto). CR-011 actualizada. NO aplicada al contrato: quedan 2 aclaraciones (1: la frase "los cierres protectores requieren autorización" contradice DEC-008 Q25/RISK_POLICY; 2: reformulación "2 ventanas OOS" → "2 ventanas de prueba WF"). Consulta del propietario sobre el tipo de stop: REQ-G-031 deja el tipo (stop-limit vs OCO) PENDING de FASE 2.
+
+**Archivos:** `harness/change_requests/CR-011_conflictos-walk-forward-sizing.md`, `progress.md`.
+
+**Pruebas ejecutadas:** ninguna (solo documentación).
+
+**Siguiente acción autorizada:** resolver aclaraciones 1 y 2; luego DEC-011 y aplicación (contrato v1.1). FASE 2 sigue BLOQUEADA. Código funcional creado: NINGUNO.
+
+---
+
+## 2026-11-19 | FASE 1 (post-G3) | CR-011 aplicada, DEC-011 registrada, contrato v1.1 | COMPLETADO
+
+**Actividad:** El propietario resolvió las aclaraciones (1: solo las entradas requieren autorización; cierres protectores y salidas por señal son autónomos, contrato sin cambios en ese punto; 2: «2 ventanas de prueba WF» confirmado) y ordenó aplicar CR-011. Se registró DEC-011 y se aplicó al contrato: candidatos en conflicto (2+ entradas → NO_SETUP, entrada+salida → prevalece la salida, regla binaria sin confianza), estructura Walk-Forward (WF dentro de Train+Val; OOS y LOCKBOX de evaluación única; embargo 2 m entre entrenamiento y prueba; mín. 2 ventanas de prueba; 30 trades OOS agregado; preregistro congela diseño de ventanas; histórico mínimo con tasa real del piloto), y sizing (registro del riesgo efectivo en rechazos por mínimos; sin extensión de sizing). Los 5 documentos de `implementation/` pasan a v1.1. Manifest 0.6.0.
+
+**Archivos:** `docs/decisions/DEC-011_conflictos-walk-forward-sizing.md` (nuevo), `harness/change_requests/CR-011_conflictos-walk-forward-sizing.md` (APLICADA), `implementation/requirements.md`, `data_flow.md`, `api_contracts.md`, `test_plan.md` (TC-FLOW-004..008, TC-PS-005..006, TC-ML-011..014), `architecture.md` (versión), `harness/manifest.json`, `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py (OK). Sin pruebas de código (no existe código).
+
+**Pendientes (siguen PENDING de FASE 2):** tipo de orden del stop (stop-limit vs OCO, REQ-G-031); esquema del evento de señal de salida; nombres de los motivos de NO_SETUP; REQ-G-P08 (validación fiscal, diferido). `gate_status.json` no se modificó (G3 PASS se refiere a v1.0; v1.1 aprobado por el propietario mediante CR-011).
+
+**Siguiente acción autorizada:** esperar "AUTORIZO INICIO DE FASE 2". FASE 2 BLOQUEADA. Código funcional creado: NINGUNO.

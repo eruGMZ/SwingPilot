@@ -1,8 +1,8 @@
-# SwingPilot — Requirements Contract v1.0
+# SwingPilot — Requirements Contract v1.1
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.0 — APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); incorpora CR-001..CR-009. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
+**Estado:** v1.1 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplica CR-011 aprobada el 2026-11-19 (DEC-011); incorpora CR-001..CR-011. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
 **Autoridad documental aplicada:** DEC-001 (resoluciones de conflictos CONF-001, CONF-002)
 
 ---
@@ -166,8 +166,8 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 - El sistema bloquea entrada si no puede estimar costes razonablemente
 
 ### REQ-G-015
-**Descripción:** Fórmula de position sizing para posición Long: `Q = (RiskBudget - FixedCosts) / ((P_e - P_s) + C_e + C_s + S)`. El sizing no se determina exclusivamente por el capital disponible. Después de calcular Q: redondear hacia abajo según stepSize del mercado; respetar minQty y minNotional; recalcular riesgo efectivo después del redondeo; rechazar si el mínimo de Binance excede el presupuesto. No se aumenta el presupuesto para satisfacer mínimos del exchange.  
-**Fuentes:** REQ-5008, REQ-5009, REQ-1022  
+**Descripción:** Fórmula de position sizing para posición Long: `Q = (RiskBudget - FixedCosts) / ((P_e - P_s) + C_e + C_s + S)`. El sizing no se determina exclusivamente por el capital disponible. Después de calcular Q: redondear hacia abajo según stepSize del mercado; respetar minQty y minNotional; recalcular riesgo efectivo después del redondeo; rechazar si el mínimo de Binance excede el presupuesto. No se aumenta el presupuesto para satisfacer mínimos del exchange. **CR-011 (DEC-011):** el rechazo por minNotional/minQty/stepSize registra el presupuesto de riesgo (1.5% del equity actual), la cantidad y el riesgo efectivo calculados tras el redondeo, la cantidad y el riesgo que habría exigido el mínimo del exchange y el filtro que lo impidió; si tras redondear hacia abajo el riesgo efectivo es ≤ presupuesto se acepta y se registra el riesgo efectivo real. Solo el propietario puede cambiar el presupuesto (política de riesgo). Con el perfil aprobado (1 posición, long-only, 1 activo) no se requiere extensión de sizing (ni ATR, ni risk budgeting de portfolio, ni tope de exposición neta, ni kill switch de aplanar todo).  
+**Fuentes:** REQ-5008, REQ-5009, REQ-1022; CR-011  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** CRITICAL  
 **Estado:** APPROVED-DEC-001  
@@ -590,7 +590,7 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 **Prioridad:** CRITICAL
 
 ### REQ-G-071
-**Descripción:** Fase 2 — Filtro determinista (CR-004): Regime Engine y ML Engine producen sus resultados; el Strategy Engine evalúa las estrategias aprobadas con ellos y produce STRATEGY_CANDIDATE. La salida del ML Engine la consume el Strategy Engine (familia ML-Based) y Decision Synthesis solo como contexto; no es un decisor paralelo. **Si no hay candidato: NO_SETUP y fin del ciclo sin ninguna llamada a LLM.** Fase 3 — Análisis LLM paralelo: el Orchestrator distribuye contexto a Market Analyst, Macro Analyst y Strategy Analyst. Todos los resultados comparten correlation_id. Cada componente entrega resultado o estado explícito (error, indisponibilidad, insuficiencia).  
+**Descripción:** Fase 2 — Filtro determinista (CR-004): Regime Engine y ML Engine producen sus resultados; el Strategy Engine evalúa las estrategias aprobadas con ellos y produce STRATEGY_CANDIDATE. La salida del ML Engine la consume el Strategy Engine (familia ML-Based) y Decision Synthesis solo como contexto; no es un decisor paralelo. **Si no hay candidato: NO_SETUP y fin del ciclo sin ninguna llamada a LLM.** **Resolución de candidatos (CR-011, DEC-011):** la resolución es determinista y ocurre en el Strategy Engine, no en Decision Synthesis. La regla es binaria (candidato sí/no); no se usa puntuación de confianza para decidir ni ponderar en ninguna familia, incluida ML-Based. Dos o más candidatos de entrada (long) en el mismo ciclo (mismo `correlation_id`) → `NO_SETUP` (fail-closed), también cuando coinciden; no se suman tamaños, no se elige el «mejor» ni se reduce tamaño; se registran los candidatos descartados y el motivo. Entrada + señal de salida simultáneas: prevalece la salida; si queda un candidato de entrada válido, se re-evalúa en el siguiente ciclo. Las salidas por señal de estrategia y los cierres protectores son autónomos (sin autorización humana); solo las entradas requieren autorización individual (INV-008). El esquema del evento de señal de salida es PENDING de FASE 2. Fase 3 — Análisis LLM paralelo: el Orchestrator distribuye contexto a Market Analyst, Macro Analyst y Strategy Analyst. Todos los resultados comparten correlation_id. Cada componente entrega resultado o estado explícito (error, indisponibilidad, insuficiencia).  
 **Fuentes:** REQ-3023; CR-004 §A  
 **Nota:** el orden original de DOC-003 (análisis paralelo antes de evaluación de estrategias) se ajusta por CR-004; DOC-003 no se modifica.  
 **Tipo:** FUNCTIONAL  
@@ -759,7 +759,7 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 - Las pruebas de auditoría verifican ausencia de look-ahead bias y leakage en las 7 categorías
 
 ### REQ-G-103
-**Descripción:** Preregistro obligatorio antes de cualquier backtest confirmatorio o entrenamiento formal. El preregistro incluye: pregunta de investigación, hipótesis principal, hipótesis nula, justificación, universo de activos, temporalidad, periodo, variables, reglas de entrada/salida, modelo/configuración inicial, división de datos, métricas, costes, criterios de aceptación/rechazo y limitaciones. El preregistro se congela ANTES de la evaluación confirmatoria. Las desviaciones se documentan y justifican.  
+**Descripción:** Preregistro obligatorio antes de cualquier backtest confirmatorio o entrenamiento formal. El preregistro incluye: pregunta de investigación, hipótesis principal, hipótesis nula, justificación, universo de activos, temporalidad, periodo, variables, reglas de entrada/salida, modelo/configuración inicial, división de datos, métricas, costes, criterios de aceptación/rechazo y limitaciones. El preregistro se congela ANTES de la evaluación confirmatoria. Las desviaciones se documentan y justifican. **CR-011 (DEC-011):** el preregistro congela además la longitud de entrenamiento, la de prueba, el embargo, el step size, la frecuencia de roll y el número de ventanas Walk-Forward antes de cualquier evaluación OOS; cambiarlos tras ver resultados OOS es una desviación y el experimento deja de ser confirmatorio. Debe calcular y documentar el histórico mínimo requerido para cumplir los mínimos de trades (REQ-G-P15) en todas las particiones y ventanas, usando la tasa real de trades observada en el backtest piloto (estimada solo con datos de Train) y no solo el máximo teórico de 8/mes (REQ-G-004). Si el histórico disponible no alcanza para 2 ventanas WF + OOS + LOCKBOX, el preregistro documenta la limitación y propone un ajuste (decisión del propietario); los mínimos no se relajan por sí solos y el experimento no pasa de DESIGN.  
 **Fuentes:** REQ-4005, REQ-4013  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** HIGH  
@@ -781,8 +781,8 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 **Estado:** APPROVED-DEC-001
 
 ### REQ-G-106
-**Descripción:** Obligaciones metodológicas de robustez: Walk-Forward Analysis (6 pasos: entrenar en ventana histórica, evaluar en periodo posterior, desplazar ventana, repetir, consolidar, analizar estabilidad/degradación); pruebas de robustez en 8 dimensiones (parámetros, temporalidad, condiciones de mercado, costes, slippage, ventanas históricas, operaciones individuales, estabilidad temporal); Bootstrap, Bootstrap por bloques y Monte Carlo.  
-**Fuentes:** REQ-4027, REQ-4028, REQ-4029  
+**Descripción:** Obligaciones metodológicas de robustez: Walk-Forward Analysis (6 pasos: entrenar en ventana histórica, evaluar en periodo posterior, desplazar ventana, repetir, consolidar, analizar estabilidad/degradación); pruebas de robustez en 8 dimensiones (parámetros, temporalidad, condiciones de mercado, costes, slippage, ventanas históricas, operaciones individuales, estabilidad temporal); Bootstrap, Bootstrap por bloques y Monte Carlo. **Estructura de validación (CR-011, DEC-011):** el Walk-Forward opera dentro de Train+Val (70% del histórico); OOS (15%) es una evaluación final única; LOCKBOX (15%) se usa una sola vez al final. Cada ventana: entrenamiento 24 m → embargo 2 m → prueba 6 m; paso 6 m (el embargo separa el fin del entrenamiento del inicio de la prueba y debe ser ≥ el horizonte máximo de las etiquetas). Mínimo: 2 ventanas de prueba Walk-Forward para aceptar un modelo. El mínimo de 30 trades OOS se evalúa sobre el agregado, no por ventana. Referencia de histórico mínimo (indicativa; el cálculo vinculante es el del preregistro, REQ-G-103): con 2 ventanas la región WF exige 24+2+6+6 = 38 meses = 70% del histórico, es decir ≥ ~54.3 meses; `H_min = max(38/0.70; 100/(0.70·r); 30/(0.15·r))` meses con `r` trades/mes.  
+**Fuentes:** REQ-4027, REQ-4028, REQ-4029; CR-011  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** HIGH  
 **Estado:** APPROVED-DEC-001  
@@ -957,7 +957,7 @@ Los siguientes parámetros técnicos están pendientes de definición. Ningún a
 | REQ-G-P13 | **RESUELTO (DEC-005):** ≥ 0.10 R neto — ~~Expectancy mínimo~~ | REQ-4033, REQ-4035 |
 | REQ-G-P14 | **RESUELTO (DEC-005):** ≥ 1.3 neto — ~~Profit Factor mínimo~~ | REQ-4033, REQ-4035 |
 | REQ-G-P15 | **RESUELTO (DEC-005):** ≥ 100 trades Train+Val; ≥ 30 en OOS y en LOCKBOX — ~~Tamaño mínimo de muestra~~ | REQ-4033, REQ-4035 |
-| REQ-G-P16 | **RESUELTO (DEC-005):** móvil 24m entrenamiento / 6m prueba / paso 6m — ~~Duración y tamaño de ventanas Walk-Forward~~ | REQ-4027, REQ-4035 |
+| REQ-G-P16 | **RESUELTO (DEC-005; concretado por DEC-011/CR-011: embargo 2m entre entrenamiento y prueba, mín. 2 ventanas de prueba, WF dentro de Train+Val):** móvil 24m entrenamiento / 6m prueba / paso 6m — ~~Duración y tamaño de ventanas Walk-Forward~~ | REQ-4027, REQ-4035 |
 | REQ-G-P17 | **RESUELTO (DEC-005):** IC bootstrap 95% expectancy > 0 + línea base ingenua + corrección por nº de experimentos — ~~Requisitos estadísticos de aceptación de modelos ML~~ | REQ-4029, REQ-4035 |
 | REQ-G-P18 | **RESUELTO (DEC-006):** tope $5 USD/mes; IA solo al cierre H4 con setup; timeout 60 s; ciclo ≤ 5 min; sin SLA 24/7; reintentos y fallo de agentes: DEC-007 / REQ-G-034; modelos, invocación y controles de costo: DEC-009 / REQ-G-095, REQ-G-096 (CR-006) — ~~Tiempos máximos de respuesta, límites de consumo API, objetivos de disponibilidad~~ | REQ-3047 |
 | REQ-G-P19 | **RESUELTO (DEC-004):** arranque + antes y después de cada ciclo de decisión + cada 5 min con posición abierta — ~~Frecuencia de reconciliación con Binance~~ | REQ-5041 |

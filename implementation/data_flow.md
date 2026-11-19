@@ -1,8 +1,8 @@
-# SwingPilot — Data Flow v1.0
+# SwingPilot — Data Flow v1.1
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.0 — APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); incorpora CR-001..CR-009. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.1 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplica CR-011 aprobada el 2026-11-19 (DEC-011); incorpora CR-001..CR-011. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -47,6 +47,13 @@ Disparador externo (señal periódica o solicitud manual)
 │  producción sin evidencia experimental.                                 │
 │                                                                         │
 │  SIN CANDIDATO → NO_SETUP → fin del ciclo, CERO llamadas a LLM          │
+│                                                                         │
+│  Resolución de candidatos (CR-011, DEC-011; regla binaria, sin          │
+│  confianza):                                                            │
+│  - 2+ candidatos de entrada en el ciclo (aunque coincidan) → NO_SETUP,  │
+│    con candidatos descartados y motivo registrados                      │
+│  - Entrada + señal de salida simultáneas → prevalece la salida; el      │
+│    candidato de entrada válido se re-evalúa en el SIGUIENTE ciclo       │
 │                                                                         │
 │  Control de costo previo a Fase 3 (REQ-G-096, CR-006): con posición     │
 │  abierta, bloqueo de entradas activo, modo seguro o tope mensual de IA  │
@@ -198,6 +205,9 @@ Estado: SIN_POSICION
 │         ├─ Evento de salida:
 │         │    - Stop ejecutado en Binance → ORDER_FILLED (SELL)
 │         │    - Stop alcanzado sin ejecución en Binance → ORDER_SUBMITTED (SELL)
+│         │    - Señal de salida del Strategy Engine → ORDER_SUBMITTED (SELL),
+│         │      autónoma, sin autorización humana (CR-011, DEC-011; el
+│         │      esquema del evento de señal de salida es PENDING de FASE 2)
 │         │    - Take-profit alcanzado (si configurado) → ORDER_SUBMITTED
 │         │    - Instrucción manual del operador → ORDER_SUBMITTED
 │         │    - Bloqueo de riesgo activo → acciones de protección disponibles
