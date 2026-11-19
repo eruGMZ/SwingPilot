@@ -403,3 +403,37 @@ def test_reservation_grows_with_non_ascii_content(budget):
                            user_content=json.dumps({"agent": "market_analyst", "t": text}, ensure_ascii=False),
                            output_schema={"type": "object"})
     assert seen[1] - seen[0] >= 6000  # 3 bytes por carácter CJK frente a 1
+
+
+# ---------------- QA ronda 3 ----------------
+# Menor 3: un fallo al escribir no provoca un segundo intento de registro
+def test_write_failure_in_settle_is_not_retried_as_estimate(budget):
+    rid = budget.try_reserve("claude-haiku-5-5", 100, 100)
+    calls = []
+
+    def failing_insert(*a, **kw):
+        calls.append(kw.get("estimated"))
+        raise ValueError("fallo de escritura simulado")
+    budget._insert = failing_insert
+    with pytest.raises(ValueError, match="escritura"):
+        budget.settle(rid, "x", "claude-haiku-5-5", 10, 10)
+    assert calls == [False] and budget._inflight == {}
+
+
+def test_write_failure_during_conservative_record_is_single_attempt(budget):
+    rid = budget.try_reserve("claude-haiku-5-5", 100, 100)
+    calls = []
+
+    def failing_insert(*a, **kw):
+        calls.append(kw.get("estimated"))
+        raise sqlite3.OperationalError("disco lleno")
+    budget._insert = failing_insert
+    with pytest.raises(sqlite3.OperationalError):
+        budget.settle(rid, "x", "claude-unknown", 10, 10)
+    assert calls == [True] and budget._inflight == {}
+
+
+def test_settle_records_once_on_success(budget):
+    rid = budget.try_reserve("claude-haiku-5-5", 100, 100)
+    budget.settle(rid, "x", "claude-haiku-5-5", 10, 10)
+    assert budget._db.execute("SELECT COUNT(*) FROM ai_usage").fetchone()[0] == 1

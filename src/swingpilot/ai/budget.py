@@ -64,6 +64,13 @@ def call_cost_usd(model: str, input_tokens: int, output_tokens: int) -> float:
     return (input_tokens * pin + output_tokens * pout) / 1_000_000
 
 
+def _measure(model: str | None, input_tokens: int | None, output_tokens: int | None) -> float:
+    """Costo real de una llamada; ValueError/UnknownModelPrice si no se puede medir."""
+    if model is None or input_tokens is None or output_tokens is None:
+        raise ValueError("usage incompleto: no se puede medir el costo")
+    return call_cost_usd(model, input_tokens, output_tokens)
+
+
 class AIBudget:
     def __init__(self, path: str | Path, *, tz: tzinfo = BUDGET_TZ,
                  now: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
@@ -120,14 +127,19 @@ class AIBudget:
         como estimado — la llamada ya se cobró y no puede quedar fuera del tope — y relanza
         el error para que el agente falle cerrado."""
         try:
-            return self.record(agent, model, input_tokens, output_tokens)
-        except (KeyError, ValueError):
-            with self._lock:
-                res = self._inflight.get(rid)
-            if res is not None:
-                est, rmodel, rin, rout = res
-                self._insert(agent, rmodel, rin, rout, est, estimated=True)
-            raise
+            try:
+                cost = _measure(model, input_tokens, output_tokens)
+            except (KeyError, ValueError):
+                # Solo los errores de MEDICIÓN llevan al registro conservador. Un fallo al
+                # escribir (abajo) se propaga tal cual: nunca hay un segundo intento de registro.
+                with self._lock:
+                    res = self._inflight.get(rid)
+                if res is not None:
+                    est, rmodel, rin, rout = res
+                    self._insert(agent, rmodel, rin, rout, est, estimated=True)
+                raise
+            self._insert(agent, model, input_tokens, output_tokens, cost, estimated=False)
+            return cost
         finally:
             self.release(rid)
 
@@ -135,9 +147,7 @@ class AIBudget:
                output_tokens: int | None) -> float:
         """Registra una llamada con respuesta. Sin modelo o tokens, o con un modelo sin
         precio conocido, lanza error: el gasto no se subestima en silencio."""
-        if model is None or input_tokens is None or output_tokens is None:
-            raise ValueError("usage incompleto: no se puede medir el costo")
-        cost = call_cost_usd(model, input_tokens, output_tokens)
+        cost = _measure(model, input_tokens, output_tokens)
         self._insert(agent, model, input_tokens, output_tokens, cost, estimated=False)
         return cost
 

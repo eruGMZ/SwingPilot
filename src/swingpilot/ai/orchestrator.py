@@ -224,7 +224,15 @@ class AIOrchestrator:
         synth = self._run_agent("decision_synthesis", primary, data_ts, synth_ctx, deadline)
         given = {outs[a]["analysis_id"] for a in PHASE3_AGENTS}
         if synth["status"] != "ERROR":
-            synth = _propagate_limitations(synth, outs)
+            propagated = _propagate_limitations(synth, outs)
+            try:  # la salida ampliada se vuelve a validar contra el contrato
+                validate_agent_output("decision_synthesis", propagated)
+                synth = propagated
+            except AgentContractError as e:
+                synth = self._error_output(
+                    "decision_synthesis", primary, data_ts, synth["model_id"],
+                    {"code": "OUT_OF_CONTRACT", "message": f"tras propagar limitaciones: {e}"},
+                    {k: synth[k] for k in _ENVELOPE_KEYS})
         # REQ-G-056/073: integra los tres análisis de la Fase 3 → los cita todos y solo esos.
         if synth["status"] != "ERROR" and set(synth["input_analysis_ids"]) != given:
             synth = self._error_output(

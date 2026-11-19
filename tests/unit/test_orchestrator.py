@@ -523,3 +523,39 @@ def test_propagation_does_not_duplicate_items():
     c = RoutingClient(macro_analyst=[macro], decision_synthesis=synth_already)
     r = orch(c).run_cycle(*make_cycle())
     assert r.outputs["decision_synthesis"]["missing_data"] == ["macro_analyst: sin CPI"]
+
+
+# QA ronda 3, menor 2: la síntesis ampliada se re-valida contra el contrato
+def test_propagated_synthesis_is_revalidated(monkeypatch):
+    import swingpilot.ai.orchestrator as om
+    real = om.validate_agent_output
+    seen = []
+
+    def spy(agent, doc):
+        if agent == "decision_synthesis" and doc.get("status") != "ERROR":
+            seen.append(list(doc["missing_data"]))
+        return real(agent, doc)
+    monkeypatch.setattr(om, "validate_agent_output", spy)
+    macro = {**BODIES["macro_analyst"], "status": "INSUFFICIENT_DATA", "missing_data": ["sin CPI"]}
+    c = RoutingClient(macro_analyst=[macro], **SYNTH)
+    r = orch(c).run_cycle(*make_cycle())
+    assert r.outcome == "COMPLETED"
+    assert ["macro_analyst: sin CPI"] in seen  # se validó la versión propagada
+
+
+def test_propagated_synthesis_failing_validation_is_out_of_contract(monkeypatch):
+    import swingpilot.ai.orchestrator as om
+    real = om.validate_agent_output
+
+    def strict(agent, doc):
+        if agent == "decision_synthesis" and any(m.startswith("macro_analyst:") for m in doc.get("missing_data", [])):
+            raise om.AgentContractError("rechazo simulado")
+        return real(agent, doc)
+    monkeypatch.setattr(om, "validate_agent_output", strict)
+    macro = {**BODIES["macro_analyst"], "status": "INSUFFICIENT_DATA", "missing_data": ["sin CPI"]}
+    c = RoutingClient(macro_analyst=[macro], **SYNTH)
+    r = orch(c).run_cycle(*make_cycle())
+    assert r.outcome == "FAILED"
+    err = r.outputs["decision_synthesis"]["error"]
+    assert err["code"] == "OUT_OF_CONTRACT" and "propagar" in err["message"]
+    assert r.events[-1]["status"] == "FAILED"

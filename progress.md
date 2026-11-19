@@ -865,3 +865,29 @@
 **Estado:** FEAT-004/005 siguen DONE; los cambios posteriores a la aprobación están registrados en `post_approval_changes` con re-auditoría PENDING.
 
 **Siguiente acción:** re-auditoría QA de los cambios (opcional, recomendada); acordar criterio de salida de IMPL-1.
+
+---
+
+## 2026-11-19 | FASE 2 | Re-auditoría QA de los cambios posteriores a la aprobación | COMPLETADO
+
+**Actividad:** a petición del propietario, tercer QA independiente (sonnet) sobre los cambios del commit `6b5b32d` que corrigieron los 3 menores de la ronda 2. Resultado: 3/3 CORREGIDOS; migración de `ai_usage`, liberación de reservas y propagación de `missing_data` revisadas sin riesgos bloqueantes; la propagación no se considera desviación del contrato. Veredicto: FEAT-004 y FEAT-005 **SE MANTIENEN DONE**. 3 menores nuevos registrados en `feature_list.json` (texto INSUFFICIENT_DATA generado por el orquestador, a documentar en api_contracts.md §3.3 mediante CR; sin re-validación tras ampliar missing_data; caso límite en `settle`). Nota de QA: la conclusión de que las pruebas fallarían al revertir es por lectura de código.
+
+**Pruebas ejecutadas (QA):** `.venv/bin/pytest -q tests` → 218 passed, 3 skipped.
+
+**Sub-agentes en la sesión:** 3 (QA rondas 1–3, sonnet; ~233K tokens en total, ~2.5 min). Por encima del tope orientativo de 200K de entrada en sub-agentes.
+
+**Siguiente acción:** decidir si atender los 3 menores nuevos (uno requiere CR); acordar criterio de salida de IMPL-1.
+
+---
+
+## 2026-11-19 | FASE 2 | Corrección de los menores 2 y 3 de la QA ronda 3 | COMPLETADO
+
+**Actividad:** a petición del propietario: (2) la salida de Decision Synthesis con `missing_data` ampliado se vuelve a validar contra el contrato; si no valida → ERROR `OUT_OF_CONTRACT` con evento FAILED; (3) `AIBudget.settle` separa medición (`_measure`) y escritura: solo un error de medición lleva al registro conservador; un fallo de escritura se propaga sin segundo intento de registro.
+
+**Archivos:** `src/swingpilot/ai/{budget,orchestrator}.py`, `tests/unit/{test_ai_budget,test_orchestrator}.py`, `feature_list.json` (v0.16.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests` → 223 passed, 3 skipped.
+
+**Estado:** FEAT-004/005 siguen DONE; cambios registrados en `post_approval_changes_2` (re-auditoría PENDING). Abierto: menor 1 (documentar en api_contracts.md §3.3 el texto `<agente>: INSUFFICIENT_DATA`; requiere CR).
+
+**Siguiente acción:** CR para el menor 1 (si el propietario lo decide); acordar criterio de salida de IMPL-1.

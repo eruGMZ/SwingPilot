@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "0.14.0",
+    "version": "0.16.0",
     "phase": "FASE 2",
     "status": "IMPL-1_REGISTRADA",
     "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.4. Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
@@ -36,7 +36,7 @@
       "status": "PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "218 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "covered": [
           "Mensaje universal validado por JSON Schema (13 campos, UUID v4, UTC, enums, asset BTC/USDT)",
@@ -73,7 +73,7 @@
       "status": "PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "218 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "covered": [
           "Versión mayor incompatible rechazada; menor/patch aceptado; semver mal formado rechazado (TC-MSG-002)"
@@ -111,7 +111,7 @@
       "status": "PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "218 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "covered": [
           "Almacén append-only (SQLite audit_events); UPDATE/DELETE abortados por trigger (TC-SEC-004)",
@@ -158,7 +158,7 @@
       "status": "DONE",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "218 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "mode": "dobles de prueba (sin red ni API key)",
         "covered": [
@@ -218,7 +218,9 @@
       "approval": {
         "approved_at": "2026-11-19",
         "basis": "Instrucción del propietario: «Si ambas funcionalidades cumplen todos los criterios de aceptación y QA confirma su conformidad, procede con su aprobación y cambio a DONE»; QA ronda 2 = CONFORME.",
-        "open_minor_items": []
+        "open_minor_items": [
+          "MENOR: el texto '<agente>: INSUFFICIENT_DATA' lo genera el orquestador, no la Fase 3; conviene documentarlo en api_contracts.md §3.3 (requiere CR: cambio de contrato) (orchestrator.py:79-81)"
+        ]
       },
       "post_approval_changes": {
         "date": "2026-11-19",
@@ -228,7 +230,28 @@
           "Menor 2: cota de entrada por byte UTF-8 (+2000) en lugar de por carácter. Tests: test_input_bound_counts_utf8_bytes[4], test_input_bound_includes_system_and_schema, test_reservation_grows_with_non_ascii_content",
           "Menor 3: los datos faltantes declarados por la Fase 3 (y su estado INSUFFICIENT_DATA) se añaden de forma determinista al missing_data de la síntesis, con el agente de origen. Tests: test_phase3_limitations_are_propagated_to_synthesis_output, test_no_limitations_leaves_synthesis_missing_data_unchanged, test_propagation_does_not_duplicate_items"
         ],
-        "re_audit": "PENDING — cambios no re-auditados por QA independiente"
+        "re_audit": {
+          "reviewer": "QA Agent (tercer sub-agente independiente, sonnet)",
+          "date": "2026-11-19",
+          "executed": "git show 6b5b32d (budget/provider/orchestrator); .venv/bin/pytest -q tests → 218 passed, 3 skipped",
+          "result": "3/3 menores CORREGIDOS; migración, liberación de reservas y propagación de missing_data revisadas; la propagación no se considera desviación del contrato (refuerza REQ-G-056)",
+          "verdict": "SE MANTIENE DONE",
+          "new_minor_findings": [
+            "MENOR: el texto '<agente>: INSUFFICIENT_DATA' lo genera el orquestador, no la Fase 3; conviene documentarlo en api_contracts.md §3.3 (requiere CR: cambio de contrato) (orchestrator.py:79-81)",
+            "MENOR: la salida de síntesis con missing_data ampliado no se re-valida contra el esquema; bajo riesgo, solo añade cadenas (orchestrator.py:~226-229)",
+            "MENOR: en settle, un ValueError de _insert ajeno al costo provocaría un segundo intento de registro (caso límite teórico) (budget.py)"
+          ],
+          "note": "La afirmación de que las pruebas fallarían al revertir es por lectura de código, sin ejecutar mutaciones."
+        }
+      },
+      "post_approval_changes_2": {
+        "date": "2026-11-19",
+        "reason": "corrección de los menores 2 y 3 de la QA ronda 3, a petición del propietario",
+        "changes": [
+          "Menor 2 (QA ronda 3): la salida de síntesis con missing_data ampliado se re-valida contra el contrato; si falla → ERROR OUT_OF_CONTRACT con evento FAILED (orchestrator.py). Tests: test_propagated_synthesis_is_revalidated, test_propagated_synthesis_failing_validation_is_out_of_contract",
+          "Menor 3 (QA ronda 3): settle separa medición y escritura; solo un error de medición lleva al registro conservador y un fallo de escritura se propaga sin segundo intento (budget.py, _measure). Tests: test_write_failure_in_settle_is_not_retried_as_estimate, test_write_failure_during_conservative_record_is_single_attempt, test_settle_records_once_on_success"
+        ],
+        "re_audit": "PENDING — no re-auditado"
       }
     },
     {
@@ -257,7 +280,7 @@
       "status": "DONE",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "218 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "mode": "dobles de prueba (cliente falso con el adaptador real; sin red ni API key)",
         "covered": [
@@ -326,7 +349,9 @@
       "approval": {
         "approved_at": "2026-11-19",
         "basis": "Instrucción del propietario: «Si ambas funcionalidades cumplen todos los criterios de aceptación y QA confirma su conformidad, procede con su aprobación y cambio a DONE»; QA ronda 2 = CONFORME.",
-        "open_minor_items": []
+        "open_minor_items": [
+          "MENOR: el texto '<agente>: INSUFFICIENT_DATA' lo genera el orquestador, no la Fase 3; conviene documentarlo en api_contracts.md §3.3 (requiere CR: cambio de contrato) (orchestrator.py:79-81)"
+        ]
       },
       "post_approval_changes": {
         "date": "2026-11-19",
@@ -336,7 +361,28 @@
           "Menor 2: cota de entrada por byte UTF-8 (+2000) en lugar de por carácter. Tests: test_input_bound_counts_utf8_bytes[4], test_input_bound_includes_system_and_schema, test_reservation_grows_with_non_ascii_content",
           "Menor 3: los datos faltantes declarados por la Fase 3 (y su estado INSUFFICIENT_DATA) se añaden de forma determinista al missing_data de la síntesis, con el agente de origen. Tests: test_phase3_limitations_are_propagated_to_synthesis_output, test_no_limitations_leaves_synthesis_missing_data_unchanged, test_propagation_does_not_duplicate_items"
         ],
-        "re_audit": "PENDING — cambios no re-auditados por QA independiente"
+        "re_audit": {
+          "reviewer": "QA Agent (tercer sub-agente independiente, sonnet)",
+          "date": "2026-11-19",
+          "executed": "git show 6b5b32d (budget/provider/orchestrator); .venv/bin/pytest -q tests → 218 passed, 3 skipped",
+          "result": "3/3 menores CORREGIDOS; migración, liberación de reservas y propagación de missing_data revisadas; la propagación no se considera desviación del contrato (refuerza REQ-G-056)",
+          "verdict": "SE MANTIENE DONE",
+          "new_minor_findings": [
+            "MENOR: el texto '<agente>: INSUFFICIENT_DATA' lo genera el orquestador, no la Fase 3; conviene documentarlo en api_contracts.md §3.3 (requiere CR: cambio de contrato) (orchestrator.py:79-81)",
+            "MENOR: la salida de síntesis con missing_data ampliado no se re-valida contra el esquema; bajo riesgo, solo añade cadenas (orchestrator.py:~226-229)",
+            "MENOR: en settle, un ValueError de _insert ajeno al costo provocaría un segundo intento de registro (caso límite teórico) (budget.py)"
+          ],
+          "note": "La afirmación de que las pruebas fallarían al revertir es por lectura de código, sin ejecutar mutaciones."
+        }
+      },
+      "post_approval_changes_2": {
+        "date": "2026-11-19",
+        "reason": "corrección de los menores 2 y 3 de la QA ronda 3, a petición del propietario",
+        "changes": [
+          "Menor 2 (QA ronda 3): la salida de síntesis con missing_data ampliado se re-valida contra el contrato; si falla → ERROR OUT_OF_CONTRACT con evento FAILED (orchestrator.py). Tests: test_propagated_synthesis_is_revalidated, test_propagated_synthesis_failing_validation_is_out_of_contract",
+          "Menor 3 (QA ronda 3): settle separa medición y escritura; solo un error de medición lleva al registro conservador y un fallo de escritura se propaga sin segundo intento (budget.py, _measure). Tests: test_write_failure_in_settle_is_not_retried_as_estimate, test_write_failure_during_conservative_record_is_single_attempt, test_settle_records_once_on_success"
+        ],
+        "re_audit": "PENDING — no re-auditado"
       }
     },
     {
@@ -364,7 +410,7 @@
       "status": "PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "218 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "mode": "dobles de prueba",
         "covered": [
@@ -419,7 +465,7 @@
       "status": "PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "218 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "mode": "dobles de prueba",
         "covered": [
