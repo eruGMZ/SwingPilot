@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "0.17.0",
+    "version": "1.0.0",
     "phase": "FASE 2",
-    "status": "IMPL-1_REGISTRADA",
+    "status": "IMPL-1_CERRADA",
     "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5. Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
     "last_updated": "2026-11-19",
-    "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-2..IMPL-6 se registran al iniciarlas. READY_FOR_REVIEW = criterios con implementación, prueba y evidencia; pasa a DONE tras revisión independiente (QA o propietario), porque ningún agente aprueba su propio trabajo (AGENTS.md)."
+    "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-2..IMPL-6 se registran al iniciarlas. READY_FOR_REVIEW = criterios con implementación, prueba y evidencia; pasa a DONE tras revisión independiente (QA o propietario), porque ningún agente aprueba su propio trabajo (AGENTS.md). DONE-PARTIAL = criterios de IMPL-1 cumplidos con dependencias explícitas de fases posteriores (criterio del propietario, 2026-11-19); no bloquea la salida de IMPL-1."
   },
   "features": [
     {
@@ -31,22 +31,34 @@
         "src/swingpilot/contracts/message.py"
       ],
       "test_paths": [
-        "tests/unit/test_message_contract.py"
+        "tests/unit/test_message_contract.py",
+        "tests/unit/test_orchestrator.py"
       ],
-      "status": "PARTIAL",
+      "status": "DONE",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "233 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "covered": [
           "Mensaje universal validado por JSON Schema (13 campos, UUID v4, UTC, enums, asset BTC/USDT)",
           "Mensaje sin correlation_id rechazado (TC-MSG-001)",
           "Cadena correlation_id/causation_id (TC-MSG-003, TC-AC-03)",
-          "Catálogo de 31 eventos (CR-015) = api_contracts.md §2"
+          "Catálogo de 31 eventos (CR-015) = api_contracts.md §2",
+          "Contratos de entrada/salida versionados de los 5 agentes (contracts/agents.py, AGENT_CONTRACT_VERSION; validados en cada llamada) — resuelto con FEAT-004/005"
         ],
-        "not_covered": [
-          "Contratos de entrada/salida versionados de cada agente (api_contracts.md §3): se implementan con el Adapter/Orchestrator (FEAT-004/005)"
-        ]
+        "not_covered": []
+      },
+      "impl1_exit": {
+        "status": "DONE",
+        "deferred": [],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": {
+          "reviewer": "QA Agent (cuarto sub-agente independiente, sonnet)",
+          "date": "2026-11-19",
+          "executed": ".venv/bin/pytest -q tests → 223 passed, 3 skipped; validate_manifest/requirements/gates OK",
+          "verdict": "CONFORME"
+        },
+        "resolution": "El pendiente (contratos de agentes) quedó resuelto en contracts/agents.py con FEAT-004/005 (validate_agent_input/validate_agent_output, probados)."
       }
     },
     {
@@ -68,18 +80,40 @@
         "src/swingpilot/contracts/versioning.py"
       ],
       "test_paths": [
-        "tests/unit/test_message_contract.py"
+        "tests/unit/test_message_contract.py",
+        "tests/unit/test_orchestrator.py"
       ],
-      "status": "PARTIAL",
+      "status": "DONE-PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "233 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "covered": [
-          "Versión mayor incompatible rechazada; menor/patch aceptado; semver mal formado rechazado (TC-MSG-002)"
+          "Versión mayor incompatible rechazada; menor/patch aceptado; semver mal formado rechazado (TC-MSG-002)",
+          "Prompts versionados (PROMPTS[agent].version → prompt_version) y modelos registrados (model_id efectivo); verificado también con la API real"
         ],
         "not_covered": [
-          "Versionado de prompts y modelos (TC-AC-15 completo; depende de FEAT-004)"
+          "Versionado de estrategias: diferido a IMPL-3 (ver impl1_exit)"
+        ]
+      },
+      "impl1_exit": {
+        "status": "DONE-PARTIAL",
+        "deferred": [
+          {
+            "item": "Versionado de estrategias (parte del criterio 'Prompts, modelos, estrategias y contratos están versionados'; TC-AC-15)",
+            "deferred_to": "IMPL-3 Integración cuantitativa (ML, Regime y Strategy Engine)",
+            "justification": "Las estrategias las define el Strategy Engine, que no existe en IMPL-1. Prompts (PROMPTS.version → prompt_version), modelos (model_id efectivo) y contratos (schema_version + check_compatibility) ya están versionados y probados."
+          }
+        ],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": {
+          "reviewer": "QA Agent (cuarto sub-agente independiente, sonnet)",
+          "date": "2026-11-19",
+          "executed": ".venv/bin/pytest -q tests → 223 passed, 3 skipped; validate_manifest/requirements/gates OK",
+          "verdict": "CONFORME"
+        },
+        "depends_on": [
+          "IMPL-3 Integración cuantitativa (ML, Regime y Strategy Engine)"
         ]
       }
     },
@@ -108,10 +142,10 @@
         "tests/unit/test_message_contract.py",
         "tests/unit/test_leak_prevention.py"
       ],
-      "status": "PARTIAL",
+      "status": "DONE-PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "233 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "covered": [
           "Almacén append-only (SQLite audit_events); UPDATE/DELETE abortados por trigger (TC-SEC-004)",
@@ -126,7 +160,32 @@
           "Protección frente a manipulación directa del archivo SQLite fuera de la aplicación (DROP TRIGGER); fuera del alcance de IMPL-1"
         ]
       },
-      "notes": "Catálogo vigente: api_contracts.md §2 (31 tipos, CR-015). Esquema del evento de señal de salida: PENDING de FASE 2 (requiere decisión del propietario si el contrato no lo define)."
+      "notes": "Catálogo vigente: api_contracts.md §2 (31 tipos, CR-015). Esquema del evento de señal de salida: PENDING de FASE 2 (requiere decisión del propietario si el contrato no lo define).",
+      "impl1_exit": {
+        "status": "DONE-PARTIAL",
+        "deferred": [
+          {
+            "item": "TC-AC-04 completo: reconstrucción con propuesta normalizada, decisión del Risk Manager, autorización, órdenes y resultado",
+            "deferred_to": "IMPL-5 Paper Trading (Execution Engine simulado, órdenes)",
+            "justification": "Esos eventos los producen Risk Manager (IMPL-4) y Execution Engine (IMPL-5). La reconstrucción de la parte de IA (E1-E8, E11) ya está probada, también con la API real."
+          },
+          {
+            "item": "Protección frente a manipulación directa del archivo SQLite (DROP TRIGGER)",
+            "deferred_to": "Gate G6 Seguridad (auditoría)",
+            "justification": "Es un control de despliegue (permisos del archivo, copia externa), no de la aplicación; se evalúa en la auditoría de seguridad."
+          }
+        ],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": {
+          "reviewer": "QA Agent (cuarto sub-agente independiente, sonnet)",
+          "date": "2026-11-19",
+          "executed": ".venv/bin/pytest -q tests → 223 passed, 3 skipped; validate_manifest/requirements/gates OK",
+          "verdict": "CONFORME"
+        },
+        "depends_on": [
+          "IMPL-5 Paper Trading (Execution Engine simulado, órdenes)"
+        ]
+      }
     },
     {
       "id": "FEAT-004",
@@ -158,7 +217,7 @@
       "status": "DONE",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "233 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "mode": "dobles de prueba (sin red ni API key)",
         "covered": [
@@ -252,7 +311,29 @@
           "Menor 2 (QA ronda 3): la salida de síntesis con missing_data ampliado se re-valida contra el contrato; si falla → ERROR OUT_OF_CONTRACT con evento FAILED (orchestrator.py). Tests: test_propagated_synthesis_is_revalidated, test_propagated_synthesis_failing_validation_is_out_of_contract",
           "Menor 3 (QA ronda 3): settle separa medición y escritura; solo un error de medición lleva al registro conservador y un fallo de escritura se propaga sin segundo intento (budget.py, _measure). Tests: test_write_failure_in_settle_is_not_retried_as_estimate, test_write_failure_during_conservative_record_is_single_attempt, test_settle_records_once_on_success"
         ],
-        "re_audit": "PENDING — no re-auditado"
+        "re_audit": {
+          "reviewer": "QA Agent (cuarto sub-agente independiente, sonnet)",
+          "date": "2026-11-19",
+          "executed": ".venv/bin/pytest -q tests → 223 passed, 3 skipped; validate_manifest/requirements/gates OK",
+          "verdict": "CORREGIDO (A1, A2); sin regresiones; las pruebas fallarían al revertir"
+        }
+      },
+      "impl1_exit": {
+        "status": "DONE",
+        "deferred": [
+          {
+            "item": "Calibración de effort y costo real por ciclo (REQ-G-095 PENDING)",
+            "deferred_to": "IMPL-2 Agentes especializados",
+            "justification": "Se calibra con los agentes especializados y datos reales; no es criterio de aceptación de FEAT-004."
+          }
+        ],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": {
+          "reviewer": "QA Agent (cuarto sub-agente independiente, sonnet)",
+          "date": "2026-11-19",
+          "executed": ".venv/bin/pytest -q tests → 223 passed, 3 skipped; validate_manifest/requirements/gates OK",
+          "verdict": "CONFORME"
+        }
       }
     },
     {
@@ -281,7 +362,7 @@
       "status": "DONE",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "233 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "mode": "dobles de prueba (cliente falso con el adaptador real; sin red ni API key)",
         "covered": [
@@ -384,7 +465,39 @@
           "Menor 2 (QA ronda 3): la salida de síntesis con missing_data ampliado se re-valida contra el contrato; si falla → ERROR OUT_OF_CONTRACT con evento FAILED (orchestrator.py). Tests: test_propagated_synthesis_is_revalidated, test_propagated_synthesis_failing_validation_is_out_of_contract",
           "Menor 3 (QA ronda 3): settle separa medición y escritura; solo un error de medición lleva al registro conservador y un fallo de escritura se propaga sin segundo intento (budget.py, _measure). Tests: test_write_failure_in_settle_is_not_retried_as_estimate, test_write_failure_during_conservative_record_is_single_attempt, test_settle_records_once_on_success"
         ],
-        "re_audit": "PENDING — no re-auditado"
+        "re_audit": {
+          "reviewer": "QA Agent (cuarto sub-agente independiente, sonnet)",
+          "date": "2026-11-19",
+          "executed": ".venv/bin/pytest -q tests → 223 passed, 3 skipped; validate_manifest/requirements/gates OK",
+          "verdict": "CORREGIDO (A1, A2); sin regresiones; las pruebas fallarían al revertir"
+        }
+      },
+      "impl1_exit": {
+        "status": "DONE",
+        "deferred": [
+          {
+            "item": "Calibración de prompts 0.1.x (calidad del análisis)",
+            "deferred_to": "IMPL-2 Agentes especializados",
+            "justification": "IMPL-2 (agentes especializados) es la fase de su comportamiento; no es criterio de aceptación de FEAT-005."
+          },
+          {
+            "item": "Normalización de TRADE_PROPOSAL al contrato del Risk Manager (§4.1)",
+            "deferred_to": "IMPL-3 Integración cuantitativa (ML, Regime y Strategy Engine)",
+            "justification": "Fase de normalización de propuestas (architecture.md §7, fase 3)."
+          },
+          {
+            "item": "TC-SEC-003 como evaluación de robustez (más de una muestra)",
+            "deferred_to": "Gate G6 Seguridad (auditoría)",
+            "justification": "Una muestra real superada; la evaluación sistemática corresponde a la auditoría de seguridad."
+          }
+        ],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": {
+          "reviewer": "QA Agent (cuarto sub-agente independiente, sonnet)",
+          "date": "2026-11-19",
+          "executed": ".venv/bin/pytest -q tests → 223 passed, 3 skipped; validate_manifest/requirements/gates OK",
+          "verdict": "CONFORME"
+        }
       }
     },
     {
@@ -409,10 +522,10 @@
       "test_paths": [
         "tests/unit/test_ai_budget.py"
       ],
-      "status": "PARTIAL",
+      "status": "DONE-PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "233 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "mode": "dobles de prueba",
         "covered": [
@@ -434,7 +547,37 @@
           "Precios de DEC-009 (2026-11-03) no se verifican contra la factura real"
         ]
       },
-      "notes": "Aviso por Telegram depende del bot (fase posterior); en IMPL-1 se prueba el evento. Límite en consola Anthropic: PENDING."
+      "notes": "Aviso por Telegram depende del bot (fase posterior); en IMPL-1 se prueba el evento. Límite en consola Anthropic: PENDING.",
+      "impl1_exit": {
+        "status": "DONE-PARTIAL",
+        "deferred": [
+          {
+            "item": "Envío del aviso AI_BUDGET_WARNING por Telegram",
+            "deferred_to": "IMPL-4 Integración con riesgo (Risk Manager, autorizaciones, Telegram)",
+            "justification": "El Telegram Bot no existe en IMPL-1; el evento ya se emite y registra (consumidor Telegram Bot en api_contracts.md §2)."
+          },
+          {
+            "item": "Límite de gasto en la consola de Anthropic (REQ-G-096 (4))",
+            "deferred_to": "Acción manual del propietario",
+            "justification": "Configuración manual en la cuenta del propietario; no es código."
+          },
+          {
+            "item": "Llamadas fallidas sin respuesta (timeout, red) que la API pudiera facturar no se registran; precios de DEC-009 no verificados contra la factura",
+            "deferred_to": "Gate G6 Seguridad (auditoría)",
+            "justification": "Limitación conocida de medición: sin respuesta no hay usage. Se revisa con la conciliación de la factura real antes de Live."
+          }
+        ],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": {
+          "reviewer": "QA Agent (cuarto sub-agente independiente, sonnet)",
+          "date": "2026-11-19",
+          "executed": ".venv/bin/pytest -q tests → 223 passed, 3 skipped; validate_manifest/requirements/gates OK",
+          "verdict": "CONFORME"
+        },
+        "depends_on": [
+          "IMPL-4 Integración con riesgo (Risk Manager, autorizaciones, Telegram)"
+        ]
+      }
     },
     {
       "id": "FEAT-007",
@@ -457,17 +600,19 @@
         "src/swingpilot/ai/provider.py",
         "src/swingpilot/ai/orchestrator.py",
         ".env.example",
-        "src/swingpilot/security/startup.py"
+        "src/swingpilot/security/startup.py",
+        "src/swingpilot/bootstrap.py"
       ],
       "test_paths": [
         "tests/unit/test_credentials.py",
         "tests/unit/test_ai_provider.py",
-        "tests/unit/test_leak_prevention.py"
+        "tests/unit/test_leak_prevention.py",
+        "tests/unit/test_bootstrap.py"
       ],
-      "status": "PARTIAL",
+      "status": "DONE-PARTIAL",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit",
-        "result": "223 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
+        "result": "233 passed, 3 skipped (unitarias; las 3 live requieren RUN_ANTHROPIC_LIVE=1)",
         "executed_at": "2026-11-19",
         "mode": "dobles de prueba",
         "covered": [
@@ -480,7 +625,8 @@
           "TC-SEC-001: nombres de credenciales solo en security/credentials.py; sin valores literales en src/",
           "Mensajes de error de agentes redactados antes de registrarse (verificado: sin redacción, un valor citado por jsonschema se filtraba)",
           "startup_violations: .env inexistente o legible por grupo/otros, credenciales en el entorno del proceso, ANTHROPIC_LOG=debug en LIVE, modo desconocido = no arrancar",
-          "Logs debug del SDK anthropic/httpx2 sin la clave (verificación local con clave falsa)"
+          "Logs debug del SDK anthropic/httpx2 sin la clave (verificación local con clave falsa)",
+          "build_ai_stack: startup_violations (Fail-Closed), vault, EventStore(secret_check), AIBudget con AI_BUDGET_WARNING al registro, adaptador from_vault con leak_check, orquestador con EntryGate y redact"
         ],
         "not_covered": [
           "Aislamiento a nivel de proceso (mismo proceso Python: el aislamiento es por diseño y pruebas, no por el sistema operativo)",
@@ -488,11 +634,168 @@
           "Token de Telegram en registros generados (TC-SEC-006 completo) y remitente no autorizado (TC-SEC-007): Telegram Bot, fase posterior",
           "Prohibiciones de REQ-G-059 sobre capital, límites de riesgo y registros: se cumplen por ausencia de acceso; se reverifican al existir Risk Manager y Fiscal Ledger",
           "Detección solo de la credencial literal: codificada (base64, partida, otro formato) no se detecta",
-          "Tracebacks con variables locales (pytest, Sentry con locals) pueden mostrar client.api_key",
-          "Aún no existe el punto de arranque de la aplicación que invoque startup_violations ni que conecte EventStore/AIOrchestrator con el vault"
+          "Tracebacks con variables locales (pytest, Sentry con locals) pueden mostrar client.api_key"
         ],
         "notes": "Nombres BINANCE_API_SECRET y TELEGRAM_BOT_TOKEN son de implementación (el contrato solo nombra BINANCE_API_KEY y ANTHROPIC_API_KEY)."
+      },
+      "impl1_exit": {
+        "status": "DONE-PARTIAL",
+        "deferred": [
+          {
+            "item": "Verificación de permisos de la clave de Binance por API y restricción por IP (REQ-G-093, TC-SEC-005)",
+            "deferred_to": "IMPL-6 Live Trading (permisos Binance)",
+            "justification": "La clave de Binance solo la usa el Execution Engine en modo Live."
+          },
+          {
+            "item": "Token de Telegram en registros (TC-SEC-006 completo) y remitente no autorizado (TC-SEC-007)",
+            "deferred_to": "IMPL-4 Integración con riesgo (Risk Manager, autorizaciones, Telegram)",
+            "justification": "Requieren el Telegram Bot."
+          },
+          {
+            "item": "Prohibiciones de REQ-G-059 sobre capital, límites de riesgo y registros fiscales",
+            "deferred_to": "IMPL-4 Integración con riesgo (Risk Manager, autorizaciones, Telegram)",
+            "justification": "Hoy se cumplen por ausencia de acceso; se reverifican cuando existan Risk Manager (IMPL-4) y Fiscal Ledger."
+          },
+          {
+            "item": "Credenciales codificadas (base64, partidas), tracebacks con variables locales y aislamiento a nivel de proceso",
+            "deferred_to": "Gate G6 Seguridad (auditoría)",
+            "justification": "Limitaciones conocidas del enfoque en un solo proceso; se evalúan en la auditoría de seguridad."
+          }
+        ],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": {
+          "reviewer": "QA Agent (cuarto sub-agente independiente, sonnet)",
+          "date": "2026-11-19",
+          "executed": ".venv/bin/pytest -q tests → 223 passed, 3 skipped; validate_manifest/requirements/gates OK",
+          "verdict": "CONFORME"
+        },
+        "depends_on": [
+          "IMPL-4 Integración con riesgo (Risk Manager, autorizaciones, Telegram)",
+          "IMPL-6 Live Trading (permisos Binance)"
+        ],
+        "resolution": "Punto de arranque implementado en IMPL-1 por recomendación de la QA ronda 4 (src/swingpilot/bootstrap.py; tests/unit/test_bootstrap.py, 10 pruebas). Implementado después de esa auditoría: cubierto por pruebas, sin re-auditoría."
       }
     }
-  ]
+  ],
+  "live_api_evidence": {
+    "description": "Prueba real contra la API de Anthropic (criterio G4 de salida de IMPL-1 fijado por el propietario el 2026-11-19).",
+    "test": "tests/integration/test_anthropic_live.py (opt-in: RUN_ANTHROPIC_LIVE=1); modo RESEARCH; datos sintéticos; sin Binance ni órdenes",
+    "runs": [
+      {
+        "file": "tests/integration/results/anthropic_live_2026-11-19T2120Z.json",
+        "result": "3 passed",
+        "cost_usd": 0.026997,
+        "steps_passed": [
+          "paso 1 arranque (startup_violations, vault)",
+          "paso 2 Haiku 5.5 y Sonnet 5.5",
+          "paso 3 ciclo completo E5-E8",
+          "paso 4 Risk Analyst E11",
+          "cadena completa (10 eventos, sin huérfanos)"
+        ],
+        "prompt_versions": {
+          "todos": "0.1.0"
+        }
+      },
+      {
+        "file": "tests/integration/results/anthropic_live_2026-11-19T2131Z.json",
+        "result": "3 passed",
+        "cost_usd": 0.026509,
+        "steps_passed": [
+          "paso 1 arranque (startup_violations, vault)",
+          "paso 2 Haiku 5.5 y Sonnet 5.5",
+          "paso 3 ciclo completo E5-E8; Synthesis cita los 3 analysis_id",
+          "paso 4 Risk Analyst E11",
+          "cadena completa (10 eventos, sin huérfanos)"
+        ],
+        "prompt_versions": {
+          "decision_synthesis": "0.1.1",
+          "resto": "0.1.0"
+        },
+        "models_returned": {
+          "market_analyst": "claude-haiku-5-5",
+          "macro_analyst": "claude-haiku-5-5",
+          "strategy_analyst": "claude-haiku-5-5",
+          "risk_analyst": "claude-haiku-5-5",
+          "decision_synthesis": "claude-sonnet-5-5"
+        },
+        "calls": [
+          {
+            "agent": "market_analyst",
+            "model": "claude-haiku-5-5",
+            "input_tokens": 209,
+            "output_tokens": 9,
+            "cost_usd": 2.5e-05,
+            "step": "paso 2"
+          },
+          {
+            "agent": "decision_synthesis",
+            "model": "claude-sonnet-5-5",
+            "input_tokens": 209,
+            "output_tokens": 9,
+            "cost_usd": 0.000508,
+            "step": "paso 2"
+          },
+          {
+            "agent": "macro_analyst",
+            "model": "claude-haiku-5-5",
+            "input_tokens": 1423,
+            "output_tokens": 1159,
+            "cost_usd": 0.000722,
+            "step": "ciclo"
+          },
+          {
+            "agent": "strategy_analyst",
+            "model": "claude-haiku-5-5",
+            "input_tokens": 1451,
+            "output_tokens": 1463,
+            "cost_usd": 0.000877,
+            "step": "ciclo"
+          },
+          {
+            "agent": "market_analyst",
+            "model": "claude-haiku-5-5",
+            "input_tokens": 1821,
+            "output_tokens": 2064,
+            "cost_usd": 0.001214,
+            "step": "ciclo"
+          },
+          {
+            "agent": "decision_synthesis",
+            "model": "claude-sonnet-5-5",
+            "input_tokens": 6199,
+            "output_tokens": 954,
+            "cost_usd": 0.021938,
+            "step": "ciclo"
+          },
+          {
+            "agent": "risk_analyst",
+            "model": "claude-haiku-5-5",
+            "input_tokens": 1285,
+            "output_tokens": 2193,
+            "cost_usd": 0.001225,
+            "step": "Fase 5"
+          }
+        ],
+        "source_of_token_data": "var/ai_budget.db (tabla ai_usage, registro real del adaptador)"
+      }
+    ],
+    "total_cost_usd": 0.053506
+  },
+  "impl1_exit_summary": {
+    "date": "2026-11-19",
+    "criteria_source": "Propietario, 2026-11-19 (criterio de salida de IMPL-1)",
+    "statuses": {
+      "FEAT-001": "DONE",
+      "FEAT-002": "DONE-PARTIAL",
+      "FEAT-003": "DONE-PARTIAL",
+      "FEAT-004": "DONE",
+      "FEAT-005": "DONE",
+      "FEAT-006": "DONE-PARTIAL",
+      "FEAT-007": "DONE-PARTIAL"
+    },
+    "g4": "PASS con alcance IMPL-1 (harness/gates/gate_status.json)",
+    "qa_rounds": 4,
+    "validators": "validate_manifest.py, validate_requirements.py, validate_gates.py: OK",
+    "minors_2_3_reaudit": "Completada en QA ronda 4 (no quedó PENDING)"
+  }
 }

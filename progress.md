@@ -915,3 +915,26 @@
 **Pruebas ejecutadas:** `.venv/bin/pytest -q tests` → 223 passed, 3 skipped; validate_manifest.py, validate_requirements.py, validate_gates.py (OK).
 
 **Pendiente:** re-auditoría de `post_approval_changes_2` de FEAT-004/005 (PENDING); criterio de salida de IMPL-1.
+
+---
+
+## 2026-11-19 | FASE 2 | QA ronda 4, arranque de FEAT-007 y CIERRE DE IMPL-1 | COMPLETADO
+
+**Criterio de salida de IMPL-1 (propietario, 2026-11-19):** G4 pasa con la prueba real documentada en `feature_list.json`; FEAT-001..007 en DONE, o DONE-PARTIAL con dependencia explícita de una fase posterior; los 3 validadores en OK; commit final con `feature_list.json`, `progress.md` y `session-handoff.md` con la transición a IMPL-2; re-auditoría de los menores 2 y 3 registrada.
+
+**QA ronda 4** (cuarto sub-agente independiente, sonnet): A1/A2 (menores 2 y 3 de la ronda 3) CORREGIDOS sin regresiones; clasificación de salida de las 7 FEAT CONFORME; G4 PASS con alcance IMPL-1 (live_api_evidence cuadra con los resultados). Menores: `not_covered` obsoleto en FEAT-001/002 (corregido); el punto de arranque de FEAT-007 se había diferido sin razón técnica (implementado: `src/swingpilot/bootstrap.py`, `tests/unit/test_bootstrap.py`, 10 pruebas; posterior a la auditoría, sin re-auditoría); `verified_by` y G4 por registrar (registrados).
+
+**Resultado:**
+- FEAT-001, FEAT-004, FEAT-005: **DONE**. FEAT-002, FEAT-003, FEAT-006, FEAT-007: **DONE-PARTIAL** con dependencias explícitas (IMPL-3, IMPL-4, IMPL-5, IMPL-6, G6 o acción del propietario), justificadas en `impl1_exit.deferred`.
+- **G4 = PASS** (alcance IMPL-1) en `harness/gates/gate_status.json`.
+- `live_api_evidence` en `feature_list.json`: dos corridas reales, modelos devueltos, tokens y costo por llamada, pasos superados; total $0.053506.
+- Re-auditoría de los menores 2 y 3: completada en la ronda 4 (no quedó PENDING).
+- Nota: varias dependencias son de fases posteriores a IMPL-2 (p. ej. Execution Engine = IMPL-5); se registró la fase real según architecture.md §7.
+
+**Archivos:** `src/swingpilot/bootstrap.py` (nuevo), `tests/unit/test_bootstrap.py` (nuevo), `feature_list.json` (v1.0.0), `harness/gates/gate_status.json` (G4), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests` → 233 passed, 3 skipped; validate_manifest.py, validate_requirements.py, validate_gates.py → OK.
+
+**Sub-agentes en la sesión:** 4 (QA rondas 1–4, sonnet; ~298K tokens en total), por encima del tope orientativo de 200K.
+
+**Siguiente acción autorizada:** iniciar IMPL-2 «Agentes especializados» cuando el propietario lo indique, en una sesión nueva.

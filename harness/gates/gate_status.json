@@ -2,8 +2,8 @@
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
     "version": "0.3.0",
-    "phase": "FASE 1",
-    "last_updated": "2026-11-18",
+    "phase": "FASE 2",
+    "last_updated": "2026-11-19",
     "note": "Ningún gate puede aprobarse mediante declaración del agente. G3 y G7 requieren aprobación humana explícita."
   },
   "gates": [
@@ -56,11 +56,12 @@
       "name": "Pruebas de implementación",
       "description": "Todas las funcionalidades implementadas tienen pruebas unitarias y de integración ejecutadas con evidencia registrada.",
       "phase": "FASE 2",
-      "status": "PENDING",
+      "status": "PASS",
       "requires_human_approval": false,
-      "approved_by": null,
-      "approved_at": null,
-      "evidence": null
+      "approved_by": "QA Agent independiente (ronda 4), según criterio del propietario",
+      "approved_at": "2026-11-19",
+      "evidence": "Criterio del propietario (2026-11-19): prueba real contra Anthropic documentada en feature_list.json (live_api_evidence: modelos devueltos, tokens, costo, pasos superados). Dos corridas reales: tests/integration/results/anthropic_live_2026-11-19T2120Z.json y …T2131Z.json, 3 passed cada una, $0.053506 en total. Unitarias: 233 passed, 3 skipped. QA ronda 4 contrastó live_api_evidence con los resultados (sumas cuadran) y dictaminó G4 PASS con alcance IMPL-1. FEAT-001/004/005 DONE; FEAT-002/003/006/007 DONE-PARTIAL con dependencias explícitas.",
+      "scope": "IMPL-1 (FEAT-001..007). Se re-evalúa al cerrar cada IMPL posterior; si no se cumple, vuelve a OPEN."
     },
     {
       "id": "G5",

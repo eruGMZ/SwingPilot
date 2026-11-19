@@ -1,19 +1,44 @@
 # session-handoff.md — SwingPilot Harness
 
-## Sesión 2026-11-19 (FASE 2) — AUTORIZADA
+## Cierre de IMPL-1 (2026-11-19) — transición a IMPL-2
 
-- El propietario emitió "AUTORIZO INICIO DE FASE 2". feature_list.json poblada con FEAT-001..007 (IMPL-1), todas NOT_STARTED. Código: ninguno aún. G4..G7 PENDING.
-- FEAT-001/002 implementadas parcialmente (39 tests pasan; .venv/bin/pytest -q tests/unit). AGENTS.md actualizado (CR-014).
-- FEAT-003 implementada parcialmente (EventStore SQLite append-only; 48 tests pasan).
-- FEAT-004 implementada con dobles (74 tests pasan); NO verificada contra la API real.
-- FEAT-005 implementada con dobles (96 tests pasan). CONF-007 ESCALADO (falta tipo de evento del Strategy Analyst).
-- CR-015 (PROPUESTA) redactada para CONF-007. FEAT-006 implementada con dobles (127 tests pasan).
-- CR-015 APLICADA (contrato v1.4, DEC-014); CR-016 APLICADA (contrato v1.5, DEC-015); CONF-007 RESUELTA; presupuesto de IA en America/Mexico_City.
-- Pendiente del propietario: límite de gasto en consola Anthropic; zona horaria de otros cortes mensuales (al implementarlos).
-- FEAT-007 implementada; prevención de fugas a registros añadida (181 tests pasan). IMPL-1: FEAT-001..007 todas PARTIAL.
-- Prueba real contra Anthropic: 3 passed, $0.027 (tests/integration/results/anthropic_live_2026-11-19.json). FEAT-004/005 DONE tras QA ronda 2 CONFORME; 3 menores corregidos después y re-auditados (SE MANTIENE DONE); menores 2 y 3 de la ronda 3 corregidos (223 tests pasan, sin re-auditar); menor 1 cerrado con CR-016 (contrato v1.5, DEC-015).
-- Siguiente acción: revisión independiente de FEAT-004/005; calibración de prompts/effort; cierre de IMPL-1 e inicio de IMPL-2 con autorización del propietario.
-- (Las secciones siguientes son del cierre anterior; su frase «FASE 2 BLOQUEADA» queda superada por esta autorización.)
+**Estado:** FASE 2 EN CURSO (autorizada 2026-11-19). **IMPL-1 «Fundamentos de integración» CERRADA** con el criterio de salida fijado por el propietario. Contrato **v1.5** (CR-015, CR-016; DEC-014, DEC-015). G0..G4 PASS (G4 con alcance IMPL-1); G5..G7 PENDING.
+
+### Estado de las funcionalidades (feature_list.json v1.0.0)
+
+| FEAT | Estado | Dependencia explícita |
+|---|---|---|
+| FEAT-001 Contrato universal de mensajes | DONE | — |
+| FEAT-002 Versionado de contratos | DONE-PARTIAL | IMPL-3: versionado de estrategias (Strategy Engine) |
+| FEAT-003 Registro de eventos y trazabilidad | DONE-PARTIAL | IMPL-5: TC-AC-04 completo (Risk Manager, órdenes); G6: protección del archivo SQLite |
+| FEAT-004 AI Provider Adapter | DONE | IMPL-2: calibración de effort |
+| FEAT-005 AI Orchestrator | DONE | IMPL-2: calibración de prompts; IMPL-3: normalización TRADE_PROPOSAL → §4.1 |
+| FEAT-006 Control de costo de IA | DONE-PARTIAL | IMPL-4: aviso por Telegram; propietario: límite en consola Anthropic; G6: conciliación con factura |
+| FEAT-007 Aislamiento de credenciales | DONE-PARTIAL | IMPL-4: Telegram (TC-SEC-006/007) y REQ-G-059 con Risk Manager; IMPL-6: permisos de Binance; G6: limitaciones de un solo proceso |
+
+Cada dependencia tiene justificación en `feature_list.json` → `impl1_exit.deferred`. Verificado por QA ronda 4 (CONFORME).
+
+### Qué existe (src/swingpilot/)
+- `contracts/`: mensaje universal (31 eventos), versionado, contratos de los 5 agentes.
+- `audit/`: EventStore append-only con rechazo de secretos.
+- `ai/`: adaptador Anthropic (modelos exactos, 1 reintento, tope duro con reservas), orquestador (Fases 3–5), prompts 0.1.x, presupuesto y EntryGate.
+- `security/`: CredentialVault por ámbito, comprobaciones de arranque.
+- `bootstrap.py`: `build_ai_stack` conecta todo con Fail-Closed.
+
+### Cómo verificar
+- `.venv/bin/pytest -q tests` → 233 passed, 3 skipped.
+- `python3 scripts/validate_{manifest,requirements,gates}.py` → OK.
+- Prueba real (cuesta ~$0.03): `RUN_ANTHROPIC_LIVE=1 .venv/bin/pytest -v tests/integration/test_anthropic_live.py` (requiere `.env` en 600 con ANTHROPIC_API_KEY). Gasto acumulado del mes: $0.053506 (`var/ai_budget.db`, local).
+
+### Para IMPL-2 «Agentes especializados» (architecture.md §7, fila 2)
+- Criterio de salida del contrato: los agentes trabajan coordinadamente, conservan sus resultados y expresan desacuerdos sin producir autorizaciones financieras.
+- Pendientes que entran en IMPL-2: calibración de prompts (0.1.x) y de `effort` por agente; costo real por ciclo; observaciones de la prueba real (el Macro Analyst listó una nota de método como evento y marcó FACT un ítem SPECULATION).
+- Antes de empezar: poblar `feature_list.json` con las FEAT de IMPL-2 desde el contrato v1.5 (no inventar).
+- Pendientes del propietario: límite de gasto en la consola de Anthropic; zona horaria de otros cortes mensuales (al implementarlos); REQ-G-P08 (fiscal, diferido).
+- Sub-agentes: esta sesión usó 4 (QA, sonnet, ~298K tokens), por encima del tope orientativo de 200K. Abrir sesión nueva para IMPL-2.
+
+### Siguiente acción autorizada
+Iniciar IMPL-2 cuando el propietario lo indique. (Las secciones siguientes son del cierre de FASE 1; su frase «FASE 2 BLOQUEADA» queda superada.)
 
 ## Cierre de sesión 2026-11-19 — siguiente acción
 
