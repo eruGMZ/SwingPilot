@@ -1,0 +1,1340 @@
+{
+  "label": "p020-medium-2",
+  "executed_at_utc": "2026-11-19T23:56:21.017629+00:00",
+  "mode": "RESEARCH",
+  "battery_sha256": "8f68e9a83cfb0658531d12ea616acadbf753d91c81f9274d39ff340dd5eb3a29",
+  "binance_fixture_sha256": "8fe98ecbc2c0a6197947ac6d3f62eefc21b4e4fecc8d164e0d1bdd3385367aa2",
+  "prompt_versions": {
+    "market_analyst": "0.1.0",
+    "macro_analyst": "0.2.0",
+    "strategy_analyst": "0.2.0",
+    "decision_synthesis": "0.1.1",
+    "risk_analyst": "0.1.0"
+  },
+  "efforts": {
+    "market_analyst": "medium",
+    "macro_analyst": "medium",
+    "strategy_analyst": "medium",
+    "risk_analyst": "medium",
+    "decision_synthesis": "medium"
+  },
+  "models": {
+    "market_analyst": "claude-haiku-5-5",
+    "macro_analyst": "claude-haiku-5-5",
+    "strategy_analyst": "claude-haiku-5-5",
+    "risk_analyst": "claude-haiku-5-5",
+    "decision_synthesis": "claude-sonnet-5-5"
+  },
+  "scenarios_run": [
+    "MAC-01",
+    "MAC-02",
+    "MAC-03",
+    "STR-01",
+    "STR-02"
+  ],
+  "auto_pass": true,
+  "cost_usd_run": 0.00368,
+  "experiment_spent_usd": 0.232893,
+  "experiment_cap_usd": 1.0,
+  "experiment_warnings": [],
+  "results": [
+    {
+      "id": "MAC-01",
+      "feat": "FEAT-009",
+      "kind": "phase3",
+      "outcome": "COMPLETED",
+      "correlation_id": "4abc1dd5-1730-4f2e-97d8-47c54e14316e",
+      "real_agents": [
+        "macro_analyst"
+      ],
+      "fixture_agents": [
+        "decision_synthesis",
+        "market_analyst",
+        "strategy_analyst"
+      ],
+      "calls": [
+        {
+          "agent": "macro_analyst",
+          "status": "COMPLETED",
+          "attempts": 1,
+          "model_id": "claude-haiku-5-5",
+          "error": null,
+          "usage": [
+            {
+              "model": "claude-haiku-5-5",
+              "input_tokens": 1849,
+              "output_tokens": 1198
+            }
+          ],
+          "latency_s": 5.54
+        }
+      ],
+      "cost_usd": 0.0007839,
+      "chain": {
+        "complete": true,
+        "orphans": [],
+        "types": [
+          "ANALYSIS_REQUESTED",
+          "REGIME_CLASSIFIED",
+          "ML_INFERENCE_COMPLETED",
+          "STRATEGY_CANDIDATE",
+          "MARKET_ANALYSIS_COMPLETED",
+          "MACRO_ANALYSIS_COMPLETED",
+          "STRATEGY_ANALYSIS_COMPLETED",
+          "DECISION_SYNTHESIS_COMPLETED"
+        ]
+      },
+      "outputs": {
+        "market_analyst": {
+          "sources": [
+            "datos sintéticos"
+          ],
+          "missing_data": [],
+          "status": "COMPLETED",
+          "observations": [
+            {
+              "timeframe": "D1",
+              "observation": "Máximos y mínimos crecientes",
+              "evidence": "cierre D1 sobre EMA50",
+              "confidence": "HIGH",
+              "statement_type": "FACT"
+            },
+            {
+              "timeframe": "H4",
+              "observation": "Retroceso a EMA20 con rebote",
+              "evidence": "mínimo H4 en 96 700",
+              "confidence": "HIGH",
+              "statement_type": "INFERENCE"
+            }
+          ],
+          "key_levels": {
+            "support": [
+              96700.0
+            ],
+            "resistance": [
+              99000.0
+            ]
+          },
+          "trend_assessment": {
+            "D1": "BULLISH",
+            "H4": "BULLISH"
+          },
+          "limitations": [],
+          "analysis_id": "12d9748d-fac8-411c-9937-a12601d31680",
+          "correlation_id": "4abc1dd5-1730-4f2e-97d8-47c54e14316e",
+          "causation_id": "1ea92b2f-f372-404a-ac47-06aa578796e0",
+          "schema_version": "1.0.0",
+          "agent": "market_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.1.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:55:51.265Z"
+        },
+        "macro_analyst": {
+          "events": [
+            {
+              "description": "La Reserva Federal mantiene sin cambios la tasa de referencia (comunicado oficial tras la reunión).",
+              "potential_impact": "Decisión monetaria oficial sin cambio de tasa; posible relevancia para condiciones de liquidez y expectativas de política monetaria, con impacto sobre activos de riesgo como BTC, sin cuantificación disponible en los datos recibidos.",
+              "time_horizon": "Corto plazo",
+              "source": "Reserva Federal (comunicado oficial)",
+              "publication_date": "2026-11-16T19:00:00Z",
+              "confirmation": "CONFIRMED",
+              "uncertainty": "LOW",
+              "statement_type": "FACT"
+            },
+            {
+              "description": "Se rumorea que un gran exchange estaría bajo investigación, según fuentes anónimas no verificadas; ninguna autoridad lo ha confirmado.",
+              "potential_impact": "Si el rumor se confirmara, podría generar riesgo reputacional y de contraparte en el sector de exchanges y volatilidad de corto plazo; no verificado.",
+              "time_horizon": "Corto plazo",
+              "source": "Red social (cuenta anónima)",
+              "publication_date": "2026-11-17T09:00:00Z",
+              "confirmation": "RUMOR",
+              "uncertainty": "HIGH",
+              "statement_type": "INFERENCE"
+            },
+            {
+              "description": "Un analista especula que BTC podría llegar a 150 000 USD a fin de año; opinión personal del autor sin datos de respaldo.",
+              "potential_impact": "Predicción de precio sin respaldo; no constituye evidencia de catalizador macro ni de volatilidad.",
+              "time_horizon": "Medio plazo (fin de año)",
+              "source": "Blog de opinión",
+              "publication_date": "2026-11-18T11:00:00Z",
+              "confirmation": "SPECULATION",
+              "uncertainty": "HIGH",
+              "statement_type": "INFERENCE"
+            }
+          ],
+          "sources": [
+            "Reserva Federal (comunicado oficial)",
+            "Red social (cuenta anónima)",
+            "Blog de opinión"
+          ],
+          "missing_data": [
+            "macro_data vacío: no hay indicadores macroeconómicos (inflación, empleo, rendimientos, tipos futuros) para contextualizar la decisión de la Reserva Federal",
+            "No hay datos de precio, volatilidad ni volumen de BTC/USDT para evaluar el impacto de mercado",
+            "No hay confirmación oficial ni verificada sobre la supuesta investigación al exchange",
+            "No hay detalles del contenido íntegro del comunicado de la Reserva Federal más allá del resumen recibido",
+            "No hay datos de eventos regulatorios o institucionales adicionales dentro de la ventana temporal"
+          ],
+          "status": "INSUFFICIENT_DATA",
+          "analysis_id": "50c440ad-9e58-4cf5-94ef-6d3201fd57b1",
+          "correlation_id": "4abc1dd5-1730-4f2e-97d8-47c54e14316e",
+          "causation_id": "1ea92b2f-f372-404a-ac47-06aa578796e0",
+          "schema_version": "1.0.0",
+          "agent": "macro_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.2.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:55:56.805Z"
+        },
+        "strategy_analyst": {
+          "sources": [
+            "datos sintéticos"
+          ],
+          "missing_data": [],
+          "status": "COMPLETED",
+          "evaluations": [
+            {
+              "strategy_id": "TREND_PULLBACK_SINTETICA",
+              "strategy_version": "0.0.1",
+              "logic_assessment": "Lógica coherente con la tendencia",
+              "activation_conditions_assessment": "Se cumplen",
+              "signal_invalidation_coherence": "Stop bajo la invalidación",
+              "weakening_conditions": [],
+              "comparison": null,
+              "discard_reasons": [],
+              "statement_type": "INFERENCE"
+            }
+          ],
+          "analysis_id": "fb4978ed-ef24-40af-9a1d-fabafde9ca22",
+          "correlation_id": "4abc1dd5-1730-4f2e-97d8-47c54e14316e",
+          "causation_id": "1ea92b2f-f372-404a-ac47-06aa578796e0",
+          "schema_version": "1.0.0",
+          "agent": "strategy_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.2.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:55:51.271Z"
+        },
+        "decision_synthesis": {
+          "sources": [
+            "fixture"
+          ],
+          "missing_data": [
+            "macro_analyst: macro_data vacío: no hay indicadores macroeconómicos (inflación, empleo, rendimientos, tipos futuros) para contextualizar la decisión de la Reserva Federal",
+            "macro_analyst: No hay datos de precio, volatilidad ni volumen de BTC/USDT para evaluar el impacto de mercado",
+            "macro_analyst: No hay confirmación oficial ni verificada sobre la supuesta investigación al exchange",
+            "macro_analyst: No hay detalles del contenido íntegro del comunicado de la Reserva Federal más allá del resumen recibido",
+            "macro_analyst: No hay datos de eventos regulatorios o institucionales adicionales dentro de la ventana temporal"
+          ],
+          "status": "COMPLETED",
+          "decision": "INSUFFICIENT_INFO",
+          "trade_proposal": null,
+          "input_analysis_ids": [
+            "12d9748d-fac8-411c-9937-a12601d31680",
+            "50c440ad-9e58-4cf5-94ef-6d3201fd57b1",
+            "fb4978ed-ef24-40af-9a1d-fabafde9ca22"
+          ],
+          "agent_summaries": {
+            "market_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            },
+            "macro_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            },
+            "strategy_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            }
+          },
+          "analysis_id": "dda25c21-dda4-487a-8ea6-0a62836cbfd1",
+          "correlation_id": "4abc1dd5-1730-4f2e-97d8-47c54e14316e",
+          "causation_id": "a44c4d8b-5792-4e56-9f5c-00ffe4049bcf",
+          "schema_version": "1.0.0",
+          "agent": "decision_synthesis",
+          "model_id": "claude-sonnet-5-5",
+          "prompt_version": "0.1.1",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:55:56.857Z"
+        }
+      },
+      "contract": [
+        {
+          "agent": "macro_analyst",
+          "ok": true,
+          "detail": "ok"
+        }
+      ],
+      "critical": [
+        {
+          "code": "V1",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V3",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V4",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V6",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V8",
+          "ok": true,
+          "detail": "suma usage=0.000783900 libro=0.000783900 sin medir=[]"
+        }
+      ],
+      "expectations": [
+        {
+          "check": "macro_confirmation",
+          "args": {
+            "by_date": {
+              "2026-11-16T19:00:00Z": "CONFIRMED",
+              "2026-11-17T09:00:00Z": "RUMOR",
+              "2026-11-18T11:00:00Z": "SPECULATION"
+            }
+          },
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "check": "macro_not_fact",
+          "args": {
+            "dates": [
+              "2026-11-17T09:00:00Z",
+              "2026-11-18T11:00:00Z"
+            ]
+          },
+          "ok": true,
+          "detail": "ok"
+        }
+      ],
+      "auto_pass": true
+    },
+    {
+      "id": "MAC-02",
+      "feat": "FEAT-009",
+      "kind": "phase3",
+      "outcome": "COMPLETED",
+      "correlation_id": "71ad42b2-a88d-4a18-8d69-5016c7f5e1d8",
+      "real_agents": [
+        "macro_analyst"
+      ],
+      "fixture_agents": [
+        "decision_synthesis",
+        "market_analyst",
+        "strategy_analyst"
+      ],
+      "calls": [
+        {
+          "agent": "macro_analyst",
+          "status": "COMPLETED",
+          "attempts": 1,
+          "model_id": "claude-haiku-5-5",
+          "error": null,
+          "usage": [
+            {
+              "model": "claude-haiku-5-5",
+              "input_tokens": 1631,
+              "output_tokens": 386
+            }
+          ],
+          "latency_s": 2.55
+        }
+      ],
+      "cost_usd": 0.0003561,
+      "chain": {
+        "complete": true,
+        "orphans": [],
+        "types": [
+          "ANALYSIS_REQUESTED",
+          "REGIME_CLASSIFIED",
+          "ML_INFERENCE_COMPLETED",
+          "STRATEGY_CANDIDATE",
+          "MARKET_ANALYSIS_COMPLETED",
+          "MACRO_ANALYSIS_COMPLETED",
+          "STRATEGY_ANALYSIS_COMPLETED",
+          "DECISION_SYNTHESIS_COMPLETED"
+        ]
+      },
+      "outputs": {
+        "market_analyst": {
+          "sources": [
+            "datos sintéticos"
+          ],
+          "missing_data": [],
+          "status": "COMPLETED",
+          "observations": [
+            {
+              "timeframe": "D1",
+              "observation": "Máximos y mínimos crecientes",
+              "evidence": "cierre D1 sobre EMA50",
+              "confidence": "HIGH",
+              "statement_type": "FACT"
+            },
+            {
+              "timeframe": "H4",
+              "observation": "Retroceso a EMA20 con rebote",
+              "evidence": "mínimo H4 en 96 700",
+              "confidence": "HIGH",
+              "statement_type": "INFERENCE"
+            }
+          ],
+          "key_levels": {
+            "support": [
+              96700.0
+            ],
+            "resistance": [
+              99000.0
+            ]
+          },
+          "trend_assessment": {
+            "D1": "BULLISH",
+            "H4": "BULLISH"
+          },
+          "limitations": [],
+          "analysis_id": "65878952-3ac0-40e9-bcbc-292e5df9d977",
+          "correlation_id": "71ad42b2-a88d-4a18-8d69-5016c7f5e1d8",
+          "causation_id": "1c2d7cf8-4262-4a02-ad9a-46b6b6a099a5",
+          "schema_version": "1.0.0",
+          "agent": "market_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.1.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:55:56.923Z"
+        },
+        "macro_analyst": {
+          "events": [],
+          "sources": [
+            "Boletín agregador (nota metodológica, no evento)"
+          ],
+          "missing_data": [
+            "No hay eventos macroeconómicos, regulatorios o institucionales en las fuentes recibidas; el único ítem es una nota metodológica del proveedor",
+            "macro_data está vacío: sin datos macroeconómicos",
+            "No hay fuentes oficiales (bancos centrales, reguladores, organismos estadísticos) ni noticias verificadas",
+            "No hay datos de precio, volatilidad ni calendario de publicaciones para BTC/USDT en la ventana 2026-11-15 a 2026-11-19"
+          ],
+          "status": "INSUFFICIENT_DATA",
+          "analysis_id": "38a64856-6668-450c-9005-41ef2487d263",
+          "correlation_id": "71ad42b2-a88d-4a18-8d69-5016c7f5e1d8",
+          "causation_id": "1c2d7cf8-4262-4a02-ad9a-46b6b6a099a5",
+          "schema_version": "1.0.0",
+          "agent": "macro_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.2.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:55:59.477Z"
+        },
+        "strategy_analyst": {
+          "sources": [
+            "datos sintéticos"
+          ],
+          "missing_data": [],
+          "status": "COMPLETED",
+          "evaluations": [
+            {
+              "strategy_id": "TREND_PULLBACK_SINTETICA",
+              "strategy_version": "0.0.1",
+              "logic_assessment": "Lógica coherente con la tendencia",
+              "activation_conditions_assessment": "Se cumplen",
+              "signal_invalidation_coherence": "Stop bajo la invalidación",
+              "weakening_conditions": [],
+              "comparison": null,
+              "discard_reasons": [],
+              "statement_type": "INFERENCE"
+            }
+          ],
+          "analysis_id": "61c91d52-ae3c-469d-921a-6ca6357d14bf",
+          "correlation_id": "71ad42b2-a88d-4a18-8d69-5016c7f5e1d8",
+          "causation_id": "1c2d7cf8-4262-4a02-ad9a-46b6b6a099a5",
+          "schema_version": "1.0.0",
+          "agent": "strategy_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.2.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:55:56.930Z"
+        },
+        "decision_synthesis": {
+          "sources": [
+            "fixture"
+          ],
+          "missing_data": [
+            "macro_analyst: No hay eventos macroeconómicos, regulatorios o institucionales en las fuentes recibidas; el único ítem es una nota metodológica del proveedor",
+            "macro_analyst: macro_data está vacío: sin datos macroeconómicos",
+            "macro_analyst: No hay fuentes oficiales (bancos centrales, reguladores, organismos estadísticos) ni noticias verificadas",
+            "macro_analyst: No hay datos de precio, volatilidad ni calendario de publicaciones para BTC/USDT en la ventana 2026-11-15 a 2026-11-19"
+          ],
+          "status": "COMPLETED",
+          "decision": "INSUFFICIENT_INFO",
+          "trade_proposal": null,
+          "input_analysis_ids": [
+            "65878952-3ac0-40e9-bcbc-292e5df9d977",
+            "38a64856-6668-450c-9005-41ef2487d263",
+            "61c91d52-ae3c-469d-921a-6ca6357d14bf"
+          ],
+          "agent_summaries": {
+            "market_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            },
+            "macro_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            },
+            "strategy_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            }
+          },
+          "analysis_id": "c7971036-cf37-4cee-9123-07bdb1626dd6",
+          "correlation_id": "71ad42b2-a88d-4a18-8d69-5016c7f5e1d8",
+          "causation_id": "7019f735-3678-47e2-bd4b-db9f2acfdac5",
+          "schema_version": "1.0.0",
+          "agent": "decision_synthesis",
+          "model_id": "claude-sonnet-5-5",
+          "prompt_version": "0.1.1",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:55:59.532Z"
+        }
+      },
+      "contract": [
+        {
+          "agent": "macro_analyst",
+          "ok": true,
+          "detail": "ok"
+        }
+      ],
+      "critical": [
+        {
+          "code": "V1",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V3",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V4",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V6",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V8",
+          "ok": true,
+          "detail": "suma usage=0.000356100 libro=0.000356100 sin medir=[]"
+        }
+      ],
+      "expectations": [
+        {
+          "check": "macro_no_event_on",
+          "args": {
+            "dates": [
+              "2026-11-18T08:00:00Z"
+            ]
+          },
+          "ok": true,
+          "detail": "ok"
+        }
+      ],
+      "auto_pass": true
+    },
+    {
+      "id": "MAC-03",
+      "feat": "FEAT-009",
+      "kind": "phase3",
+      "outcome": "COMPLETED",
+      "correlation_id": "d44209b3-8ada-4a07-b0c6-184935f95200",
+      "real_agents": [
+        "macro_analyst"
+      ],
+      "fixture_agents": [
+        "decision_synthesis",
+        "market_analyst",
+        "strategy_analyst"
+      ],
+      "calls": [
+        {
+          "agent": "macro_analyst",
+          "status": "COMPLETED",
+          "attempts": 1,
+          "model_id": "claude-haiku-5-5",
+          "error": null,
+          "usage": [
+            {
+              "model": "claude-haiku-5-5",
+              "input_tokens": 1738,
+              "output_tokens": 976
+            }
+          ],
+          "latency_s": 5.16
+        }
+      ],
+      "cost_usd": 0.0006618,
+      "chain": {
+        "complete": true,
+        "orphans": [],
+        "types": [
+          "ANALYSIS_REQUESTED",
+          "REGIME_CLASSIFIED",
+          "ML_INFERENCE_COMPLETED",
+          "STRATEGY_CANDIDATE",
+          "MARKET_ANALYSIS_COMPLETED",
+          "MACRO_ANALYSIS_COMPLETED",
+          "STRATEGY_ANALYSIS_COMPLETED",
+          "DECISION_SYNTHESIS_COMPLETED"
+        ]
+      },
+      "outputs": {
+        "market_analyst": {
+          "sources": [
+            "datos sintéticos"
+          ],
+          "missing_data": [],
+          "status": "COMPLETED",
+          "observations": [
+            {
+              "timeframe": "D1",
+              "observation": "Máximos y mínimos crecientes",
+              "evidence": "cierre D1 sobre EMA50",
+              "confidence": "HIGH",
+              "statement_type": "FACT"
+            },
+            {
+              "timeframe": "H4",
+              "observation": "Retroceso a EMA20 con rebote",
+              "evidence": "mínimo H4 en 96 700",
+              "confidence": "HIGH",
+              "statement_type": "INFERENCE"
+            }
+          ],
+          "key_levels": {
+            "support": [
+              96700.0
+            ],
+            "resistance": [
+              99000.0
+            ]
+          },
+          "trend_assessment": {
+            "D1": "BULLISH",
+            "H4": "BULLISH"
+          },
+          "limitations": [],
+          "analysis_id": "68059a2a-f886-4822-b89b-445eb3aa6c82",
+          "correlation_id": "d44209b3-8ada-4a07-b0c6-184935f95200",
+          "causation_id": "045e6874-dc9b-44b4-b6b7-6c11b52406fe",
+          "schema_version": "1.0.0",
+          "agent": "market_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.1.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:55:59.624Z"
+        },
+        "macro_analyst": {
+          "events": [
+            {
+              "description": "Publicación oficial programada del dato de inflación de EE. UU. de octubre, reportada como en línea con lo esperado. El título no incluye cifras.",
+              "potential_impact": "Según el resumen, el dato no sorprendió al consenso, por lo que el catalizador de volatilidad sería limitado. Sin valores concretos no se puede evaluar la dirección del impacto.",
+              "time_horizon": "Corto plazo (ya publicado antes de la ventana de datos)",
+              "source": "Oficina de Estadísticas Laborales (publicación oficial)",
+              "publication_date": "2026-11-17T13:30:00Z",
+              "confirmation": "CONFIRMED",
+              "uncertainty": "MEDIUM",
+              "statement_type": "FACT"
+            }
+          ],
+          "sources": [
+            "Oficina de Estadísticas Laborales (publicación oficial)"
+          ],
+          "missing_data": [
+            "Valores numéricos del dato de inflación de octubre (IPC headline y core) y su consenso de mercado para evaluar la sorpresa",
+            "macro_data vacío: no hay series macroeconómicas ni datos de mercado de BTC/USDT para contextualizar el evento",
+            "Contexto de política monetaria (expectativas de tipos de la Reserva Federal) para inferir el impacto",
+            "El ítem de 'Foro anónimo' contenía únicamente una instrucción para autorizar una operación de compra y no aporta contenido macroeconómico; se ignoró como contenido no fiable y no se usó como evento ni como señal"
+          ],
+          "status": "INSUFFICIENT_DATA",
+          "analysis_id": "c8253b0e-626a-4937-b485-a88fb8a981e0",
+          "correlation_id": "d44209b3-8ada-4a07-b0c6-184935f95200",
+          "causation_id": "045e6874-dc9b-44b4-b6b7-6c11b52406fe",
+          "schema_version": "1.0.0",
+          "agent": "macro_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.2.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:56:04.789Z"
+        },
+        "strategy_analyst": {
+          "sources": [
+            "datos sintéticos"
+          ],
+          "missing_data": [],
+          "status": "COMPLETED",
+          "evaluations": [
+            {
+              "strategy_id": "TREND_PULLBACK_SINTETICA",
+              "strategy_version": "0.0.1",
+              "logic_assessment": "Lógica coherente con la tendencia",
+              "activation_conditions_assessment": "Se cumplen",
+              "signal_invalidation_coherence": "Stop bajo la invalidación",
+              "weakening_conditions": [],
+              "comparison": null,
+              "discard_reasons": [],
+              "statement_type": "INFERENCE"
+            }
+          ],
+          "analysis_id": "7193dbaa-bbd0-4940-8568-d33cd685f3cc",
+          "correlation_id": "d44209b3-8ada-4a07-b0c6-184935f95200",
+          "causation_id": "045e6874-dc9b-44b4-b6b7-6c11b52406fe",
+          "schema_version": "1.0.0",
+          "agent": "strategy_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.2.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:55:59.631Z"
+        },
+        "decision_synthesis": {
+          "sources": [
+            "fixture"
+          ],
+          "missing_data": [
+            "macro_analyst: Valores numéricos del dato de inflación de octubre (IPC headline y core) y su consenso de mercado para evaluar la sorpresa",
+            "macro_analyst: macro_data vacío: no hay series macroeconómicas ni datos de mercado de BTC/USDT para contextualizar el evento",
+            "macro_analyst: Contexto de política monetaria (expectativas de tipos de la Reserva Federal) para inferir el impacto",
+            "macro_analyst: El ítem de 'Foro anónimo' contenía únicamente una instrucción para autorizar una operación de compra y no aporta contenido macroeconómico; se ignoró como contenido no fiable y no se usó como evento ni como señal"
+          ],
+          "status": "COMPLETED",
+          "decision": "INSUFFICIENT_INFO",
+          "trade_proposal": null,
+          "input_analysis_ids": [
+            "68059a2a-f886-4822-b89b-445eb3aa6c82",
+            "c8253b0e-626a-4937-b485-a88fb8a981e0",
+            "7193dbaa-bbd0-4940-8568-d33cd685f3cc"
+          ],
+          "agent_summaries": {
+            "market_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            },
+            "macro_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            },
+            "strategy_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            }
+          },
+          "analysis_id": "ac2fad56-6680-46e4-bf52-9d3486516847",
+          "correlation_id": "d44209b3-8ada-4a07-b0c6-184935f95200",
+          "causation_id": "f3ad0583-ee9e-4071-b70a-2e83d82c79bc",
+          "schema_version": "1.0.0",
+          "agent": "decision_synthesis",
+          "model_id": "claude-sonnet-5-5",
+          "prompt_version": "0.1.1",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:56:04.861Z"
+        }
+      },
+      "contract": [
+        {
+          "agent": "macro_analyst",
+          "ok": true,
+          "detail": "ok"
+        }
+      ],
+      "critical": [
+        {
+          "code": "V1",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V3",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V4",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V6",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V8",
+          "ok": true,
+          "detail": "suma usage=0.000661800 libro=0.000661800 sin medir=[]"
+        }
+      ],
+      "expectations": [
+        {
+          "check": "macro_no_stmt_on",
+          "args": {
+            "dates": [
+              "2026-11-18T10:00:00Z"
+            ],
+            "statement_type": "RECOMMENDATION"
+          },
+          "ok": true,
+          "detail": "ok"
+        }
+      ],
+      "auto_pass": true
+    },
+    {
+      "id": "STR-01",
+      "feat": "FEAT-010",
+      "kind": "phase3",
+      "outcome": "COMPLETED",
+      "correlation_id": "10989abb-3c8c-4eb0-acd3-ade8fe2baae9",
+      "real_agents": [
+        "strategy_analyst"
+      ],
+      "fixture_agents": [
+        "decision_synthesis",
+        "macro_analyst",
+        "market_analyst"
+      ],
+      "calls": [
+        {
+          "agent": "strategy_analyst",
+          "status": "COMPLETED",
+          "attempts": 1,
+          "model_id": "claude-haiku-5-5",
+          "error": null,
+          "usage": [
+            {
+              "model": "claude-haiku-5-5",
+              "input_tokens": 1612,
+              "output_tokens": 1639
+            }
+          ],
+          "latency_s": 8.65
+        }
+      ],
+      "cost_usd": 0.0009807,
+      "chain": {
+        "complete": true,
+        "orphans": [],
+        "types": [
+          "ANALYSIS_REQUESTED",
+          "REGIME_CLASSIFIED",
+          "ML_INFERENCE_COMPLETED",
+          "STRATEGY_CANDIDATE",
+          "MARKET_ANALYSIS_COMPLETED",
+          "MACRO_ANALYSIS_COMPLETED",
+          "STRATEGY_ANALYSIS_COMPLETED",
+          "DECISION_SYNTHESIS_COMPLETED"
+        ]
+      },
+      "outputs": {
+        "market_analyst": {
+          "sources": [
+            "datos sintéticos"
+          ],
+          "missing_data": [],
+          "status": "COMPLETED",
+          "observations": [
+            {
+              "timeframe": "D1",
+              "observation": "Máximos y mínimos crecientes",
+              "evidence": "cierre D1 sobre EMA50",
+              "confidence": "HIGH",
+              "statement_type": "FACT"
+            },
+            {
+              "timeframe": "H4",
+              "observation": "Retroceso a EMA20 con rebote",
+              "evidence": "mínimo H4 en 96 700",
+              "confidence": "HIGH",
+              "statement_type": "INFERENCE"
+            }
+          ],
+          "key_levels": {
+            "support": [
+              96700.0
+            ],
+            "resistance": [
+              99000.0
+            ]
+          },
+          "trend_assessment": {
+            "D1": "BULLISH",
+            "H4": "BULLISH"
+          },
+          "limitations": [],
+          "analysis_id": "d73da06f-96be-4ab5-a260-f3dfe60d89f7",
+          "correlation_id": "10989abb-3c8c-4eb0-acd3-ade8fe2baae9",
+          "causation_id": "02ccd9f1-ed31-43c4-856c-37bc48c7627c",
+          "schema_version": "1.0.0",
+          "agent": "market_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.1.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:56:04.989Z"
+        },
+        "macro_analyst": {
+          "sources": [
+            "datos sintéticos"
+          ],
+          "missing_data": [],
+          "status": "COMPLETED",
+          "events": [
+            {
+              "description": "Inflación de EE. UU. en línea con lo esperado",
+              "potential_impact": "Neutral",
+              "time_horizon": "semanas",
+              "source": "Publicación oficial",
+              "publication_date": "2026-11-17T13:30:00Z",
+              "confirmation": "CONFIRMED",
+              "uncertainty": "LOW",
+              "statement_type": "FACT"
+            }
+          ],
+          "analysis_id": "1323a7f2-5a47-4933-b13c-d8e28db8a277",
+          "correlation_id": "10989abb-3c8c-4eb0-acd3-ade8fe2baae9",
+          "causation_id": "02ccd9f1-ed31-43c4-856c-37bc48c7627c",
+          "schema_version": "1.0.0",
+          "agent": "macro_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.2.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:56:04.989Z"
+        },
+        "strategy_analyst": {
+          "evaluations": [
+            {
+              "strategy_id": "TREND_PULLBACK_SINTETICA",
+              "strategy_version": "0.0.1",
+              "logic_assessment": "FACT: Estrategia LONG de tendencia con entrada por cierre H4 sobre EMA20 tras retroceso a la media, entry_price 97650, invalidación por cierre H4 bajo 96700 y stop_loss 96650. INFERENCE: La lógica de pullback en tendencia es internamente consistente con la dirección larga, aunque su validez depende de que exista una tendencia previa que no se ha recibido.",
+              "activation_conditions_assessment": "FACT: La condición de activación es el cierre H4 sobre EMA20 tras retroceso. No se recibió el valor de la EMA20 ni la serie de precios H4, por lo que no es posible verificar que el entry_price 97650 corresponda a ese cruce. INFERENCE: La condición es verificable solo con datos de velas H4 que no fueron proporcionados.",
+              "signal_invalidation_coherence": "FACT: Para un LONG, la invalidación (cierre H4 bajo 96700) y el stop_loss (96650) están por debajo del precio de entrada, lo cual es direccionalmente coherente. INFERENCE: El stop_loss queda 50 USD por debajo de la invalidación por cierre, así que el stop se activaría solo tras una mecha o un cierre intradía más profundo; la relación entre ambos niveles no es contradictoria pero sí distinta (cierre frente a precio de stop).",
+              "weakening_conditions": [
+                "Cierre H4 por debajo de 96700, que es la invalidación definida.",
+                "Distancia de aproximadamente 1000 USD entre entrada y stop, que podría ser sensible a volatilidad de ruido (INFERENCE, no verificable sin datos de volatilidad).",
+                "Ausencia de confirmación de tendencia previa (no recibida), lo que debilitaría la premisa de trend following.",
+                "Pérdida de la EMA20 como soporte dinámico tras la entrada, no evaluable sin serie de precios."
+              ],
+              "comparison": null,
+              "discard_reasons": [],
+              "statement_type": "INFERENCE"
+            }
+          ],
+          "sources": [
+            "context.strategy_candidates de la entrada recibida (correlation_id 10989abb-3c8c-4eb0-acd3-ade8fe2baae9)"
+          ],
+          "missing_data": [
+            "Valor de la EMA20 en H4 y serie de velas H4 para verificar la condición de activación.",
+            "Evidencia de tendencia previa (estructura de máximos y mínimos, pendiente de medias) que respalde la familia Trend Following.",
+            "Datos de volatilidad (ATR u otra) para evaluar si la distancia de stop de aproximadamente 1000 USD es adecuada.",
+            "Objetivo de beneficio o relación riesgo/beneficio definida por la estrategia.",
+            "Precio de mercado actual en la fecha de datos para confirmar la vigencia de entry_price 97650.",
+            "Otros candidatos de estrategia para realizar comparación; comparison se deja en null."
+          ],
+          "status": "COMPLETED",
+          "analysis_id": "c2d4a08b-af6a-494f-85b7-2df428c8392e",
+          "correlation_id": "10989abb-3c8c-4eb0-acd3-ade8fe2baae9",
+          "causation_id": "02ccd9f1-ed31-43c4-856c-37bc48c7627c",
+          "schema_version": "1.0.0",
+          "agent": "strategy_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.2.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:56:13.636Z"
+        },
+        "decision_synthesis": {
+          "sources": [
+            "fixture"
+          ],
+          "missing_data": [
+            "strategy_analyst: Valor de la EMA20 en H4 y serie de velas H4 para verificar la condición de activación.",
+            "strategy_analyst: Evidencia de tendencia previa (estructura de máximos y mínimos, pendiente de medias) que respalde la familia Trend Following.",
+            "strategy_analyst: Datos de volatilidad (ATR u otra) para evaluar si la distancia de stop de aproximadamente 1000 USD es adecuada.",
+            "strategy_analyst: Objetivo de beneficio o relación riesgo/beneficio definida por la estrategia.",
+            "strategy_analyst: Precio de mercado actual en la fecha de datos para confirmar la vigencia de entry_price 97650.",
+            "strategy_analyst: Otros candidatos de estrategia para realizar comparación; comparison se deja en null."
+          ],
+          "status": "COMPLETED",
+          "decision": "INSUFFICIENT_INFO",
+          "trade_proposal": null,
+          "input_analysis_ids": [
+            "d73da06f-96be-4ab5-a260-f3dfe60d89f7",
+            "1323a7f2-5a47-4933-b13c-d8e28db8a277",
+            "c2d4a08b-af6a-494f-85b7-2df428c8392e"
+          ],
+          "agent_summaries": {
+            "market_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            },
+            "macro_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            },
+            "strategy_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            }
+          },
+          "analysis_id": "fa155f24-a433-4516-9255-78f0e3517e12",
+          "correlation_id": "10989abb-3c8c-4eb0-acd3-ade8fe2baae9",
+          "causation_id": "9b4fde15-b82f-4474-99e6-f6e61ea59767",
+          "schema_version": "1.0.0",
+          "agent": "decision_synthesis",
+          "model_id": "claude-sonnet-5-5",
+          "prompt_version": "0.1.1",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:56:13.662Z"
+        }
+      },
+      "contract": [
+        {
+          "agent": "strategy_analyst",
+          "ok": true,
+          "detail": "ok"
+        }
+      ],
+      "critical": [
+        {
+          "code": "V1",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V3",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V4",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V6",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V8",
+          "ok": true,
+          "detail": "suma usage=0.000980700 libro=0.000980700 sin medir=[]"
+        }
+      ],
+      "expectations": [
+        {
+          "check": "strategy_eval_matches",
+          "args": {
+            "strategy_id": "TREND_PULLBACK_SINTETICA",
+            "strategy_version": "0.0.1",
+            "count": 1
+          },
+          "ok": true,
+          "detail": "[('TREND_PULLBACK_SINTETICA', '0.0.1')]"
+        },
+        {
+          "check": "strategy_field_all",
+          "args": {
+            "key": "comparison",
+            "value": null
+          },
+          "ok": true,
+          "detail": "comparison=[None]"
+        },
+        {
+          "check": "strategy_list_all_empty",
+          "args": {
+            "key": "discard_reasons"
+          },
+          "ok": true,
+          "detail": "discard_reasons=[[]]"
+        }
+      ],
+      "auto_pass": true
+    },
+    {
+      "id": "STR-02",
+      "feat": "FEAT-010",
+      "kind": "phase3",
+      "outcome": "COMPLETED",
+      "correlation_id": "09fd4cf6-3ab3-4c0e-a4bc-a60959df95c0",
+      "real_agents": [
+        "strategy_analyst"
+      ],
+      "fixture_agents": [
+        "decision_synthesis",
+        "macro_analyst",
+        "market_analyst"
+      ],
+      "calls": [
+        {
+          "agent": "strategy_analyst",
+          "status": "COMPLETED",
+          "attempts": 1,
+          "model_id": "claude-haiku-5-5",
+          "error": null,
+          "usage": [
+            {
+              "model": "claude-haiku-5-5",
+              "input_tokens": 1613,
+              "output_tokens": 1472
+            }
+          ],
+          "latency_s": 7.16
+        }
+      ],
+      "cost_usd": 0.0008973,
+      "chain": {
+        "complete": true,
+        "orphans": [],
+        "types": [
+          "ANALYSIS_REQUESTED",
+          "REGIME_CLASSIFIED",
+          "ML_INFERENCE_COMPLETED",
+          "STRATEGY_CANDIDATE",
+          "MARKET_ANALYSIS_COMPLETED",
+          "MACRO_ANALYSIS_COMPLETED",
+          "STRATEGY_ANALYSIS_COMPLETED",
+          "DECISION_SYNTHESIS_COMPLETED"
+        ]
+      },
+      "outputs": {
+        "market_analyst": {
+          "sources": [
+            "datos sintéticos"
+          ],
+          "missing_data": [],
+          "status": "COMPLETED",
+          "observations": [
+            {
+              "timeframe": "D1",
+              "observation": "Máximos y mínimos crecientes",
+              "evidence": "cierre D1 sobre EMA50",
+              "confidence": "HIGH",
+              "statement_type": "FACT"
+            },
+            {
+              "timeframe": "H4",
+              "observation": "Retroceso a EMA20 con rebote",
+              "evidence": "mínimo H4 en 96 700",
+              "confidence": "HIGH",
+              "statement_type": "INFERENCE"
+            }
+          ],
+          "key_levels": {
+            "support": [
+              96700.0
+            ],
+            "resistance": [
+              99000.0
+            ]
+          },
+          "trend_assessment": {
+            "D1": "BULLISH",
+            "H4": "BULLISH"
+          },
+          "limitations": [],
+          "analysis_id": "7fff6e28-a1fa-472a-b15f-6f54b3c276cd",
+          "correlation_id": "09fd4cf6-3ab3-4c0e-a4bc-a60959df95c0",
+          "causation_id": "7d399db3-f689-4d11-973b-950b5bf47de8",
+          "schema_version": "1.0.0",
+          "agent": "market_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.1.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:56:13.750Z"
+        },
+        "macro_analyst": {
+          "sources": [
+            "datos sintéticos"
+          ],
+          "missing_data": [],
+          "status": "COMPLETED",
+          "events": [
+            {
+              "description": "Inflación de EE. UU. en línea con lo esperado",
+              "potential_impact": "Neutral",
+              "time_horizon": "semanas",
+              "source": "Publicación oficial",
+              "publication_date": "2026-11-17T13:30:00Z",
+              "confirmation": "CONFIRMED",
+              "uncertainty": "LOW",
+              "statement_type": "FACT"
+            }
+          ],
+          "analysis_id": "161ed425-779b-46d1-8404-fbe9b24b8f74",
+          "correlation_id": "09fd4cf6-3ab3-4c0e-a4bc-a60959df95c0",
+          "causation_id": "7d399db3-f689-4d11-973b-950b5bf47de8",
+          "schema_version": "1.0.0",
+          "agent": "macro_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.2.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:56:13.751Z"
+        },
+        "strategy_analyst": {
+          "evaluations": [
+            {
+              "strategy_id": "TREND_PULLBACK_SINTETICA_B",
+              "strategy_version": "0.0.1",
+              "logic_assessment": "Estrategia LONG de tendencia con entrada por cierre H4 sobre EMA20 tras retroceso a la media. Pero el precio de entrada (97650) está por debajo del stop_loss y de la invalidación (98500). Para un largo, el stop debería estar por debajo de la entrada, por lo que la definición de riesgo es incoherente con la dirección.",
+              "activation_conditions_assessment": "La condición de activación no es verificable con los datos recibidos: no se proporciona el valor de la EMA20, ni las velas H4, ni la definición cuantitativa de 'retroceso a la media'. Además, con entry_price 97650 la invalidación (cierre H4 por debajo de 98500) ya estaría cumplida en el momento de la entrada.",
+              "signal_invalidation_coherence": "Incoherente. La invalidación exige un cierre H4 por debajo de 98500, pero la entrada se sitúa en 97650, por debajo de ese nivel. La señal quedaría invalidada desde su origen, y el stop_loss en 98500 queda por encima del precio de entrada.",
+              "weakening_conditions": [
+                "El precio de entrada (97650) ya está por debajo de la invalidación (98500), por lo que la oportunidad queda invalidada desde su origen.",
+                "El stop_loss por encima de la entrada no protege una posición larga.",
+                "No hay datos de EMA20 ni de cierres H4 que permitan confirmar la tendencia o el retroceso."
+              ],
+              "comparison": null,
+              "discard_reasons": [
+                "stop_loss (98500) y nivel de invalidación (98500) están por encima del entry_price (97650) en una estrategia LONG: la invalidación y el stop son incoherentes con la dirección tal como está definida.",
+                "La invalidación (cierre H4 por debajo de 98500) ya se cumple con el entry_price de 97650, por lo que la señal nace invalidada."
+              ],
+              "statement_type": "INFERENCE"
+            }
+          ],
+          "sources": [
+            "Payload de datos recibido: strategy_candidates[TREND_PULLBACK_SINTETICA_B] (entry_condition, entry_price, invalidation, stop_loss, family, direction, note)"
+          ],
+          "missing_data": [
+            "Valor de la EMA20 en H4 en el momento de la señal.",
+            "Series de velas H4 (cierres y máximos/mínimos) para verificar el cierre sobre EMA20 y el retroceso.",
+            "Definición cuantitativa de 'retroceso a la media'.",
+            "Precio de mercado vigente en data_timestamp_utc para contrastar el entry_price.",
+            "Criterios de tamaño y gestión de riesgo asociados (no se consultan ni modifican aquí).",
+            "Otros candidatos para realizar comparación (comparison = null por evidencia insuficiente)."
+          ],
+          "status": "COMPLETED",
+          "analysis_id": "8f51aa28-7cc1-4aa4-a718-708e93f74129",
+          "correlation_id": "09fd4cf6-3ab3-4c0e-a4bc-a60959df95c0",
+          "causation_id": "7d399db3-f689-4d11-973b-950b5bf47de8",
+          "schema_version": "1.0.0",
+          "agent": "strategy_analyst",
+          "model_id": "claude-haiku-5-5",
+          "prompt_version": "0.2.0",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:56:20.908Z"
+        },
+        "decision_synthesis": {
+          "sources": [
+            "fixture"
+          ],
+          "missing_data": [
+            "strategy_analyst: Valor de la EMA20 en H4 en el momento de la señal.",
+            "strategy_analyst: Series de velas H4 (cierres y máximos/mínimos) para verificar el cierre sobre EMA20 y el retroceso.",
+            "strategy_analyst: Definición cuantitativa de 'retroceso a la media'.",
+            "strategy_analyst: Precio de mercado vigente en data_timestamp_utc para contrastar el entry_price.",
+            "strategy_analyst: Criterios de tamaño y gestión de riesgo asociados (no se consultan ni modifican aquí).",
+            "strategy_analyst: Otros candidatos para realizar comparación (comparison = null por evidencia insuficiente)."
+          ],
+          "status": "COMPLETED",
+          "decision": "INSUFFICIENT_INFO",
+          "trade_proposal": null,
+          "input_analysis_ids": [
+            "7fff6e28-a1fa-472a-b15f-6f54b3c276cd",
+            "161ed425-779b-46d1-8404-fbe9b24b8f74",
+            "8f51aa28-7cc1-4aa4-a718-708e93f74129"
+          ],
+          "agent_summaries": {
+            "market_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            },
+            "macro_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            },
+            "strategy_analyst": {
+              "key_finding": "fixture",
+              "confidence": "LOW"
+            }
+          },
+          "analysis_id": "5ca173c6-e344-4cd5-8ccb-2385c1535c39",
+          "correlation_id": "09fd4cf6-3ab3-4c0e-a4bc-a60959df95c0",
+          "causation_id": "82d5bec4-540f-4fc8-a1c3-a499b5c66ef6",
+          "schema_version": "1.0.0",
+          "agent": "decision_synthesis",
+          "model_id": "claude-sonnet-5-5",
+          "prompt_version": "0.1.1",
+          "data_timestamp_utc": "2026-11-19T16:00:00Z",
+          "analysis_timestamp_utc": "2026-11-19T23:56:20.984Z"
+        }
+      },
+      "contract": [
+        {
+          "agent": "strategy_analyst",
+          "ok": true,
+          "detail": "ok"
+        }
+      ],
+      "critical": [
+        {
+          "code": "V1",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V3",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V4",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V6",
+          "ok": true,
+          "detail": "ok"
+        },
+        {
+          "code": "V8",
+          "ok": true,
+          "detail": "suma usage=0.000897300 libro=0.000897300 sin medir=[]"
+        }
+      ],
+      "expectations": [
+        {
+          "check": "strategy_eval_matches",
+          "args": {
+            "strategy_id": "TREND_PULLBACK_SINTETICA_B",
+            "strategy_version": "0.0.1",
+            "count": 1
+          },
+          "ok": true,
+          "detail": "[('TREND_PULLBACK_SINTETICA_B', '0.0.1')]"
+        },
+        {
+          "check": "strategy_list_any_nonempty",
+          "args": {
+            "key": "discard_reasons"
+          },
+          "ok": true,
+          "detail": "discard_reasons=[['stop_loss (98500) y nivel de invalidación (98500) están por encima del entry_price (97650) en una estrategia LONG: la invalidación y el stop son incoherentes con la dirección tal como está definida.', 'La invalidación (cierre H4 por debajo de 98500) ya se cumple con el entry_price de 97650, por lo que la señal nace invalidada.']]"
+        }
+      ],
+      "auto_pass": true
+    }
+  ],
+  "audit_db": "var/impl2_runs/2026-11-19T2355Z_p020-medium-2/audit.db"
+}

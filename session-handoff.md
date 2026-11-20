@@ -1,5 +1,20 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-2 «Agentes especializados» en curso (2026-11-20) — esperando evaluación cualitativa del propietario
+
+**Actualización:** configuración de DEC-016 APROBADA; corridas finales `IMPL2_2026-11-19T2358Z_final-1` y `IMPL2_2026-11-20T0001Z_final-2` PASAN (14/14, cero críticas). Gasto IMPL-2 $0.480488 de $1.00. Siguiente: evaluación cualitativa del propietario sobre los `.md` → QA independiente → G4 → aprobación de cierre.
+
+(Estado anterior:)
+
+**Estado:** plan aprobado (DEC-016, Q36–Q40; `harness/plans/IMPL-2_plan.md`). FEAT-008..014 registradas (PENDING) en `feature_list.json` v1.2.0. Pasos 1–4 hechos; paso 5 (aprobación de la configuración en DEC-016) PENDIENTE del propietario. Sin commit.
+
+- Infraestructura: `tests/calibration/` (tope de USD 1.00 con aviso al 80% y reserva atómica; 14 escenarios congelados, v2 SHA-256 `8f68e9a8…`; comprobaciones V1–V8; ejecutor con informe JSON y MD). Pruebas: `tests/unit/test_impl2_calibration.py`.
+- Propuesta: effort medium en los 5; macro_analyst y strategy_analyst con prompt 0.2.0 (ya en `prompts.py`); resto sin cambio.
+- Gasto IMPL-2: $0.235959 de $1.00. Suite: 256 passed, 3 skipped.
+- Abierto para el propietario: Macro Analyst en INSUFFICIENT_DATA por `macro_data` vacío (sin fuente en el contrato).
+- Siguiente acción autorizada tras la aprobación: dos corridas finales consecutivas (`RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-1`, luego `final-2`), evaluación cualitativa del propietario sobre los `.md`, QA independiente (≤ 2 rondas, sonnet), G4 con alcance IMPL-2. No declarar DONE sin aprobación.
+- Sub-agentes usados en IMPL-2: 0.
+
 ## Cierre de IMPL-1 (2026-11-19) — transición a IMPL-2
 
 **Estado:** FASE 2 EN CURSO (autorizada 2026-11-19). **IMPL-1 «Fundamentos de integración» CERRADA** con el criterio de salida fijado por el propietario. Contrato **v1.5** (CR-015, CR-016; DEC-014, DEC-015). G0..G4 PASS (G4 con alcance IMPL-1); G5..G7 PENDING.

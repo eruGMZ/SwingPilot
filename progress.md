@@ -938,3 +938,80 @@
 **Sub-agentes en la sesión:** 4 (QA rondas 1–4, sonnet; ~298K tokens en total), por encima del tope orientativo de 200K.
 
 **Siguiente acción autorizada:** iniciar IMPL-2 «Agentes especializados» cuando el propietario lo indique, en una sesión nueva.
+
+---
+
+## 2026-11-19 | FASE 2 | IMPL-2 «Agentes especializados»: registro de FEAT y plan propuesto | PENDIENTE DE APROBACIÓN
+
+**Actividad:** inicio de sesión según AGENTS.md (AGENTS.md, progress.md, session-handoff.md, gate_status.json, feature_list.json). Nota: el commit 31f55e2 citado por el propietario no está en ninguna rama; su árbol es idéntico al de HEAD 29c03f7 (mismo commit de cierre de IMPL-1 tras reordenar la historia). Registradas FEAT-008..014 (status PENDING) desde el contrato v1.5: architecture.md §7 fila 2; REQ-G-050..059, REQ-G-062, REQ-G-071, REQ-G-073, REQ-G-074, REQ-G-091, REQ-G-095 (PENDING FASE 2), REQ-G-096; api_contracts.md §3.0–§3.7; test_plan.md §8.3, §8.4, §8.7, §9; DEC-009 Condiciones. Cada FEAT separa lo heredado de IMPL-1 y las dependencias de fases posteriores. Plan en `impl2_plan` con 4 preguntas abiertas para el propietario (criterio de calidad, datos de prueba y fuente de noticias, tope de gasto, forma de aprobar effort/prompts). Sin cambios de código.
+
+**Archivos:** `feature_list.json` (v1.1.0), `progress.md`.
+
+**Pruebas ejecutadas:** ninguna de código; validate_manifest.py, validate_requirements.py, validate_gates.py → OK; referencias REQ/TC de FEAT-008..014 comprobadas contra el contrato.
+
+**Siguiente acción:** aprobación del plan de IMPL-2 y respuesta a Q1–Q4 por el propietario.
+
+---
+
+## 2026-11-19 | FASE 2 | IMPL-2 aprobada (DEC-016) y paso 1: infraestructura de calibración | COMPLETADO
+
+**Aprobación:** el propietario aprobó el plan de IMPL-2 con las decisiones Q1–Q4 y condiciones adicionales, registradas en `docs/decisions/DEC-016_plan-impl2-calibracion-agentes.md` (Q36–Q40). Plan detallado: `harness/plans/IMPL-2_plan.md`.
+
+**Actividad (paso 1, sin coste de API):** `tests/calibration/` (herramienta de desarrollo, no código operativo): `experiment_budget.py` (tope incremental USD 1.00, aviso al 80%, bloqueo, reserva atómica, candado de proceso, libro append-only; se suma al tope mensual de $5), `scenarios.py` (14 escenarios con resultados esperados), `checks.py` (contrato, V1–V8, expectativas), `run_battery.py` (ejecutor real opt-in con informe JSON y Markdown), `fetch_binance_klines.py` (endpoint público, sin credenciales). Velas públicas de Binance descargadas una vez (data-api.binance.vision; cerradas antes de 2026-11-19T16:00Z) y congeladas. `feature_list.json` v1.2.0 (impl2_plan APROBADO; criterios Q36–Q40 en FEAT-008..014).
+
+**Congelación de resultados esperados (antes de cualquier corrida real, DEC-016 Q36):**
+- `tests/calibration/scenarios.py` SHA-256 `07d8c753594fbe07fa61e5aa70bb07b1f19623badb5c73ea84470e5f38e4e5ef`
+- `tests/calibration/fixtures/binance_btcusdt_klines.json` SHA-256 `8fe98ecbc2c0a6197947ac6d3f62eefc21b4e4fecc8d164e0d1bdd3385367aa2`
+
+**Archivos:** `docs/decisions/DEC-016_plan-impl2-calibracion-agentes.md`, `harness/plans/IMPL-2_plan.md`, `tests/calibration/*` (nuevos), `tests/unit/test_impl2_calibration.py` (nuevo, 23 pruebas), `feature_list.json`, `progress.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests` → 256 passed, 3 skipped; validate_manifest/requirements/gates → OK.
+
+**Siguiente acción:** paso 2, corrida base real (prompts 0.1.x, effort medium), ≈ $0.15 del tope de IMPL-2.
+
+---
+
+## 2026-11-19 | FASE 2 | IMPL-2 paso 2: corrida base real y congelación v2 de la batería | COMPLETADO
+
+**Corrida base** (prompts 0.1.0 / síntesis 0.1.1, effort medium en los 5): `tests/calibration/results/IMPL2_2026-11-19T2343Z_base.{json,md}`. 14/14 escenarios: contrato 100%, cero críticas (V1–V8), todas las expectativas cumplidas. Costo $0.118517 (acumulado IMPL-2 $0.118517 de $1.00). Ciclo completo de 5 agentes: $0.0304 (CYC-01) y $0.0311 (CYC-02), frente a ~$0.030 estimado en DEC-009. Las observaciones de IMPL-1 (nota de método como evento; FACT en especulación) no se repitieron (MAC-01, MAC-02).
+
+**Revisión del contenido (no la detectan las comprobaciones automáticas):**
+- Defecto de datos del escenario (no de los agentes): las velas sintéticas omitían la H4 de 12:00 y la H1 de 15:00, cerradas a DATA_TS según REQ-G-070. Market Analyst y Decision Synthesis lo declararon como dato faltante.
+- Nombre `TREND_PULLBACK_SINTETICA_BNB` (CYC-02) interpretado como el token BNB → renombrado a `_HIST`.
+- Para el propietario: el Macro Analyst devuelve INSUFFICIENT_DATA en todos los escenarios porque `macro_data` llega vacío (el contrato no define su fuente); la síntesis de CYC-01 decidió INSUFFICIENT_INFO en parte por ello.
+
+**Congelación v2 de la batería** (solo datos de entrada corregidos; ninguna expectativa cambió): `tests/calibration/scenarios.py` SHA-256 `8f68e9a83cfb0658531d12ea616acadbf753d91c81f9274d39ff340dd5eb3a29`. Velas de Binance sin cambios (`8fe98ecb…`). El ejecutor registra ahora la latencia de cada llamada.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests` → 256 passed, 3 skipped.
+
+**Siguiente acción:** paso 4, comparación de effort (Haiku low/high en sus 9 escenarios; síntesis high en SYN-01..03).
+
+---
+
+## 2026-11-19 | FASE 2 | IMPL-2 pasos 3–5: comparación de effort, prompts 0.2.0 y propuesta en DEC-016 | PENDIENTE DE APROBACIÓN
+
+**Comparación de effort (batería v2):** Haiku low FALLA (MAC-01 FACT en especulación; MAC-03 RECOMMENDATION en la noticia inyectada); Haiku medium FALLA STR-01 (dato no recibido como motivo de descarte; en la base había pasado); Haiku high PASA (+37% de costo, más latencia); síntesis high PASA con las mismas decisiones (+52% de costo).
+
+**Prompts 0.2.0** (`src/swingpilot/ai/prompts.py`): macro_analyst y strategy_analyst (reglas en DEC-016). Con medium: 2/2 corridas sin fallos; con low: pasa las expectativas, pero el Macro marca un RUMOR como FACT. `tests/unit/test_orchestrator.py` actualizado a las nuevas versiones.
+
+**Propuesta registrada en DEC-016:** effort medium en los 5 agentes; macro y strategy 0.2.0; resto sin cambios. Modelos sin cambio. Observación abierta: el Macro Analyst responde INSUFFICIENT_DATA porque `macro_data` llega vacío (fuente no definida en el contrato).
+
+**Gasto de API:** acumulado IMPL-2 $0.235959 de $1.00 (sin avisos del 80%).
+
+**Archivos:** `src/swingpilot/ai/prompts.py`, `tests/unit/test_orchestrator.py`, `tests/calibration/run_battery.py` (latencia), `tests/calibration/scenarios.py` (v2), `tests/calibration/results/IMPL2_*` (8 corridas), `docs/decisions/DEC-016_plan-impl2-calibracion-agentes.md`, `progress.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests` → 256 passed, 3 skipped.
+
+**Siguiente acción:** aprobación del propietario de la configuración de DEC-016 → dos corridas finales consecutivas de la batería completa.
+
+---
+
+## 2026-11-19/20 | FASE 2 | IMPL-2 paso 6: configuración aprobada y dos corridas finales | PENDIENTE DE EVALUACIÓN CUALITATIVA
+
+**Aprobación:** el propietario aprobó la configuración de DEC-016 («Apruebo la configuración de DEC-016; lanza las corridas finales»): effort medium ×5; prompts market 0.1.0, macro 0.2.0, strategy 0.2.0, risk 0.1.0, synthesis 0.1.1.
+
+**Corridas finales consecutivas** (batería v2, sha256 `8f68e9a8…`): `tests/calibration/results/IMPL2_2026-11-19T2358Z_final-1.{json,md}` y `IMPL2_2026-11-20T0001Z_final-2.{json,md}`. Ambas: 14/14 escenarios, contrato 100%, cero críticas, todas las expectativas. Decisiones de la síntesis idénticas en ambas (SYN-01 DISAGREEMENT, SYN-02 INSUFFICIENT_INFO, SYN-03 TRADE_PROPOSAL, CYC-01 INSUFFICIENT_INFO, CYC-02 DISCARD). Ciclo de 5 agentes: $0.029–0.032; latencia sumada de llamadas 50–60 s (Fase 3 en paralelo). Costo $0.121384 + $0.123146; acumulado IMPL-2 $0.480488 de $1.00, sin aviso del 80%.
+
+**Archivos:** `docs/decisions/DEC-016_plan-impl2-calibracion-agentes.md`, `feature_list.json` (evidencia FEAT-008..014; status sigue PENDING), `progress.md`, `session-handoff.md`, resultados en `tests/calibration/results/`.
+
+**Pendiente:** evaluación cualitativa del propietario sobre los dos informes `.md`; QA independiente (≤ 2 rondas); G4 con alcance IMPL-2; aprobación de cierre. Observación abierta: Macro con `macro_data` vacío.

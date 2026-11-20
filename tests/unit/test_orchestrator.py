@@ -309,7 +309,7 @@ def test_output_with_unknown_version_rejected():
 def test_prompts_are_versioned_for_every_agent():
     assert set(PROMPTS) == set(AGENT_MODELS)
     assert {a: p.version for a, p in PROMPTS.items()} == {
-        "market_analyst": "0.1.0", "macro_analyst": "0.1.0", "strategy_analyst": "0.1.0",
+        "market_analyst": "0.1.0", "macro_analyst": "0.2.0", "strategy_analyst": "0.2.0",
         "risk_analyst": "0.1.0", "decision_synthesis": "0.1.1"}
 
 

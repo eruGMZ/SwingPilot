@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "1.0.0",
+    "version": "1.2.0",
     "phase": "FASE 2",
-    "status": "IMPL-1_CERRADA",
-    "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5. Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
+    "status": "IMPL-2_EN_CURSO",
+    "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5. Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
     "last_updated": "2026-11-19",
-    "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-2..IMPL-6 se registran al iniciarlas. READY_FOR_REVIEW = criterios con implementación, prueba y evidencia; pasa a DONE tras revisión independiente (QA o propietario), porque ningún agente aprueba su propio trabajo (AGENTS.md). DONE-PARTIAL = criterios de IMPL-1 cumplidos con dependencias explícitas de fases posteriores (criterio del propietario, 2026-11-19); no bloquea la salida de IMPL-1."
+    "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-3..IMPL-6 se registran al iniciarlas. READY_FOR_REVIEW = criterios con implementación, prueba y evidencia; pasa a DONE tras revisión independiente (QA o propietario), porque ningún agente aprueba su propio trabajo (AGENTS.md). DONE-PARTIAL = criterios de IMPL-1 cumplidos con dependencias explícitas de fases posteriores (criterio del propietario, 2026-11-19); no bloquea la salida de IMPL-1."
   },
   "features": [
     {
@@ -675,6 +675,472 @@
         ],
         "resolution": "Punto de arranque implementado en IMPL-1 por recomendación de la QA ronda 4 (src/swingpilot/bootstrap.py; tests/unit/test_bootstrap.py, 10 pruebas). Implementado después de esa auditoría: cubierto por pruebas, sin re-auditoría."
       }
+    },
+    {
+      "id": "FEAT-008",
+      "title": "Market Analyst: análisis estructurado de mercado",
+      "implementation_phase": "IMPL-2 Agentes especializados (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-052",
+        "REQ-G-059",
+        "REQ-G-095"
+      ],
+      "contract_sections": [
+        "api_contracts.md §3.0",
+        "§3.1",
+        "§3.2"
+      ],
+      "acceptance_criteria": [
+        "Salida con observaciones, evidencia, confianza, limitaciones y timestamp de los datos (REQ-G-052)",
+        "Usa solo las velas cerradas e indicadores recibidos; no inventa datos: lo que falta va a missing_data o status INSUFFICIENT_DATA (api_contracts.md §3.0)",
+        "Cada observación lleva statement_type FACT|INFERENCE|RECOMMENDATION (api_contracts.md §3.0)",
+        "No puede autorizar operaciones (REQ-G-052, REQ-G-059)",
+        "Modelo claude-haiku-5-5 registrado en model_id; effort explícito (REQ-G-095)",
+        "Dos corridas reales consecutivas satisfactorias de la batería: 100% contractual, cero violaciones críticas, expectativas predefinidas cumplidas y evaluación cualitativa aprobada por el propietario (DEC-016 Q36; harness/plans/IMPL-2_plan.md §4)"
+      ],
+      "test_cases": [
+        "TC-AI-001",
+        "TC-AC-02",
+        "TC-AC-05",
+        "TC-LLM-002",
+        "TC-AI-003"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/ai/prompts.py",
+        "src/swingpilot/contracts/agents.py"
+      ],
+      "test_paths": [
+        "tests/integration/test_anthropic_live.py",
+        "tests/unit/test_impl2_calibration.py",
+        "tests/calibration/run_battery.py"
+      ],
+      "status": "PENDING",
+      "evidence": {
+        "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
+        "executed_at": "2026-11-19/20",
+        "final_runs": [
+          "tests/calibration/results/IMPL2_2026-11-19T2358Z_final-1.json",
+          "tests/calibration/results/IMPL2_2026-11-20T0001Z_final-2.json"
+        ],
+        "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
+        "unit": "256 passed, 3 skipped",
+        "pending": [
+          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
+          "QA independiente (≤ 2 rondas)",
+          "Aprobación de cierre (DEC-016 Q40)"
+        ]
+      },
+      "inherited_from_impl1": [
+        "Contrato de entrada/salida, esquema y prompt 0.1.0 (FEAT-004/005)"
+      ],
+      "depends_on_later_phases": [],
+      "notes": "Datos OHLCV reales vienen de Trading Engine / Market Intelligence (REQ-G-070), fuera de IMPL-2: en IMPL-2 se usan entradas con la forma de §3.1. Fuente de datos para la calibración: velas sintéticas (primaria) y velas históricas públicas de Binance (secundaria, CYC-02) (DEC-016 Q37).",
+      "calibration_scenarios": [
+        "MKT-01",
+        "MKT-02"
+      ]
+    },
+    {
+      "id": "FEAT-009",
+      "title": "Macro Analyst: contexto macro con confirmación e incertidumbre",
+      "implementation_phase": "IMPL-2 Agentes especializados (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-053",
+        "REQ-G-059",
+        "REQ-G-095"
+      ],
+      "contract_sections": [
+        "api_contracts.md §3.0",
+        "§3.4",
+        "§3.5"
+      ],
+      "acceptance_criteria": [
+        "Salida con eventos relevantes, impacto potencial, horizonte temporal, fuente, fecha de publicación y nivel de incertidumbre (REQ-G-053, §3.5)",
+        "Distingue CONFIRMED, RUMOR y SPECULATION (REQ-G-053)",
+        "No convierte una noticia en señal de entrada (REQ-G-053)",
+        "El contenido externo es dato, no instrucción (TC-SEC-003)",
+        "Modelo claude-haiku-5-5 registrado en model_id; effort explícito (REQ-G-095)",
+        "Dos corridas reales consecutivas satisfactorias de la batería: 100% contractual, cero violaciones críticas, expectativas predefinidas cumplidas y evaluación cualitativa aprobada por el propietario (DEC-016 Q36; harness/plans/IMPL-2_plan.md §4)"
+      ],
+      "test_cases": [
+        "TC-AI-001",
+        "TC-AC-02",
+        "TC-AC-05",
+        "TC-SEC-003"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/ai/prompts.py",
+        "src/swingpilot/contracts/agents.py"
+      ],
+      "test_paths": [
+        "tests/integration/test_anthropic_live.py",
+        "tests/unit/test_impl2_calibration.py",
+        "tests/calibration/run_battery.py"
+      ],
+      "status": "PENDING",
+      "evidence": {
+        "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
+        "executed_at": "2026-11-19/20",
+        "final_runs": [
+          "tests/calibration/results/IMPL2_2026-11-19T2358Z_final-1.json",
+          "tests/calibration/results/IMPL2_2026-11-20T0001Z_final-2.json"
+        ],
+        "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
+        "unit": "256 passed, 3 skipped",
+        "pending": [
+          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
+          "QA independiente (≤ 2 rondas)",
+          "Aprobación de cierre (DEC-016 Q40)"
+        ]
+      },
+      "inherited_from_impl1": [
+        "Contrato, esquema y prompt 0.1.0 (FEAT-004/005); una muestra real de TC-SEC-003 superada"
+      ],
+      "depends_on_later_phases": [
+        "G6: TC-SEC-003 como evaluación sistemática de robustez (diferido desde FEAT-005)"
+      ],
+      "notes": "Observación de la prueba real (2026-11-19, prompt 0.1.0): listó una nota de método como evento y marcó FACT un ítem SPECULATION. El contrato no define la fuente de noticias del Macro Analyst (§3.4 solo fija la forma de news_sources): noticias exclusivamente sintéticas en IMPL-2; fuente real pendiente de CR (DEC-016 Q37). TC-SEC-003 no sustituye la validación amplia de G6 (DEC-016 Q40).",
+      "calibration_scenarios": [
+        "MAC-01",
+        "MAC-02",
+        "MAC-03"
+      ]
+    },
+    {
+      "id": "FEAT-010",
+      "title": "Strategy Analyst: evaluación de estrategias candidatas",
+      "implementation_phase": "IMPL-2 Agentes especializados (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-054",
+        "REQ-G-059",
+        "REQ-G-071",
+        "REQ-G-095"
+      ],
+      "contract_sections": [
+        "api_contracts.md §3.0",
+        "§3.6"
+      ],
+      "acceptance_criteria": [
+        "Evalúa lógica, condiciones de activación, coherencia señal/invalidación y condiciones que debiliten la oportunidad (REQ-G-054)",
+        "Trabaja solo sobre estrategias formalmente definidas recibidas como STRATEGY_CANDIDATE (REQ-G-054, §3.6)",
+        "comparison solo con evidencia suficiente; null si no (§3.6)",
+        "No modifica parámetros de estrategias aprobadas ni ejecuta (REQ-G-054)",
+        "Se emite STRATEGY_ANALYSIS_COMPLETED (E7, CR-015)",
+        "Modelo claude-haiku-5-5 registrado en model_id; effort explícito (REQ-G-095)",
+        "Dos corridas reales consecutivas satisfactorias de la batería: 100% contractual, cero violaciones críticas, expectativas predefinidas cumplidas y evaluación cualitativa aprobada por el propietario (DEC-016 Q36; harness/plans/IMPL-2_plan.md §4)"
+      ],
+      "test_cases": [
+        "TC-AI-001",
+        "TC-AC-02",
+        "TC-AC-05"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/ai/prompts.py",
+        "src/swingpilot/contracts/agents.py"
+      ],
+      "test_paths": [
+        "tests/integration/test_anthropic_live.py",
+        "tests/unit/test_impl2_calibration.py",
+        "tests/calibration/run_battery.py"
+      ],
+      "status": "PENDING",
+      "evidence": {
+        "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
+        "executed_at": "2026-11-19/20",
+        "final_runs": [
+          "tests/calibration/results/IMPL2_2026-11-19T2358Z_final-1.json",
+          "tests/calibration/results/IMPL2_2026-11-20T0001Z_final-2.json"
+        ],
+        "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
+        "unit": "256 passed, 3 skipped",
+        "pending": [
+          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
+          "QA independiente (≤ 2 rondas)",
+          "Aprobación de cierre (DEC-016 Q40)"
+        ]
+      },
+      "inherited_from_impl1": [
+        "Contrato, esquema, E7 y prompt 0.1.0 (FEAT-005)"
+      ],
+      "depends_on_later_phases": [
+        "IMPL-3: STRATEGY_CANDIDATE real del Strategy Engine; en IMPL-2 se usan candidatos con la forma del contrato"
+      ],
+      "notes": "",
+      "calibration_scenarios": [
+        "STR-01",
+        "STR-02"
+      ]
+    },
+    {
+      "id": "FEAT-011",
+      "title": "Risk Analyst: evaluación consultiva tras RISK_APPROVED",
+      "implementation_phase": "IMPL-2 Agentes especializados (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-055",
+        "REQ-G-059",
+        "REQ-G-074",
+        "REQ-G-095"
+      ],
+      "contract_sections": [
+        "api_contracts.md §3.0",
+        "§3.7"
+      ],
+      "acceptance_criteria": [
+        "Detecta riesgos no evidentes, inconsistencias entrada/stop/objetivo, exposición a eventos externos, riesgos operativos/datos y cuestiona supuestos (REQ-G-055, §3.7)",
+        "advisory_only = true; no aprueba, no revierte ni modifica el resultado del Risk Manager (REQ-G-055)",
+        "Solo se invoca tras RISK_APPROVED; con RISK_REJECTED no se invoca (REQ-G-074, TC-FLOW-002)",
+        "Decision Synthesis no integra su salida (REQ-G-055)",
+        "Modelo claude-haiku-5-5 registrado en model_id; effort explícito (REQ-G-095)",
+        "Dos corridas reales consecutivas satisfactorias de la batería: 100% contractual, cero violaciones críticas, expectativas predefinidas cumplidas y evaluación cualitativa aprobada por el propietario (DEC-016 Q36; harness/plans/IMPL-2_plan.md §4)"
+      ],
+      "test_cases": [
+        "TC-AI-001",
+        "TC-AC-02",
+        "TC-AC-05",
+        "TC-FLOW-002"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/ai/prompts.py",
+        "src/swingpilot/contracts/agents.py"
+      ],
+      "test_paths": [
+        "tests/integration/test_anthropic_live.py",
+        "tests/unit/test_impl2_calibration.py",
+        "tests/calibration/run_battery.py"
+      ],
+      "status": "PENDING",
+      "evidence": {
+        "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
+        "executed_at": "2026-11-19/20",
+        "final_runs": [
+          "tests/calibration/results/IMPL2_2026-11-19T2358Z_final-1.json",
+          "tests/calibration/results/IMPL2_2026-11-20T0001Z_final-2.json"
+        ],
+        "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
+        "unit": "256 passed, 3 skipped",
+        "pending": [
+          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
+          "QA independiente (≤ 2 rondas)",
+          "Aprobación de cierre (DEC-016 Q40)"
+        ]
+      },
+      "inherited_from_impl1": [
+        "Invocación solo tras RISK_APPROVED y advisory_only obligatorio (FEAT-005)"
+      ],
+      "depends_on_later_phases": [
+        "IMPL-4: RISK_APPROVED real del Risk Manager y visibilidad en Telegram (TC-FLOW-003)"
+      ],
+      "notes": "TC-FLOW-003 queda fuera de IMPL-2 (requiere Telegram Bot).",
+      "calibration_scenarios": [
+        "RSK-01",
+        "RSK-02"
+      ]
+    },
+    {
+      "id": "FEAT-012",
+      "title": "Decision Synthesis: consolidación sin consenso fabricado",
+      "implementation_phase": "IMPL-2 Agentes especializados (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-056",
+        "REQ-G-073",
+        "REQ-G-058",
+        "REQ-G-059",
+        "REQ-G-095"
+      ],
+      "contract_sections": [
+        "api_contracts.md §3.0",
+        "§3.3"
+      ],
+      "acceptance_criteria": [
+        "Decision Synthesis preserva incertidumbre y desacuerdos (REQ-G-056)",
+        "Con Market alcista y Macro con riesgo alto contradictorio registra el desacuerdo (o DISAGREEMENT) y no presenta la propuesta como consenso (TC-AC-06)",
+        "Con un analista en INSUFFICIENT_DATA registra la limitación; los datos faltantes de la Fase 3 aparecen en missing_data con prefijo del agente (TC-AC-06, CR-016)",
+        "input_analysis_ids = exactamente los tres análisis de la Fase 3 (REQ-G-073, CR-016 E.2)",
+        "TRADE_PROPOSAL no es una orden ni una autorización; no produce órdenes ni cambios de estado (REQ-G-056, TC-AC-05)",
+        "Modelo claude-sonnet-5-5 registrado en model_id; effort explícito (REQ-G-095)",
+        "Dos corridas reales consecutivas satisfactorias de la batería: 100% contractual, cero violaciones críticas, expectativas predefinidas cumplidas y evaluación cualitativa aprobada por el propietario (DEC-016 Q36; harness/plans/IMPL-2_plan.md §4)"
+      ],
+      "test_cases": [
+        "TC-AC-06",
+        "TC-AC-05",
+        "TC-AI-001",
+        "TC-AC-02"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/ai/prompts.py",
+        "src/swingpilot/contracts/agents.py",
+        "src/swingpilot/ai/orchestrator.py"
+      ],
+      "test_paths": [
+        "tests/unit/test_orchestrator.py",
+        "tests/integration/test_anthropic_live.py",
+        "tests/unit/test_impl2_calibration.py",
+        "tests/calibration/run_battery.py"
+      ],
+      "status": "PENDING",
+      "evidence": {
+        "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
+        "executed_at": "2026-11-19/20",
+        "final_runs": [
+          "tests/calibration/results/IMPL2_2026-11-19T2358Z_final-1.json",
+          "tests/calibration/results/IMPL2_2026-11-20T0001Z_final-2.json"
+        ],
+        "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
+        "unit": "256 passed, 3 skipped",
+        "pending": [
+          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
+          "QA independiente (≤ 2 rondas)",
+          "Aprobación de cierre (DEC-016 Q40)"
+        ]
+      },
+      "inherited_from_impl1": [
+        "TC-AC-06 lado determinista (propagación de missing_data, CR-016) y cita de los 3 analysis_id (FEAT-005, prompt 0.1.1)"
+      ],
+      "depends_on_later_phases": [
+        "IMPL-3: normalización de TRADE_PROPOSAL al contrato del Risk Manager (§4.1)",
+        "IMPL-4: TRADE_PROPOSAL no llega a ejecución sin Risk Manager; desacuerdos mostrados en Telegram (parte de TC-AC-06)"
+      ],
+      "notes": "En IMPL-1 la preservación de desacuerdos en la salida del LLM dependía del prompt sin calibrar; IMPL-2 la prueba con la API real.",
+      "calibration_scenarios": [
+        "SYN-01",
+        "SYN-02",
+        "SYN-03"
+      ]
+    },
+    {
+      "id": "FEAT-013",
+      "title": "Calibración de effort por agente y costo real por ciclo",
+      "implementation_phase": "IMPL-2 Agentes especializados (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-095",
+        "REQ-G-096",
+        "REQ-G-091"
+      ],
+      "contract_sections": [
+        "requirements.md REQ-G-095 PENDING (FASE 2)",
+        "DEC-009 Condiciones"
+      ],
+      "acceptance_criteria": [
+        "effort fijado explícitamente por agente, partiendo de medium, con la calibración del modo de prueba registrada (REQ-G-095 PENDING)",
+        "Costo real por ciclo medido con usage de cada llamada y comparado con la estimación de DEC-009 (~$0.029 por ciclo con setup) (REQ-G-095 PENDING, REQ-G-096 (5))",
+        "Cada llamada registra modelo, tokens de entrada y salida, costo y timestamp; el gasto acumulado coincide con la suma (TC-AC-14)",
+        "Dos corridas reales consecutivas satisfactorias de la batería: 100% contractual, cero violaciones críticas, expectativas predefinidas cumplidas y evaluación cualitativa aprobada por el propietario (DEC-016 Q36; harness/plans/IMPL-2_plan.md §4)",
+        "Experimentación de IMPL-2 limitada a USD 1.00 incrementales: aviso al 80%, bloqueo al llegar al límite y reserva atómica; se suma al tope mensual de $5 (DEC-016 Q38)",
+        "Versiones de prompts y valores de effort propuestos registrados en DEC-016 con sus resultados medidos; configuración final aprobada explícitamente por el propietario (DEC-016 Q39)"
+      ],
+      "test_cases": [
+        "TC-AI-001",
+        "TC-AC-14"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/ai/provider.py",
+        "src/swingpilot/ai/budget.py"
+      ],
+      "test_paths": [
+        "tests/integration/test_anthropic_live.py",
+        "tests/unit/test_ai_provider.py",
+        "tests/unit/test_impl2_calibration.py",
+        "tests/calibration/run_battery.py"
+      ],
+      "status": "PENDING",
+      "evidence": {
+        "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
+        "executed_at": "2026-11-19/20",
+        "final_runs": [
+          "tests/calibration/results/IMPL2_2026-11-19T2358Z_final-1.json",
+          "tests/calibration/results/IMPL2_2026-11-20T0001Z_final-2.json"
+        ],
+        "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
+        "unit": "256 passed, 3 skipped",
+        "pending": [
+          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
+          "QA independiente (≤ 2 rondas)",
+          "Aprobación de cierre (DEC-016 Q40)"
+        ]
+      },
+      "inherited_from_impl1": [
+        "Medición de usage y costo por llamada (FEAT-004/006); dos corridas reales ($0.053506)"
+      ],
+      "depends_on_later_phases": [],
+      "notes": "Cambiar el modelo de un agente requiere una DEC (REQ-G-095, DEC-009); el cambio de effort se propone al propietario con datos medidos. Criterio de calidad para la calibración: DEC-016 Q36.",
+      "calibration_scenarios": [
+        "toda la batería"
+      ]
+    },
+    {
+      "id": "FEAT-014",
+      "title": "Ciclo coordinado de los cinco agentes (criterio de salida de IMPL-2)",
+      "implementation_phase": "IMPL-2 Agentes especializados (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-050",
+        "REQ-G-051",
+        "REQ-G-058",
+        "REQ-G-059",
+        "REQ-G-062",
+        "REQ-G-071",
+        "REQ-G-073",
+        "REQ-G-034"
+      ],
+      "contract_sections": [
+        "architecture.md §7 fila 2",
+        "api_contracts.md §2, §3"
+      ],
+      "acceptance_criteria": [
+        "Ciclo completo de los cinco agentes con trazabilidad demostrada: cadena desde ANALYSIS_REQUESTED hasta RISK_ANALYSIS_COMPLETED, sin huérfanos (DEC-016 Q40)",
+        "Los agentes trabajan coordinadamente: Fase 3 en paralelo, Fase 4 y Risk Analyst tras RISK_APPROVED, sin que un agente invoque a otro (TC-AC-01)",
+        "Conservan sus resultados: cada salida queda en el EventStore con correlation_id/causation_id y se reconstruye el ciclo de IA (TC-AC-03 y TC-AC-04, parte de IA)",
+        "Expresan desacuerdos (TC-AC-06)",
+        "Sin producir autorizaciones financieras: ninguna salida genera órdenes, autorizaciones ni cambios de estado (TC-AC-05)",
+        "Fallo persistente de un agente: 1 reintento y ciclo sin propuesta (TC-AC-11 (a), TC-LLM-001/002)",
+        "Dos corridas reales consecutivas satisfactorias de la batería: 100% contractual, cero violaciones críticas, expectativas predefinidas cumplidas y evaluación cualitativa aprobada por el propietario (DEC-016 Q36; harness/plans/IMPL-2_plan.md §4)"
+      ],
+      "test_cases": [
+        "TC-AC-01",
+        "TC-AC-03",
+        "TC-AC-04",
+        "TC-AC-05",
+        "TC-AC-06",
+        "TC-AC-11",
+        "TC-LLM-001",
+        "TC-LLM-002"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/ai/orchestrator.py",
+        "src/swingpilot/bootstrap.py"
+      ],
+      "test_paths": [
+        "tests/unit/test_orchestrator.py",
+        "tests/integration/test_anthropic_live.py",
+        "tests/unit/test_impl2_calibration.py",
+        "tests/calibration/run_battery.py"
+      ],
+      "status": "PENDING",
+      "evidence": {
+        "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
+        "executed_at": "2026-11-19/20",
+        "final_runs": [
+          "tests/calibration/results/IMPL2_2026-11-19T2358Z_final-1.json",
+          "tests/calibration/results/IMPL2_2026-11-20T0001Z_final-2.json"
+        ],
+        "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
+        "unit": "256 passed, 3 skipped",
+        "pending": [
+          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
+          "QA independiente (≤ 2 rondas)",
+          "Aprobación de cierre (DEC-016 Q40)"
+        ]
+      },
+      "inherited_from_impl1": [
+        "Coordinación, reintentos, Fail-Closed y cadena de eventos (FEAT-003/005)"
+      ],
+      "depends_on_later_phases": [
+        "IMPL-5: TC-AC-03/04 hasta ORDER_FILLED"
+      ],
+      "notes": "Agrupa el criterio de salida de la fase; se evalúa con los prompts y effort calibrados de FEAT-008..013.",
+      "calibration_scenarios": [
+        "CYC-01",
+        "CYC-02"
+      ]
     }
   ],
   "live_api_evidence": {
@@ -797,5 +1263,37 @@
     "qa_rounds": 4,
     "validators": "validate_manifest.py, validate_requirements.py, validate_gates.py: OK",
     "minors_2_3_reaudit": "Completada en QA ronda 4 (no quedó PENDING)"
+  },
+  "impl2_plan": {
+    "status": "APROBADO por el propietario (2026-11-19); en ejecución",
+    "decision": "docs/decisions/DEC-016_plan-impl2-calibracion-agentes.md (Q36–Q40)",
+    "plan": "harness/plans/IMPL-2_plan.md",
+    "source": "architecture.md §7 fila 2; requirements.md REQ-G-052..056, REQ-G-073, REQ-G-095 (PENDING FASE 2); DEC-009 Condiciones; session-handoff.md (IMPL-2)",
+    "exit_criterion": "Los agentes trabajan coordinadamente, conservan sus resultados y expresan desacuerdos sin producir autorizaciones financieras (architecture.md §7, fila 2)",
+    "experiment_budget_usd": 1.0,
+    "qa_rounds_max": 2,
+    "subagent_tokens_max": "200K combinados (orientativo)",
+    "resolved_questions": {
+      "Q1": "DEC-016 Q36",
+      "Q2": "DEC-016 Q37",
+      "Q3": "DEC-016 Q38",
+      "Q4": "DEC-016 Q39"
+    },
+    "final_runs": {
+      "runs": [
+        "tests/calibration/results/IMPL2_2026-11-19T2358Z_final-1.json",
+        "tests/calibration/results/IMPL2_2026-11-20T0001Z_final-2.json"
+      ],
+      "auto_pass": [
+        true,
+        true
+      ],
+      "cost_usd": [
+        0.121384,
+        0.123146
+      ],
+      "experiment_spent_usd": 0.480488,
+      "config": "effort medium ×5; prompts market 0.1.0, macro 0.2.0, strategy 0.2.0, risk 0.1.0, synthesis 0.1.1 (DEC-016 aprobada 2026-11-19)"
+    }
   }
 }
