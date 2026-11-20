@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "1.2.0",
+    "version": "1.3.0",
     "phase": "FASE 2",
-    "status": "IMPL-2_EN_CURSO",
-    "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5. Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
-    "last_updated": "2026-11-19",
+    "status": "IMPL-2_CERRADA",
+    "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5 y cerrada (2026-11-20). Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
+    "last_updated": "2026-11-20",
     "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-3..IMPL-6 se registran al iniciarlas. READY_FOR_REVIEW = criterios con implementación, prueba y evidencia; pasa a DONE tras revisión independiente (QA o propietario), porque ningún agente aprueba su propio trabajo (AGENTS.md). DONE-PARTIAL = criterios de IMPL-1 cumplidos con dependencias explícitas de fases posteriores (criterio del propietario, 2026-11-19); no bloquea la salida de IMPL-1."
   },
   "features": [
@@ -714,7 +714,7 @@
         "tests/unit/test_impl2_calibration.py",
         "tests/calibration/run_battery.py"
       ],
-      "status": "PENDING",
+      "status": "DONE",
       "evidence": {
         "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
         "executed_at": "2026-11-19/20",
@@ -724,11 +724,8 @@
         ],
         "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
         "unit": "256 passed, 3 skipped",
-        "pending": [
-          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
-          "QA independiente (≤ 2 rondas)",
-          "Aprobación de cierre (DEC-016 Q40)"
-        ]
+        "pending": [],
+        "owner_qualitative_approval": "Propietario, 2026-11-20: «Apruebo la evaluación cualitativa» (final-1 y final-2)"
       },
       "inherited_from_impl1": [
         "Contrato de entrada/salida, esquema y prompt 0.1.0 (FEAT-004/005)"
@@ -738,7 +735,15 @@
       "calibration_scenarios": [
         "MKT-01",
         "MKT-02"
-      ]
+      ],
+      "impl2_exit": {
+        "proposed_status": "DONE",
+        "deferred": [],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": "QA Agent independiente ronda 1 (2026-11-20) + evaluación cualitativa del propietario",
+        "status": "DONE",
+        "approved": "Propietario, 2026-11-20: «Apruebo el cierre de IMPL-2 con esos estados»"
+      }
     },
     {
       "id": "FEAT-009",
@@ -777,7 +782,7 @@
         "tests/unit/test_impl2_calibration.py",
         "tests/calibration/run_battery.py"
       ],
-      "status": "PENDING",
+      "status": "DONE-PARTIAL",
       "evidence": {
         "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
         "executed_at": "2026-11-19/20",
@@ -787,11 +792,8 @@
         ],
         "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
         "unit": "256 passed, 3 skipped",
-        "pending": [
-          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
-          "QA independiente (≤ 2 rondas)",
-          "Aprobación de cierre (DEC-016 Q40)"
-        ]
+        "pending": [],
+        "owner_qualitative_approval": "Propietario, 2026-11-20: «Apruebo la evaluación cualitativa» (final-1 y final-2)"
       },
       "inherited_from_impl1": [
         "Contrato, esquema y prompt 0.1.0 (FEAT-004/005); una muestra real de TC-SEC-003 superada"
@@ -804,7 +806,18 @@
         "MAC-01",
         "MAC-02",
         "MAC-03"
-      ]
+      ],
+      "impl2_exit": {
+        "proposed_status": "DONE-PARTIAL",
+        "deferred": [
+          "G6: TC-SEC-003 como evaluación amplia (DEC-016 Q40)",
+          "CR-017: fuente real de noticias y datos macro"
+        ],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": "QA Agent independiente ronda 1 (2026-11-20) + evaluación cualitativa del propietario",
+        "status": "DONE-PARTIAL",
+        "approved": "Propietario, 2026-11-20: «Apruebo el cierre de IMPL-2 con esos estados»"
+      }
     },
     {
       "id": "FEAT-010",
@@ -843,7 +856,7 @@
         "tests/unit/test_impl2_calibration.py",
         "tests/calibration/run_battery.py"
       ],
-      "status": "PENDING",
+      "status": "DONE-PARTIAL",
       "evidence": {
         "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
         "executed_at": "2026-11-19/20",
@@ -853,11 +866,8 @@
         ],
         "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
         "unit": "256 passed, 3 skipped",
-        "pending": [
-          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
-          "QA independiente (≤ 2 rondas)",
-          "Aprobación de cierre (DEC-016 Q40)"
-        ]
+        "pending": [],
+        "owner_qualitative_approval": "Propietario, 2026-11-20: «Apruebo la evaluación cualitativa» (final-1 y final-2)"
       },
       "inherited_from_impl1": [
         "Contrato, esquema, E7 y prompt 0.1.0 (FEAT-005)"
@@ -869,7 +879,17 @@
       "calibration_scenarios": [
         "STR-01",
         "STR-02"
-      ]
+      ],
+      "impl2_exit": {
+        "proposed_status": "DONE-PARTIAL",
+        "deferred": [
+          "IMPL-3: STRATEGY_CANDIDATE real del Strategy Engine"
+        ],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": "QA Agent independiente ronda 1 (2026-11-20) + evaluación cualitativa del propietario",
+        "status": "DONE-PARTIAL",
+        "approved": "Propietario, 2026-11-20: «Apruebo el cierre de IMPL-2 con esos estados»"
+      }
     },
     {
       "id": "FEAT-011",
@@ -908,7 +928,7 @@
         "tests/unit/test_impl2_calibration.py",
         "tests/calibration/run_battery.py"
       ],
-      "status": "PENDING",
+      "status": "DONE-PARTIAL",
       "evidence": {
         "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
         "executed_at": "2026-11-19/20",
@@ -918,11 +938,8 @@
         ],
         "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
         "unit": "256 passed, 3 skipped",
-        "pending": [
-          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
-          "QA independiente (≤ 2 rondas)",
-          "Aprobación de cierre (DEC-016 Q40)"
-        ]
+        "pending": [],
+        "owner_qualitative_approval": "Propietario, 2026-11-20: «Apruebo la evaluación cualitativa» (final-1 y final-2)"
       },
       "inherited_from_impl1": [
         "Invocación solo tras RISK_APPROVED y advisory_only obligatorio (FEAT-005)"
@@ -934,7 +951,17 @@
       "calibration_scenarios": [
         "RSK-01",
         "RSK-02"
-      ]
+      ],
+      "impl2_exit": {
+        "proposed_status": "DONE-PARTIAL",
+        "deferred": [
+          "IMPL-4: RISK_APPROVED real y visibilidad en Telegram (TC-FLOW-003)"
+        ],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": "QA Agent independiente ronda 1 (2026-11-20) + evaluación cualitativa del propietario",
+        "status": "DONE-PARTIAL",
+        "approved": "Propietario, 2026-11-20: «Apruebo el cierre de IMPL-2 con esos estados»"
+      }
     },
     {
       "id": "FEAT-012",
@@ -977,7 +1004,7 @@
         "tests/unit/test_impl2_calibration.py",
         "tests/calibration/run_battery.py"
       ],
-      "status": "PENDING",
+      "status": "DONE-PARTIAL",
       "evidence": {
         "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
         "executed_at": "2026-11-19/20",
@@ -987,11 +1014,8 @@
         ],
         "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
         "unit": "256 passed, 3 skipped",
-        "pending": [
-          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
-          "QA independiente (≤ 2 rondas)",
-          "Aprobación de cierre (DEC-016 Q40)"
-        ]
+        "pending": [],
+        "owner_qualitative_approval": "Propietario, 2026-11-20: «Apruebo la evaluación cualitativa» (final-1 y final-2)"
       },
       "inherited_from_impl1": [
         "TC-AC-06 lado determinista (propagación de missing_data, CR-016) y cita de los 3 analysis_id (FEAT-005, prompt 0.1.1)"
@@ -1005,7 +1029,18 @@
         "SYN-01",
         "SYN-02",
         "SYN-03"
-      ]
+      ],
+      "impl2_exit": {
+        "proposed_status": "DONE-PARTIAL",
+        "deferred": [
+          "IMPL-3: normalización de TRADE_PROPOSAL (§4.1)",
+          "IMPL-4: paso por Risk Manager y desacuerdos en Telegram (TC-AC-06, parte Telegram)"
+        ],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": "QA Agent independiente ronda 1 (2026-11-20) + evaluación cualitativa del propietario",
+        "status": "DONE-PARTIAL",
+        "approved": "Propietario, 2026-11-20: «Apruebo el cierre de IMPL-2 con esos estados»"
+      }
     },
     {
       "id": "FEAT-013",
@@ -1042,7 +1077,7 @@
         "tests/unit/test_impl2_calibration.py",
         "tests/calibration/run_battery.py"
       ],
-      "status": "PENDING",
+      "status": "DONE",
       "evidence": {
         "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
         "executed_at": "2026-11-19/20",
@@ -1052,11 +1087,8 @@
         ],
         "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
         "unit": "256 passed, 3 skipped",
-        "pending": [
-          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
-          "QA independiente (≤ 2 rondas)",
-          "Aprobación de cierre (DEC-016 Q40)"
-        ]
+        "pending": [],
+        "owner_qualitative_approval": "Propietario, 2026-11-20: «Apruebo la evaluación cualitativa» (final-1 y final-2)"
       },
       "inherited_from_impl1": [
         "Medición de usage y costo por llamada (FEAT-004/006); dos corridas reales ($0.053506)"
@@ -1065,7 +1097,15 @@
       "notes": "Cambiar el modelo de un agente requiere una DEC (REQ-G-095, DEC-009); el cambio de effort se propone al propietario con datos medidos. Criterio de calidad para la calibración: DEC-016 Q36.",
       "calibration_scenarios": [
         "toda la batería"
-      ]
+      ],
+      "impl2_exit": {
+        "proposed_status": "DONE",
+        "deferred": [],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": "QA Agent independiente ronda 1 (2026-11-20) + evaluación cualitativa del propietario",
+        "status": "DONE",
+        "approved": "Propietario, 2026-11-20: «Apruebo el cierre de IMPL-2 con esos estados»"
+      }
     },
     {
       "id": "FEAT-014",
@@ -1114,7 +1154,7 @@
         "tests/unit/test_impl2_calibration.py",
         "tests/calibration/run_battery.py"
       ],
-      "status": "PENDING",
+      "status": "DONE-PARTIAL",
       "evidence": {
         "command": "RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label final-{1,2}; .venv/bin/pytest -q tests",
         "executed_at": "2026-11-19/20",
@@ -1124,11 +1164,8 @@
         ],
         "result": "final-1 y final-2: 14/14 escenarios, contrato 100%, cero violaciones críticas (V1–V8), todas las expectativas; batería v2 sha256 8f68e9a8…; configuración aprobada en DEC-016",
         "unit": "256 passed, 3 skipped",
-        "pending": [
-          "Evaluación cualitativa del propietario sobre los informes .md (DEC-016 Q36)",
-          "QA independiente (≤ 2 rondas)",
-          "Aprobación de cierre (DEC-016 Q40)"
-        ]
+        "pending": [],
+        "owner_qualitative_approval": "Propietario, 2026-11-20: «Apruebo la evaluación cualitativa» (final-1 y final-2)"
       },
       "inherited_from_impl1": [
         "Coordinación, reintentos, Fail-Closed y cadena de eventos (FEAT-003/005)"
@@ -1140,7 +1177,17 @@
       "calibration_scenarios": [
         "CYC-01",
         "CYC-02"
-      ]
+      ],
+      "impl2_exit": {
+        "proposed_status": "DONE-PARTIAL",
+        "deferred": [
+          "IMPL-5: TC-AC-03/04 hasta ORDER_FILLED"
+        ],
+        "proposed_by": "Orquestador de Desarrollo",
+        "verified_by": "QA Agent independiente ronda 1 (2026-11-20) + evaluación cualitativa del propietario",
+        "status": "DONE-PARTIAL",
+        "approved": "Propietario, 2026-11-20: «Apruebo el cierre de IMPL-2 con esos estados»"
+      }
     }
   ],
   "live_api_evidence": {
@@ -1265,7 +1312,7 @@
     "minors_2_3_reaudit": "Completada en QA ronda 4 (no quedó PENDING)"
   },
   "impl2_plan": {
-    "status": "APROBADO por el propietario (2026-11-19); en ejecución",
+    "status": "CERRADA (2026-11-20)",
     "decision": "docs/decisions/DEC-016_plan-impl2-calibracion-agentes.md (Q36–Q40)",
     "plan": "harness/plans/IMPL-2_plan.md",
     "source": "architecture.md §7 fila 2; requirements.md REQ-G-052..056, REQ-G-073, REQ-G-095 (PENDING FASE 2); DEC-009 Condiciones; session-handoff.md (IMPL-2)",
@@ -1317,10 +1364,37 @@
           },
           {
             "item": "SYN-01 acepta DISAGREEMENT/INSUFFICIENT_INFO sin verificar el contenido del desacuerdo",
-            "action": "ESCALADO AL PROPIETARIO: TC-AC-06 acepta DISAGREEMENT; aceptar INSUFFICIENT_INFO es más laxo que TC-AC-06. Ambas corridas finales dieron DISAGREEMENT. Endurecer exige congelación v3 y repetir las 2 corridas"
+            "action": "ESCALADO AL PROPIETARIO: TC-AC-06 acepta DISAGREEMENT; aceptar INSUFFICIENT_INFO es más laxo que TC-AC-06. Ambas corridas finales dieron DISAGREEMENT. Endurecer exige congelación v3 y repetir las 2 corridas → propietario 2026-11-20: opción (a), se mantiene"
           }
         ]
       }
+    ],
+    "owner_decisions_2026_11_20": {
+      "qualitative": "APROBADA (corridas final-1 y final-2 satisfactorias; criterio Q36 cumplido)",
+      "syn01_expectation": "Opción (a): se mantiene; observación registrada (acepta INSUFFICIENT_INFO, más laxo que TC-AC-06; ambas finales dieron DISAGREEMENT)",
+      "macro_data": "A la CR de la fuente de noticias: harness/change_requests/CR-017_fuente-noticias-datos-macro.md (PROPUESTA)"
+    }
+  },
+  "impl2_exit_summary": {
+    "date": "2026-11-20",
+    "approval": "Propietario, 2026-11-20: «Apruebo el cierre de IMPL-2 con esos estados»",
+    "statuses": {
+      "FEAT-008": "DONE",
+      "FEAT-009": "DONE-PARTIAL",
+      "FEAT-010": "DONE-PARTIAL",
+      "FEAT-011": "DONE-PARTIAL",
+      "FEAT-012": "DONE-PARTIAL",
+      "FEAT-013": "DONE",
+      "FEAT-014": "DONE-PARTIAL"
+    },
+    "criteria": "DEC-016 Q36 (dos corridas finales consecutivas satisfactorias, evaluación cualitativa aprobada) y Q40",
+    "g4": "PASS con alcance IMPL-1 + IMPL-2",
+    "qa_rounds": 1,
+    "subagents": "1 (~66K tokens)",
+    "experiment_spent_usd": 0.480488,
+    "open": [
+      "CR-017 (PROPUESTA): fuente de noticias y macro_data",
+      "G6: TC-SEC-003 amplio"
     ]
   }
 }

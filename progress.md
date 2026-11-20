@@ -1027,3 +1027,36 @@
 **Pruebas ejecutadas:** `.venv/bin/pytest -q tests` (tras las correcciones).
 
 **Pendiente:** evaluación cualitativa del propietario; decisión sobre el menor 4 y sobre `macro_data` vacío; G4 con alcance IMPL-2; aprobación de cierre. Rondas de QA usadas: 1 de 2. Sub-agentes: 1 (~66K tokens).
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-2: evaluación cualitativa aprobada, CR-017 y G4 (alcance IMPL-2) | PENDIENTE DE APROBACIÓN DE CIERRE
+
+**Decisiones del propietario (2026-11-20):** «Apruebo la evaluación cualitativa; SYN-01 opción (a), macro a la CR».
+- Evaluación cualitativa de final-1 y final-2: APROBADA → criterio DEC-016 Q36 cumplido (dos corridas consecutivas satisfactorias).
+- Menor 4 de la QA (SYN-01 acepta INSUFFICIENT_INFO): se mantiene; observación registrada.
+- `macro_data` vacío: redactada `harness/change_requests/CR-017_fuente-noticias-datos-macro.md` (PROPUESTA; B.1–B.5 PENDING; no aplicada, contrato v1.5).
+
+**Estado de FEAT-008..014:** READY_FOR_REVIEW, con estado de salida propuesto en `impl2_exit`: FEAT-008 y FEAT-013 DONE; FEAT-009/010/011/012/014 DONE-PARTIAL con dependencias explícitas (G6, CR-017, IMPL-3, IMPL-4, IMPL-5).
+
+**G4:** alcance ampliado a IMPL-2 en `harness/gates/gate_status.json` (dos corridas finales, QA ronda 1, evaluación cualitativa del propietario).
+
+**Archivos:** `harness/change_requests/CR-017_fuente-noticias-datos-macro.md` (nuevo), `feature_list.json`, `harness/gates/gate_status.json`, `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest/requirements/gates → OK (sin cambios de código).
+
+**Siguiente acción:** aprobación de cierre de IMPL-2 por el propietario (DEC-016 Q40); después, FEAT a su estado final y transición a IMPL-3.
+
+---
+
+## 2026-11-20 | FASE 2 | CIERRE DE IMPL-2 «Agentes especializados» | COMPLETADO
+
+**Aprobación del propietario:** «Apruebo el cierre de IMPL-2 con esos estados; haz commit».
+
+**Estados finales:** FEAT-008 DONE; FEAT-009 DONE-PARTIAL (G6, CR-017); FEAT-010 DONE-PARTIAL (IMPL-3); FEAT-011 DONE-PARTIAL (IMPL-4); FEAT-012 DONE-PARTIAL (IMPL-3, IMPL-4); FEAT-013 DONE; FEAT-014 DONE-PARTIAL (IMPL-5). `feature_list.json` v1.3.0 (`impl2_exit_summary`).
+
+**Resumen de IMPL-2:** criterio de salida (architecture.md §7) demostrado con dos corridas reales consecutivas de la batería congelada (14/14, cero violaciones críticas) y evaluación cualitativa del propietario; QA independiente 1 ronda; G4 PASS (IMPL-1 + IMPL-2); gasto de experimentación $0.480488 de $1.00; configuración en DEC-016 (effort medium ×5; macro y strategy 0.2.0).
+
+**Abierto:** CR-017 (PROPUESTA): fuente de noticias y `macro_data`; G6: evaluación amplia de TC-SEC-003; G5..G7 PENDING.
+
+**Siguiente acción autorizada:** iniciar IMPL-3 «Integración cuantitativa» solo cuando el propietario lo indique (poblar sus FEAT desde el contrato v1.5).

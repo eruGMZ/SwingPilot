@@ -3,7 +3,7 @@
   "metadata": {
     "version": "0.3.0",
     "phase": "FASE 2",
-    "last_updated": "2026-11-19",
+    "last_updated": "2026-11-20",
     "note": "Ningún gate puede aprobarse mediante declaración del agente. G3 y G7 requieren aprobación humana explícita."
   },
   "gates": [
@@ -58,10 +58,10 @@
       "phase": "FASE 2",
       "status": "PASS",
       "requires_human_approval": false,
-      "approved_by": "QA Agent independiente (ronda 4), según criterio del propietario",
-      "approved_at": "2026-11-19",
-      "evidence": "Criterio del propietario (2026-11-19): prueba real contra Anthropic documentada en feature_list.json (live_api_evidence: modelos devueltos, tokens, costo, pasos superados). Dos corridas reales: tests/integration/results/anthropic_live_2026-11-19T2120Z.json y …T2131Z.json, 3 passed cada una, $0.053506 en total. Unitarias: 233 passed, 3 skipped. QA ronda 4 contrastó live_api_evidence con los resultados (sumas cuadran) y dictaminó G4 PASS con alcance IMPL-1. FEAT-001/004/005 DONE; FEAT-002/003/006/007 DONE-PARTIAL con dependencias explícitas.",
-      "scope": "IMPL-1 (FEAT-001..007). Se re-evalúa al cerrar cada IMPL posterior; si no se cumple, vuelve a OPEN."
+      "approved_by": "QA Agent independiente (IMPL-1 ronda 4; IMPL-2 ronda 1) y evaluación cualitativa del propietario (IMPL-2), según criterios del propietario",
+      "approved_at": "2026-11-20",
+      "evidence": "Criterio del propietario (2026-11-19): prueba real contra Anthropic documentada en feature_list.json (live_api_evidence: modelos devueltos, tokens, costo, pasos superados). Dos corridas reales: tests/integration/results/anthropic_live_2026-11-19T2120Z.json y …T2131Z.json, 3 passed cada una, $0.053506 en total. Unitarias: 233 passed, 3 skipped. QA ronda 4 contrastó live_api_evidence con los resultados (sumas cuadran) y dictaminó G4 PASS con alcance IMPL-1. FEAT-001/004/005 DONE; FEAT-002/003/006/007 DONE-PARTIAL con dependencias explícitas. | IMPL-2 (2026-11-20): dos corridas reales consecutivas de la batería congelada (tests/calibration/results/IMPL2_2026-11-19T2358Z_final-1.json y IMPL2_2026-11-20T0001Z_final-2.json): 14/14, contrato 100%, cero violaciones críticas V1–V8; evaluación cualitativa aprobada por el propietario (2026-11-20); QA independiente ronda 1 sin bloqueantes ni mayores; unitarias 256 passed, 3 skipped. Criterio: DEC-016 Q36.",
+      "scope": "IMPL-1 (FEAT-001..007) e IMPL-2 (FEAT-008..014). Se re-evalúa al cerrar cada IMPL posterior; si no se cumple, vuelve a OPEN."
     },
     {
       "id": "G5",

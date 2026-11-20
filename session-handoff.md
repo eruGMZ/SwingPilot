@@ -1,6 +1,30 @@
 # session-handoff.md — SwingPilot Harness
 
-## IMPL-2 «Agentes especializados» en curso (2026-11-20) — esperando evaluación cualitativa del propietario
+## Cierre de IMPL-2 (2026-11-20) — transición a IMPL-3
+
+**Estado:** IMPL-2 «Agentes especializados» CERRADA con aprobación del propietario (2026-11-20). Contrato v1.5. G0..G4 PASS (G4 con alcance IMPL-1 + IMPL-2); G5..G7 PENDING.
+
+| FEAT | Estado | Dependencia explícita |
+|---|---|---|
+| FEAT-008 Market Analyst | DONE | — |
+| FEAT-009 Macro Analyst | DONE-PARTIAL | G6 (TC-SEC-003 amplio); CR-017 (fuente de noticias y macro_data) |
+| FEAT-010 Strategy Analyst | DONE-PARTIAL | IMPL-3: STRATEGY_CANDIDATE real |
+| FEAT-011 Risk Analyst | DONE-PARTIAL | IMPL-4: RISK_APPROVED real y Telegram (TC-FLOW-003) |
+| FEAT-012 Decision Synthesis | DONE-PARTIAL | IMPL-3 normalización §4.1; IMPL-4 Risk Manager y Telegram |
+| FEAT-013 effort y costo | DONE | — |
+| FEAT-014 Ciclo de 5 agentes | DONE-PARTIAL | IMPL-5: cadena hasta ORDER_FILLED |
+
+- Configuración vigente (DEC-016): effort medium ×5; prompts market 0.1.0, macro 0.2.0, strategy 0.2.0, risk 0.1.0, synthesis 0.1.1.
+- Calibración: `tests/calibration/` (batería v2 congelada; `RUN_ANTHROPIC_LIVE=1 .venv/bin/python -m tests.calibration.run_battery --label <x>`). Gasto IMPL-2 $0.480488 de $1.00 (libro `var/impl2_experiment_budget.db`).
+- Verificar: `.venv/bin/pytest -q tests` → 256 passed, 3 skipped; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK.
+- Abierto: CR-017 (PROPUESTA, B.1–B.5 PENDING del propietario).
+- Siguiente acción autorizada: iniciar IMPL-3 «Integración cuantitativa» (ML, Regime y Strategy Engine; architecture.md §7 fila 3) solo con indicación del propietario, poblando sus FEAT desde el contrato v1.5.
+
+## IMPL-2 «Agentes especializados» (2026-11-20) — criterios cumplidos, esperando aprobación de cierre
+
+**Actualización 2:** evaluación cualitativa APROBADA por el propietario; QA ronda 1 sin bloqueantes ni mayores (1 de 2 rondas usadas); G4 PASS con alcance IMPL-1 + IMPL-2; FEAT-008..014 en READY_FOR_REVIEW (salida propuesta en `impl2_exit`: 008/013 DONE, resto DONE-PARTIAL). CR-017 (fuente de noticias y `macro_data`) en PROPUESTA. Siguiente: aprobación de cierre de IMPL-2 por el propietario; luego IMPL-3 (Integración cuantitativa) solo con su indicación.
+
+(Estado anterior:)
 
 **Actualización:** configuración de DEC-016 APROBADA; corridas finales `IMPL2_2026-11-19T2358Z_final-1` y `IMPL2_2026-11-20T0001Z_final-2` PASAN (14/14, cero críticas). Gasto IMPL-2 $0.480488 de $1.00. Siguiente: evaluación cualitativa del propietario sobre los `.md` → QA independiente → G4 → aprobación de cierre.
 
