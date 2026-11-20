@@ -1,8 +1,8 @@
-# SwingPilot — Test Plan v1.5
+# SwingPilot — Test Plan v1.6
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -357,6 +357,16 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 
 ---
 
+### TC-MSG-004 — Payloads de la Fase 2 (CR-018)
+- Input: REGIME_CLASSIFIED, ML_INFERENCE_COMPLETED, STRATEGY_CANDIDATE, STRATEGY_EXIT_SIGNAL, STOP_ADJUSTMENT_REQUESTED y NO_SETUP
+- Expected: validan contra su esquema (api_contracts.md §3.8); un campo obligatorio ausente se rechaza; con `result_status = ERROR` los campos de candidato están prohibidos
+
+### TC-MSG-005 — Tiempos y referencias de datos (CR-018)
+- Input: evento de un motor de la Fase 2
+- Expected: `data_timestamp_utc` (cierre de la última vela usada) ≠ `timestamp_utc` (emisión); `data_refs` coherente con las velas usadas
+
+---
+
 ## 8. Pruebas de Seguridad (C1)
 
 ### TC-SEC-001 — API keys no expuestas en código
@@ -478,6 +488,30 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 ### TC-FLOW-008 — Solo las entradas requieren autorización (CR-011)
 - Input: señal de salida de estrategia y cierre protector
 - Expected: ambos se ejecutan sin solicitud de autorización humana; una entrada sin autorización válida se rechaza (INV-008)
+
+### TC-FLOW-009 — Motivos de NO_SETUP (CR-018)
+- Input: un caso por `reason_code` (NO_CANDIDATE, NO_APPROVED_STRATEGY, MULTIPLE_ENTRY_CANDIDATES, EXIT_SIGNAL_PRIORITY, PRE_PHASE3_BLOCK, UPSTREAM_INSUFFICIENT_DATA)
+- Expected: NO_SETUP con ese motivo, `llm_calls = 0`; ningún error técnico se registra como NO_SETUP
+
+### TC-FLOW-010 — ML sin modelo (CR-018)
+- Input: ML_INFERENCE_COMPLETED con `NO_ACTIVE_MODEL` o `MODEL_SUSPENDED`
+- Expected: ninguna estrategia ML-Based es elegible en ese ciclo
+
+### TC-FLOW-011 — Error técnico del Strategy Engine (CR-018 B.7.1)
+- Input: entrada en ERROR, excepción interna o candidato mal formado
+- Expected: STRATEGY_CANDIDATE con `result_status = ERROR`, sobre `FAILED`, sin campos de candidato, cero llamadas a LLM; entregado a la Fase 3, se rechaza
+
+### TC-NORM-001 — Normalización desde el candidato (CR-018 B.8)
+- Input: síntesis con TRADE_PROPOSAL consistente
+- Expected: la TRADE_PROPOSAL §4.1 toma precios, estrategia y `exit_mechanism` del STRATEGY_CANDIDATE
+
+### TC-NORM-002 — Síntesis inconsistente (CR-018 B.8)
+- Input: stop distinto, otra estrategia o `entry_zone` fuera de la del candidato
+- Expected: no se emite TRADE_PROPOSAL; se registra PROPOSAL_INCONSISTENT_WITH_CANDIDATE
+
+### TC-NORM-003 — Compatibilidad de §4.1 (CR-018 B.8)
+- Input: TRADE_PROPOSAL v1.1.0 y v1.0.0
+- Expected: v1.1.0 valida; v1.0.0 sigue siendo legible
 
 ## 8.4 Pruebas de Reintentos y Fallo de Agentes (C1 — REQ-G-034)
 

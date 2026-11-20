@@ -1,8 +1,8 @@
-# SwingPilot — Data Flow v1.5
+# SwingPilot — Data Flow v1.6
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -50,6 +50,9 @@ Disparador externo (señal periódica o solicitud manual)
 │  producción sin evidencia experimental.                                 │
 │                                                                         │
 │  SIN CANDIDATO → NO_SETUP → fin del ciclo, CERO llamadas a LLM          │
+│  Motivos estructurados, ML sin modelo (NO_ACTIVE_MODEL → ML-Based no    │
+│  elegible) y errores técnicos (STRATEGY_CANDIDATE con ERROR, sin LLM):  │
+│  api_contracts.md §3.8 (CR-018)                                         │
 │                                                                         │
 │  Resolución de candidatos (CR-011, DEC-011; regla binaria, sin          │
 │  confianza):                                                            │
@@ -212,7 +215,7 @@ Estado: SIN_POSICION
 │         │    - Stop alcanzado sin ejecución en Binance → ORDER_SUBMITTED (SELL)
 │         │    - Señal de salida del Strategy Engine → ORDER_SUBMITTED (SELL),
 │         │      autónoma, sin autorización humana (CR-011, DEC-011; el
-│         │      esquema del evento de señal de salida es PENDING de FASE 2)
+│         │      evento STRATEGY_EXIT_SIGNAL, api_contracts.md §3.8 B.5; el trailing se pide con STOP_ADJUSTMENT_REQUESTED, B.6; CR-018)
 │         │    - Take-profit alcanzado (si configurado) → ORDER_SUBMITTED
 │         │    - Instrucción manual del operador → ORDER_SUBMITTED
 │         │    - Bloqueo de riesgo activo → acciones de protección disponibles
@@ -303,12 +306,12 @@ Toda la cadena de un análisis/operación puede reconstruirse mediante `correlat
 E1  ANALYSIS_REQUESTED              (correlation_id: X, causation_id: null)
 E2  REGIME_CLASSIFIED               (X, causation_id: E1)
 E3  ML_INFERENCE_COMPLETED          (X, causation_id: E1)
-E4  STRATEGY_CANDIDATE              (X, causation_id: E2, E3)   — o NO_SETUP (fin del ciclo)
+E4  STRATEGY_CANDIDATE              (X, causation_id: E2; E3 en ml_inference_message_id) — o NO_SETUP (fin del ciclo); con result_status ERROR si falla (CR-018)
 E5  MARKET_ANALYSIS_COMPLETED       (X, causation_id: E4)
 E6  MACRO_ANALYSIS_COMPLETED        (X, causation_id: E4)
 E7  STRATEGY_ANALYSIS_COMPLETED     (X, causation_id: E4)      — CR-015
 E8  DECISION_SYNTHESIS_COMPLETED    (X, causation_id: E5, E6, E7)
-E9  TRADE_PROPOSAL                  (X, causation_id: E8)
+E9  TRADE_PROPOSAL                  (X, causation_id: E8)      — normalizada desde E4 (CR-018 B.8)
 E10 RISK_APPROVED / RISK_REJECTED   (X, causation_id: E9)
 E11 RISK_ANALYSIS_COMPLETED         (X, causation_id: E10)      — solo con RISK_APPROVED
 E12 autorización humana             (X, causation_id: E10)

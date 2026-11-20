@@ -1,8 +1,8 @@
-# SwingPilot — Requirements Contract v1.5
+# SwingPilot — Requirements Contract v1.6
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
+**Estado:** v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado  
 **Autoridad documental aplicada:** DEC-001 (resoluciones de conflictos CONF-001, CONF-002)
 
 ---
@@ -566,7 +566,7 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 - Los registros históricos no se sobrescriben para aparentar uso de información retrospectiva
 
 ### REQ-G-063
-**Descripción:** Catálogo inicial de 16 tipos de eventos del sistema (ampliado por CR-002..CR-006; catálogo vigente en `api_contracts.md` §2, 31 tipos; CR-015 añade STRATEGY_ANALYSIS_COMPLETED): ANALYSIS_REQUESTED, MARKET_ANALYSIS_COMPLETED, MACRO_ANALYSIS_COMPLETED, ML_INFERENCE_COMPLETED, REGIME_CLASSIFIED, STRATEGY_CANDIDATE, DECISION_SYNTHESIS_COMPLETED, TRADE_PROPOSAL, RISK_APPROVED, RISK_REJECTED, RISK_REQUIRES_REVIEW, ORDER_SUBMITTED, ORDER_PARTIALLY_FILLED, ORDER_FILLED, ORDER_CANCELLED, ORDER_REJECTED. Los nombres definitivos se establecen en el catálogo del sistema.  
+**Descripción:** Catálogo inicial de 16 tipos de eventos del sistema (ampliado por CR-002..CR-006; catálogo vigente en `api_contracts.md` §2, 33 tipos; CR-015 añade STRATEGY_ANALYSIS_COMPLETED; CR-018 añade STRATEGY_EXIT_SIGNAL y STOP_ADJUSTMENT_REQUESTED): ANALYSIS_REQUESTED, MARKET_ANALYSIS_COMPLETED, MACRO_ANALYSIS_COMPLETED, ML_INFERENCE_COMPLETED, REGIME_CLASSIFIED, STRATEGY_CANDIDATE, DECISION_SYNTHESIS_COMPLETED, TRADE_PROPOSAL, RISK_APPROVED, RISK_REJECTED, RISK_REQUIRES_REVIEW, ORDER_SUBMITTED, ORDER_PARTIALLY_FILLED, ORDER_FILLED, ORDER_CANCELLED, ORDER_REJECTED. Los nombres definitivos se establecen en el catálogo del sistema.  
 **Fuentes:** REQ-3021  
 **Tipo:** INTERFACE  
 **Prioridad:** HIGH
@@ -590,7 +590,7 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 **Prioridad:** CRITICAL
 
 ### REQ-G-071
-**Descripción:** Fase 2 — Filtro determinista (CR-004): Regime Engine y ML Engine producen sus resultados; el Strategy Engine evalúa las estrategias aprobadas con ellos y produce STRATEGY_CANDIDATE. La salida del ML Engine la consume el Strategy Engine (familia ML-Based) y Decision Synthesis solo como contexto; no es un decisor paralelo. **Si no hay candidato: NO_SETUP y fin del ciclo sin ninguna llamada a LLM.** **Resolución de candidatos (CR-011, DEC-011):** la resolución es determinista y ocurre en el Strategy Engine, no en Decision Synthesis. La regla es binaria (candidato sí/no); no se usa puntuación de confianza para decidir ni ponderar en ninguna familia, incluida ML-Based. Dos o más candidatos de entrada (long) en el mismo ciclo (mismo `correlation_id`) → `NO_SETUP` (fail-closed), también cuando coinciden; no se suman tamaños, no se elige el «mejor» ni se reduce tamaño; se registran los candidatos descartados y el motivo. Entrada + señal de salida simultáneas: prevalece la salida; si queda un candidato de entrada válido, se re-evalúa en el siguiente ciclo. Las salidas por señal de estrategia y los cierres protectores son autónomos (sin autorización humana); solo las entradas requieren autorización individual (INV-008). El esquema del evento de señal de salida es PENDING de FASE 2. Fase 3 — Análisis LLM paralelo: el Orchestrator distribuye contexto a Market Analyst, Macro Analyst y Strategy Analyst. Todos los resultados comparten correlation_id. Cada componente entrega resultado o estado explícito (error, indisponibilidad, insuficiencia).  
+**Descripción:** Fase 2 — Filtro determinista (CR-004): Regime Engine y ML Engine producen sus resultados; el Strategy Engine evalúa las estrategias aprobadas con ellos y produce STRATEGY_CANDIDATE. La salida del ML Engine la consume el Strategy Engine (familia ML-Based) y Decision Synthesis solo como contexto; no es un decisor paralelo. **Si no hay candidato: NO_SETUP y fin del ciclo sin ninguna llamada a LLM.** **Resolución de candidatos (CR-011, DEC-011):** la resolución es determinista y ocurre en el Strategy Engine, no en Decision Synthesis. La regla es binaria (candidato sí/no); no se usa puntuación de confianza para decidir ni ponderar en ninguna familia, incluida ML-Based. Dos o más candidatos de entrada (long) en el mismo ciclo (mismo `correlation_id`) → `NO_SETUP` (fail-closed), también cuando coinciden; no se suman tamaños, no se elige el «mejor» ni se reduce tamaño; se registran los candidatos descartados y el motivo. Entrada + señal de salida simultáneas: prevalece la salida; si queda un candidato de entrada válido, se re-evalúa en el siguiente ciclo. Las salidas por señal de estrategia y los cierres protectores son autónomos (sin autorización humana); solo las entradas requieren autorización individual (INV-008). Contratos de REGIME_CLASSIFIED, ML_INFERENCE_COMPLETED, STRATEGY_CANDIDATE, STRATEGY_EXIT_SIGNAL, STOP_ADJUSTMENT_REQUESTED, motivos de NO_SETUP y errores técnicos: `api_contracts.md` §3.8 (CR-018). Fase 3 — Análisis LLM paralelo: el Orchestrator distribuye contexto a Market Analyst, Macro Analyst y Strategy Analyst. Todos los resultados comparten correlation_id. Cada componente entrega resultado o estado explícito (error, indisponibilidad, insuficiencia).  
 **Fuentes:** REQ-3023; CR-004 §A  
 **Nota:** el orden original de DOC-003 (análisis paralelo antes de evaluación de estrategias) se ajusta por CR-004; DOC-003 no se modifica.  
 **Tipo:** FUNCTIONAL  
@@ -603,7 +603,7 @@ Este documento consolida los 224 requisitos (G1) extraídos de 6 documentos fuen
 **Prioridad:** HIGH
 
 ### REQ-G-073
-**Descripción:** Fase 4 — Síntesis: Decision Synthesis integra los resultados de las Fases 2 y 3 (no los del Risk Analyst, CR-004) y determina si generar TRADE_PROPOSAL, solicitar info adicional, descartar oportunidad o indicar desacuerdo. TRADE_PROPOSAL no es una orden ni autorización. Cita en `input_analysis_ids` exactamente los tres análisis de la Fase 3. Los datos faltantes declarados en la Fase 3 se propagan de forma determinista a la salida de la síntesis (api_contracts.md §3.3, CR-016).  
+**Descripción:** Fase 4 — Síntesis: Decision Synthesis integra los resultados de las Fases 2 y 3 (no los del Risk Analyst, CR-004) y determina si generar TRADE_PROPOSAL, solicitar info adicional, descartar oportunidad o indicar desacuerdo. TRADE_PROPOSAL no es una orden ni autorización. Cita en `input_analysis_ids` exactamente los tres análisis de la Fase 3. Los datos faltantes declarados en la Fase 3 se propagan de forma determinista a la salida de la síntesis (api_contracts.md §3.3, CR-016). La TRADE_PROPOSAL se normaliza de forma determinista desde el STRATEGY_CANDIDATE (api_contracts.md §3.8 B.8, CR-018).  
 **Fuentes:** REQ-3025  
 **Tipo:** FUNCTIONAL  
 **Prioridad:** CRITICAL

@@ -41,7 +41,7 @@ Responsabilidades (a implementar en FASE 2):
 |------|--------|--------|
 | FASE 0 | Bootstrap del Harness | COMPLETADA |
 | FASE 1 | Ingeniería inversa y contrato técnico | COMPLETADA — G0..G3 PASS; contrato v1.0 aprobado (2026-11-18) |
-| FASE 2 | Desarrollo de SwingPilot | EN CURSO — autorizada por el propietario (2026-11-19); IMPL-1 en desarrollo |
+| FASE 2 | Desarrollo de SwingPilot | EN CURSO — autorizada por el propietario (2026-11-19); IMPL-1 e IMPL-2 cerradas (G4 PASS); IMPL-3 en curso (2026-11-20) |
 
 La ejecución es **secuencial**. Ninguna fase puede iniciarse sin autorización explícita del propietario del proyecto.
 
