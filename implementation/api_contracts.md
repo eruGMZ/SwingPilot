@@ -1,8 +1,8 @@
-# SwingPilot — API Contracts v1.6
+# SwingPilot — API Contracts v1.7
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.6 (CR-018, DEC-019, 2026-11-20) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.7 (CR-019, DEC-020, 2026-11-20: evento PROPOSAL_NORMALIZATION_REJECTED) — v1.6 (CR-018, DEC-019, 2026-11-20) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -74,6 +74,7 @@ Todo evento o mensaje intercambiado entre componentes del sistema debe contener 
 | STRATEGY_ANALYSIS_COMPLETED | Strategy Analyst | AI Orchestrator | Evaluación de las estrategias candidatas (§3.6); consultiva, no modifica estrategias (REQ-G-054, CR-015) |
 | STRATEGY_EXIT_SIGNAL | Strategy Engine | Execution Engine / Portfolio Manager / Audit | Señal de salida por condición de la estrategia; autónoma, sin autorización humana (DEC-011; §3.8 B.5; CR-018) |
 | STOP_ADJUSTMENT_REQUESTED | Strategy Engine | Risk Manager / Execution Engine / Audit | Solicitud de subir el stop (trailing); nunca es una modificación ejecutada ni autoriza reducir protecciones; el Risk Manager valida INV-009 (§3.8 B.6; CR-018, DEC-018) |
+| PROPOSAL_NORMALIZATION_REJECTED | AI Orchestrator (normalizador determinista, §3.8 B.8) | Audit | La síntesis propuso operar pero no se emite TRADE_PROPOSAL: síntesis inconsistente con el candidato o propuesta normalizada fuera de §4.1. Fin del ciclo; no es una decisión, no llega al Risk Manager ni autoriza nada (§3.8 B.10; CR-019, DEC-020) |
 
 **Identificador de cliente en órdenes (REQ-G-032, CR-003):** toda orden enviada a Binance (compra, venta, stop) incluye un identificador de cliente derivado de forma determinista del `correlation_id` y de la secuencia de la orden dentro del ciclo. Es la clave de idempotencia ante reintentos. No sustituye al `order_id` de Binance registrado en `trades.db`. Formato exacto: PENDING (FASE 2).
 
@@ -544,10 +545,31 @@ La conversión la hace un componente determinista (la capa de validación del AI
    - `entry_zone` contenida en `entry_zone` del candidato;
    - `take_profit` nulo o igual al del candidato.
 
-   Si alguna falla, **no se emite TRADE_PROPOSAL**. `DECISION_SYNTHESIS_COMPLETED` se conserva y se registra la inconsistencia con el motivo `PROPOSAL_INCONSISTENT_WITH_CANDIDATE` y los campos afectados.
+   Si alguna falla, **no se emite TRADE_PROPOSAL**. `DECISION_SYNTHESIS_COMPLETED` se conserva y se registra la inconsistencia con el motivo `PROPOSAL_INCONSISTENT_WITH_CANDIDATE` y los campos afectados mediante `PROPOSAL_NORMALIZATION_REJECTED` (B.10; CR-019).
 3. **Campos aditivos en §4.1** (versión del esquema 1.0.0 → **1.1.0**, compatible): `source_candidate_id`, `source_candidate_message_id`, `synthesis_analysis_id`, `entry_zone` (copiada del candidato) y `take_profit_price` (número o null).
 4. `proposal_id` lo genera el normalizador; `correlation_id` es el del ciclo; `causation_id` es E8 (data_flow.md §5, E9).
-5. La TRADE_PROPOSAL normalizada se valida contra §4.1 v1.1.0 antes de emitirse; si no valida, no se emite (`OUT_OF_CONTRACT`).
+5. La TRADE_PROPOSAL normalizada se valida contra §4.1 v1.1.0 antes de emitirse; si no valida, no se emite (`OUT_OF_CONTRACT`) y se registra `PROPOSAL_NORMALIZATION_REJECTED` con `reason_code = OUT_OF_CONTRACT` (B.10; CR-019).
+
+#### B.10 `PROPOSAL_NORMALIZATION_REJECTED` (CR-019, DEC-020)
+
+- **Cuándo se emite:** solo si `DECISION_SYNTHESIS_COMPLETED` (E8) tiene `decision = TRADE_PROPOSAL` y la normalización termina en `PROPOSAL_INCONSISTENT_WITH_CANDIDATE` (B.8 punto 2) o `OUT_OF_CONTRACT` (B.8 punto 5). **No se emite** si la síntesis decide otra cosa o está en ERROR, ni si el candidato está en ERROR: esos casos ya quedan registrados en E8 y E4.
+- **Posición en la cadena:** E9, en lugar de TRADE_PROPOSAL (E9 tiene dos tipos excluyentes). El ciclo termina.
+- **Sobre:** contrato universal (§1). `source` = `ai_orchestrator`; `destination` = `audit`; `correlation_id` = el del ciclo; `causation_id` = E8; `timeframe` y `data_timestamp_utc` = los de E8; `status` = `COMPLETED` (el normalizador terminó; el resultado es un rechazo, mismo criterio que B.0 punto 1).
+- **Payload** (`schema_version` = `1.0.0`; sin propiedades adicionales):
+
+| Campo | Tipo | Oblig. | Regla |
+|---|---|---|---|
+| `reason_code` | enum `PROPOSAL_INCONSISTENT_WITH_CANDIDATE \| OUT_OF_CONTRACT` | Sí | Motivo del rechazo (B.8 puntos 2 y 5) |
+| `affected_fields` | lista de `{field, synthesis_value, candidate_value}` | Sí | `field` ∈ `strategy_id`, `strategy_version`, `stop_loss`, `entry_zone`, `take_profit`. Al menos uno si `reason_code = PROPOSAL_INCONSISTENT_WITH_CANDIDATE`; vacía si `OUT_OF_CONTRACT` |
+| `validation_errors` | lista de cadenas | Sí | Errores de validación contra §4.1 v1.1.0. Al menos uno si `OUT_OF_CONTRACT`; vacía si `PROPOSAL_INCONSISTENT_WITH_CANDIDATE` |
+| `source_candidate_id` | uuid | Sí | `candidate_id` de E4 |
+| `source_candidate_message_id` | uuid | Sí | `message_id` de E4 |
+| `synthesis_message_id` | uuid | Sí | `message_id` de E8 (también es `causation_id`) |
+| `synthesis_analysis_id` | uuid | Sí | `analysis_id` de la síntesis |
+| `normalizer_version` | semver | Sí | Versión del normalizador |
+
+- **Prohibido:** cualquier campo operativo de §4.1 (`proposal_id`, `entry_price_target`, `stop_loss_price`, `exit_mechanism`, etc.). El evento no puede confundirse con una propuesta ni usarse como tal.
+- **Determinismo:** mismo E4 y mismo E8 → mismo payload (TC-AC-07).
 
 ---
 

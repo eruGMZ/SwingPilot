@@ -1,5 +1,14 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-20) — QA de motores cerrada; CR-019 aplicada (contrato v1.7)
+
+**Commits (sin push):** `04dc2ea` (ENV-01..04 y QA3R2-01..03), `bca19fc` (QA3E-02..06 y 10; CONF-008). **Sin commit:** CR-019 aprobada (DEC-020) y aplicada, que corrige QA3E-01, pendiente de revisión del propietario.
+**Contrato v1.7:** `PROPOSAL_NORMALIZATION_REJECTED` (34 tipos; §3.8 B.10) en E9. CONF-008 RESUELTA.
+**QA de FEAT-018..022:** todos los hallazgos autorizados están corregidos (`harness/verification/IMPL-3_QA_engines.md`). QA3E-07..09 son observaciones sin tocar. DATA_STALE queda PENDING (sin umbral en el contrato).
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 470 passed, 5 skipped. Validadores → OK.
+**Siguiente acción autorizada:** ninguna. Esperar la revisión y el commit de CR-019 por indicación del propietario.
+**Sin cambios:** FEAT-015..022 sin cerrar (FEAT-015/016 en READY_FOR_REVIEW, sin aprobar; FEAT-017..022 en IN_PROGRESS); SNAP-0001 sin crear; OOS/LOCKBOX intactos; pendientes del propietario: AC-018-2/6, AC-020-8, AC-022-6.
+
 ## IMPL-3 (2026-11-20) — ENV-01..04 y QA3R2-01..03 corregidos; base congelada para la QA de FEAT-018..022
 
 **Hecho y aprobado por el propietario:** (1) ENV-01..04: Python 3.14.4 (`.python-version`, instalado con uv), `requirements-dev.lock` con hashes SHA-256, `scripts/setup_env.sh`, scikit-learn excluido (DEC-017 Q44), `tests/regression/test_environment_lock.py`. (2) QA3R2-01..03 corregidos con regresiones que fallan con `5c17e92` (`IMPL-3_QA_ronda2.md` §Correcciones). Riesgos residuales aceptados en `progress.md`.

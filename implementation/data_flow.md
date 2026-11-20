@@ -1,8 +1,8 @@
-# SwingPilot — Data Flow v1.6
+# SwingPilot — Data Flow v1.7
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.7 (CR-019, DEC-020, 2026-11-20: evento PROPOSAL_NORMALIZATION_REJECTED) — v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -311,7 +311,7 @@ E5  MARKET_ANALYSIS_COMPLETED       (X, causation_id: E4)
 E6  MACRO_ANALYSIS_COMPLETED        (X, causation_id: E4)
 E7  STRATEGY_ANALYSIS_COMPLETED     (X, causation_id: E4)      — CR-015
 E8  DECISION_SYNTHESIS_COMPLETED    (X, causation_id: E5, E6, E7)
-E9  TRADE_PROPOSAL                  (X, causation_id: E8)      — normalizada desde E4 (CR-018 B.8)
+E9  TRADE_PROPOSAL | PROPOSAL_NORMALIZATION_REJECTED  (X, causation_id: E8) — normalizada desde E4 (CR-018 B.8); el rechazo termina el ciclo (CR-019)
 E10 RISK_APPROVED / RISK_REJECTED   (X, causation_id: E9)
 E11 RISK_ANALYSIS_COMPLETED         (X, causation_id: E10)      — solo con RISK_APPROVED
 E12 autorización humana             (X, causation_id: E10)

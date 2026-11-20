@@ -1,8 +1,8 @@
-# SwingPilot — Test Plan v1.6
+# SwingPilot — Test Plan v1.7
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.7 (CR-019, DEC-020, 2026-11-20: evento PROPOSAL_NORMALIZATION_REJECTED) — v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -507,11 +507,19 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 
 ### TC-NORM-002 — Síntesis inconsistente (CR-018 B.8)
 - Input: stop distinto, otra estrategia o `entry_zone` fuera de la del candidato
-- Expected: no se emite TRADE_PROPOSAL; se registra PROPOSAL_INCONSISTENT_WITH_CANDIDATE
+- Expected: no se emite TRADE_PROPOSAL; se registra en el EventStore `PROPOSAL_NORMALIZATION_REJECTED` con `reason_code = PROPOSAL_INCONSISTENT_WITH_CANDIDATE`, `causation_id` = E8 y los campos afectados; la cadena del ciclo se reconstruye hasta E9 (CR-019)
 
 ### TC-NORM-003 — Compatibilidad de §4.1 (CR-018 B.8)
 - Input: TRADE_PROPOSAL v1.1.0 y v1.0.0
 - Expected: v1.1.0 valida; v1.0.0 sigue siendo legible
+
+### TC-NORM-004 — Propuesta normalizada fuera de §4.1 (CR-019 B.10)
+- Input: síntesis consistente cuya propuesta normalizada no valida contra §4.1 v1.1.0
+- Expected: no se emite TRADE_PROPOSAL; se registra `PROPOSAL_NORMALIZATION_REJECTED` con `reason_code = OUT_OF_CONTRACT` y `validation_errors` no vacío
+
+### TC-NORM-005 — Sin rechazo cuando no hay propuesta (CR-019 B.10)
+- Input: síntesis con decisión distinta de TRADE_PROPOSAL, síntesis en ERROR o candidato en ERROR
+- Expected: no se emite TRADE_PROPOSAL ni `PROPOSAL_NORMALIZATION_REJECTED`
 
 ## 8.4 Pruebas de Reintentos y Fallo de Agentes (C1 — REQ-G-034)
 

@@ -1267,3 +1267,35 @@
 **Siguiente:** decisión del propietario sobre CONF-008 y revisión de las correcciones.
 
 **Aprobación del propietario (2026-11-20):** «Apruebo las correcciones, congela con commit y redacta CR-019 opción A». QA3E-02, 03, 04, 05, 06 y 10 aprobados; CONF-008 → opción A, que se tramita como CR-019 (redacción).
+
+**Commit:** `bca19fc` (correcciones QA3E y CONF-008), sin push.
+
+**CR-019 redactada (2026-11-20):** `harness/change_requests/CR-019_evento-rechazo-normalizacion.md`, en PROPUESTA y sin aplicar (contrato v1.6). Opción A de CONF-008:
+- Tipo nuevo `PROPOSAL_NORMALIZATION_REJECTED` (catálogo 33 → 34) en la posición E9, con `causation_id` = E8, para `PROPOSAL_INCONSISTENT_WITH_CANDIDATE` y `OUT_OF_CONTRACT`.
+- Nueva §3.8 B.10 con el payload; data_flow E9; REQ-G-063; TC-NORM-002 actualizada y TC-NORM-004/005 nuevas; contrato v1.7.
+- CONF-008 sigue ABIERTA con su historial.
+
+**Siguiente:** aprobación de CR-019 por el propietario (→ DEC-020, aplicar B.1–B.7, implementar C y cerrar QA3E-01).
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: CR-019 aprobada (DEC-020) y aplicada — contrato v1.7; QA3E-01 corregido | COMPLETADO — PENDIENTE DE REVISIÓN
+
+**Aprobación:** «Apruebo CR-019». Registrada en `docs/decisions/DEC-020_aprobacion-cr019-rechazo-normalizacion.md`. Base `bca19fc`.
+
+**Contrato v1.7 (B.1–B.7):**
+- `api_contracts.md`: §2 con `PROPOSAL_NORMALIZATION_REJECTED` (34 tipos), nueva §3.8 B.10 y referencias en B.8 puntos 2 y 5.
+- `data_flow.md` E9; `requirements.md` REQ-G-063; `test_plan.md` TC-NORM-002 actualizada y TC-NORM-004/005 nuevas; `architecture.md` solo versión.
+- CR-019 → APROBADA y APLICADA. CONF-008 → RESUELTA.
+
+**Código:** `contracts/message.py` (catálogo), `engines/normalizer.py` (rechazo B.10 validado; normalizador 0.2.0), `engines/cycle.py` (registro en E9).
+
+**Pruebas:** `tests/unit/test_engines.py` (TC-NORM-002/004/005, esquema B.10, ciclo con EventStore) y `tests/unit/test_message_contract.py` (34 tipos). Las 9 fallan con `bca19fc`; la del ciclo reproduce QA3E-01. Suite: 470 passed, 5 skipped; validadores OK.
+
+**Registros:** `feature_list.json` v1.13.0 (AC-021-2/3 citan B.10; evidencia de la QA en FEAT-018..022; estados sin cambio, IN_PROGRESS); `harness/verification/IMPL-3_QA_engines.md` (QA3E-01 corregido).
+
+Sin commit ni push. $0 de IA.
+
+**Siguiente:** revisión del propietario. El commit requiere su indicación.
+
+**Aprobación del propietario (2026-11-20):** «Apruebo, congela con commit sin push». CR-019 y la corrección de QA3E-01 quedan aprobadas.

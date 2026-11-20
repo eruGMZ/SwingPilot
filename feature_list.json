@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "1.12.0",
+    "version": "1.13.0",
     "phase": "FASE 2",
     "status": "IMPL-3_EN_CURSO",
     "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5 y cerrada (2026-11-20). Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md). IMPL-3 (Integración cuantitativa, FEAT-015..022) registrada desde el contrato v1.5 con status PENDING; planificación aprobada (DEC-017); implementación parcial autorizada (DEC-018, 2026-11-20): FEAT-015/016/017/019 IN_PROGRESS, FEAT-018/020/021/022 BLOCKED.",
@@ -1569,7 +1569,7 @@
           "AC-018-2: clasificación v1 sin parámetros aprobados → UNCLASSIFIED (DEC-018)",
           "AC-018-6: justificación con Train tras SNAP-0001"
         ],
-        "qa": "sin QA independiente todavía (requiere indicación del propietario)"
+        "qa": "QA independiente focalizada (harness/verification/IMPL-3_QA_engines.md, 2026-11-20); correcciones QA3E aprobadas (commit bca19fc)"
       },
       "inherited_from_impl2": [],
       "depends_on_later_phases": [],
@@ -1647,7 +1647,7 @@
           "AC-019-4 (NO_ACTIVE_MODEL, MODEL_SUSPENDED, INFERENCE_AVAILABLE con predictor de prueba)"
         ],
         "engines_pending": [],
-        "qa": "sin QA independiente todavía (requiere indicación del propietario)"
+        "qa": "QA independiente focalizada (harness/verification/IMPL-3_QA_engines.md, 2026-11-20); correcciones QA3E aprobadas (commit bca19fc)"
       },
       "inherited_from_impl2": [],
       "depends_on_later_phases": [],
@@ -1746,7 +1746,7 @@
         "engines_pending": [
           "AC-020-8: piloto TF H4 no definido (DEC-018 decisión 4, EXP-0001)"
         ],
-        "qa": "sin QA independiente todavía (requiere indicación del propietario)"
+        "qa": "QA independiente focalizada (harness/verification/IMPL-3_QA_engines.md, 2026-11-20); correcciones QA3E aprobadas (commit bca19fc)"
       },
       "inherited_from_impl2": [
         "STRATEGY_CANDIDATE con la forma del contrato usado en la calibración (FEAT-010, FEAT-014)"
@@ -1779,19 +1779,25 @@
       "contract_sections": [
         "api_contracts.md §3.3",
         "§4.1",
-        "architecture.md §7 fila 3"
+        "architecture.md §7 fila 3",
+        "api_contracts.md §3.8 B.8, B.10 (CR-019)"
       ],
       "acceptance_criteria": [
         "AC-021-1 Normalizador determinista (no LLM) que construye TRADE_PROPOSAL §4.1 v1.1.0 desde el STRATEGY_CANDIDATE del ciclo: asset, direction, strategy_id/version, entry_price_target, stop_loss_price y exit_mechanism (CR-018 §B.8)",
-        "AC-021-2 Consistencia exigida a la síntesis: misma estrategia y versión, stop idéntico, entry_zone contenida, take_profit nulo o igual; si falla, no hay TRADE_PROPOSAL y se registra PROPOSAL_INCONSISTENT_WITH_CANDIDATE",
-        "AC-021-3 La propuesta normalizada valida contra §4.1 v1.1.0 antes de emitirse; si no, OUT_OF_CONTRACT sin emisión",
+        "AC-021-2 Consistencia exigida a la síntesis: misma estrategia y versión, stop idéntico, entry_zone contenida, take_profit nulo o igual; si falla, no hay TRADE_PROPOSAL y se registra PROPOSAL_INCONSISTENT_WITH_CANDIDATE mediante PROPOSAL_NORMALIZATION_REJECTED en el EventStore (api_contracts.md §3.8 B.10; CR-019, DEC-020)",
+        "AC-021-3 La propuesta normalizada valida contra §4.1 v1.1.0 antes de emitirse; si no, OUT_OF_CONTRACT sin emisión; se registra PROPOSAL_NORMALIZATION_REJECTED con reason_code OUT_OF_CONTRACT (B.10; CR-019)",
         "AC-021-4 causation_id = E8; correlation_id del ciclo; referencias al candidato y a la síntesis en el payload",
         "AC-021-5 TRADE_PROPOSAL no es orden ni autorización: no llega a ningún consumidor de ejecución en IMPL-3 (REQ-G-073)"
       ],
       "test_cases": [
         "TC-AC-02",
         "TC-AC-03",
-        "TC-AC-06"
+        "TC-AC-06",
+        "TC-NORM-001",
+        "TC-NORM-002",
+        "TC-NORM-003",
+        "TC-NORM-004",
+        "TC-NORM-005"
       ],
       "implementation_paths": [
         "src/swingpilot/ai/orchestrator.py",
@@ -1805,8 +1811,8 @@
       "evidence": {
         "engines_command": ".venv/bin/pytest -q tests/unit/test_engines.py",
         "engines_executed_at": "2026-11-20",
-        "engines_unit": "36 passed",
-        "suite": "pytest -q tests → 426 passed, 5 skipped",
+        "engines_unit": "98 passed (test_engines + test_message_contract + test_impl3_isolation)",
+        "suite": "pytest -q tests → 470 passed, 5 skipped",
         "engines_covered": [
           "AC-021-1",
           "AC-021-2",
@@ -1815,7 +1821,7 @@
           "AC-021-5"
         ],
         "engines_pending": [],
-        "qa": "sin QA independiente todavía (requiere indicación del propietario)"
+        "qa": "QA independiente focalizada (harness/verification/IMPL-3_QA_engines.md, 2026-11-20). Correcciones aprobadas (QA3E-02..06 y 10, commit bca19fc). QA3E-01 corregido con CR-019 (DEC-020), pendiente de revisión del propietario."
       },
       "inherited_from_impl2": [
         "Decision Synthesis y su contrato §3.3 (FEAT-012)"
@@ -1888,7 +1894,7 @@
         "engines_pending": [
           "AC-022-6: corridas reales con LLM y reserva por ciclo (USD 0.50) no implementadas; solo a petición del propietario"
         ],
-        "qa": "sin QA independiente todavía (requiere indicación del propietario)"
+        "qa": "QA independiente focalizada (harness/verification/IMPL-3_QA_engines.md, 2026-11-20); correcciones QA3E aprobadas (commit bca19fc). QA3E-01 corregido con CR-019 (DEC-020), pendiente de revisión"
       },
       "inherited_from_impl2": [
         "Ciclo de los 5 agentes (FEAT-014)"

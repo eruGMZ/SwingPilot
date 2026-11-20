@@ -133,9 +133,11 @@
 - **Sección doc2:** §2: ningún tipo del catálogo transporta el resultado de la normalización; TRADE_PROPOSAL está prohibido en este caso por el propio B.8; E8 ya está registrado y el EventStore es append-only.
 - **Naturaleza del conflicto:** el contrato exige registrar la inconsistencia, pero no define el tipo con que se registra. Hoy queda solo en memoria (`CycleReport.normalization`), sin rastro en el EventStore. Registrarla exige elegir un tipo nuevo o ampliar uno existente, y cualquiera de las dos cosas modifica el contrato aprobado.
 - **Severidad:** MEDIUM. No afecta al riesgo ni a la ejecución: no se emite ninguna propuesta y Fail-Closed se mantiene. Afecta a la trazabilidad y a la auditoría (TC-AC-04).
-- **Estado:** ABIERTA. Escalada al propietario el 2026-11-20. FEAT-021 y el registro de QA3E-01 quedan bloqueados hasta su resolución.
+- **Estado:** RESUELTA — 2026-11-20 (DEC-020, CR-019 aplicada, contrato v1.7)
+- **Resolución (propietario):** opción A. Se añade `PROPOSAL_NORMALIZATION_REJECTED` al catálogo (34 tipos) en la posición E9, con `causation_id` = E8 (`api_contracts.md` §3.8 B.10). El ciclo lo registra en el EventStore. QA3E-01 queda corregido.
 - **Opciones (para decisión del propietario; ninguna aplicada):**
   - A. **Tipo nuevo** `PROPOSAL_NORMALIZATION_REJECTED`. Productor: la capa de validación del AI Orchestrator; `causation_id` = E8; payload con `reason_code` (`PROPOSAL_INCONSISTENT_WITH_CANDIDATE` | `OUT_OF_CONTRACT`) y `affected_fields`; ocupa la posición E9. Es el mismo patrón que CONF-007 y CR-015, y el catálogo pasa a 34 tipos.
   - B. **Ampliar `NO_SETUP`** con un motivo nuevo. No se recomienda: `NO_SETUP` es del Strategy Engine, con `causation_id` = E2 (B.7), y mezclaría productores.
   - C. **Registrarlo fuera del EventStore** (registro de auditoría aparte). No se recomienda: la cadena del ciclo quedaría incompleta (REQ-G-062).
 - **Recomendación del Orquestador:** A, mediante una CR (CR-019) con impacto en api_contracts §2 y §3.8 B.8, data_flow §5 (E9) y test_plan TC-NORM-002.
+- **Historial:** 2026-11-20: el propietario elige la opción A («redacta CR-019 opción A»). CR-019 queda redactada en PROPUESTA (`harness/change_requests/CR-019_evento-rechazo-normalizacion.md`), sin aplicar.

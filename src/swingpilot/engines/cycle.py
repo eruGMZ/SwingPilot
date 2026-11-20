@@ -2,7 +2,8 @@
 
 E1 ANALYSIS_REQUESTED → E2 REGIME_CLASSIFIED → E3 ML_INFERENCE_COMPLETED → E4 STRATEGY_CANDIDATE |
 NO_SETUP (+ STRATEGY_EXIT_SIGNAL / STOP_ADJUSTMENT_REQUESTED) → [Fase 3: E5..E7] → [Fase 4: E8]
-→ E9 TRADE_PROPOSAL normalizada. El ciclo termina en E9: sin Risk Manager, sin autorizaciones ni
+→ E9 TRADE_PROPOSAL normalizada, o PROPOSAL_NORMALIZATION_REJECTED si la síntesis es inconsistente
+con el candidato o la propuesta queda fuera de §4.1 (B.10; CR-019). El ciclo termina en E9: sin Risk Manager, sin autorizaciones ni
 órdenes (DEC-017 condición 6; IMPL-4/IMPL-5).
 
 - Todos los eventos comparten `correlation_id` y se registran en el EventStore.
@@ -31,7 +32,7 @@ from .strategy import OpenPosition, StrategyEngine
 class CycleReport:
     correlation_id: str
     events: list[dict] = field(default_factory=list)
-    outcome: str = "NOT_RUN"           # NO_SETUP | STRATEGY_ENGINE_ERROR | AI_* | PROPOSAL_EMITTED | NO_PROPOSAL
+    outcome: str = "NOT_RUN"           # NO_SETUP | STRATEGY_ENGINE_ERROR | AI_* | PROPOSAL_EMITTED | PROPOSAL_REJECTED | NO_PROPOSAL
     normalization: NormalizationResult | None = None
     regime_state: RegimeState | None = None
     llm_calls: int = 0
@@ -101,6 +102,9 @@ class DecisionCycle:
         if rep.normalization.proposal_message is not None:
             self._record(rep, rep.normalization.proposal_message)
             rep.outcome = "PROPOSAL_EMITTED"
+        elif rep.normalization.rejection_message is not None:      # B.10 (CR-019): rechazo registrado en E9
+            self._record(rep, rep.normalization.rejection_message)
+            rep.outcome = "PROPOSAL_REJECTED"
         else:
             rep.outcome = "NO_PROPOSAL"
         return rep

@@ -456,12 +456,72 @@ def test_tc_norm_001_proposal_takes_operative_fields_from_candidate(regs):
     assert p["source_candidate_message_id"] == cand["message_id"] and p["schema_version"] == "1.1.0"
 
 
-@pytest.mark.parametrize("over", [{"stop_loss": 89.0}, {"strategy_id": "OTRA"}, {"entry_zone": {"min": 99.0, "max": 101.0}},
-                                  {"take_profit": 120.0}])
-def test_tc_norm_002_inconsistent_synthesis_yields_no_proposal(regs, over):
+_OPERATIVE_4_1 = {"proposal_id", "entry_price_target", "stop_loss_price", "exit_mechanism", "asset", "direction",
+                  "take_profit_price"}
+
+
+def _assert_rejection(res, cand, synth, reason):
+    """B.10 (CR-019): E9 de rechazo, causado por E8, hacia Audit, sin campos operativos de §4.1."""
+    from swingpilot.contracts import validate_message
+    from swingpilot.engines.normalizer import validate_rejection_payload
+    rej = res.rejection_message
+    assert res.proposal_message is None and rej is not None and res.e9 is rej
+    validate_message(rej)
+    validate_rejection_payload(rej["payload"])
+    assert rej["message_type"] == "PROPOSAL_NORMALIZATION_REJECTED" and rej["status"] == "COMPLETED"
+    assert rej["causation_id"] == synth["message_id"] and rej["correlation_id"] == synth["correlation_id"]
+    assert rej["source"] == "ai_orchestrator" and rej["destination"] == "audit"
+    p = rej["payload"]
+    assert p["reason_code"] == reason and not _OPERATIVE_4_1 & set(p)
+    assert p["source_candidate_message_id"] == cand["message_id"] and p["synthesis_message_id"] == synth["message_id"]
+    assert p["source_candidate_id"] == cand["payload"]["candidate_id"]
+    return p
+
+
+@pytest.mark.parametrize("over,field", [({"stop_loss": 89.0}, "stop_loss"), ({"strategy_id": "OTRA"}, "strategy_id"),
+                                        ({"entry_zone": {"min": 99.0, "max": 101.0}}, "entry_zone"),
+                                        ({"take_profit": 120.0}, "take_profit")])
+def test_tc_norm_002_inconsistent_synthesis_yields_no_proposal(regs, over, field):
     cand = phase2(regs, strategies=[FakeStrategy()])[3][-1]
-    res = normalize(cand, _synth_msg(cand, over))
-    assert res.proposal_message is None and res.status == INCONSISTENT and res.problems
+    synth = _synth_msg(cand, over)
+    res = normalize(cand, synth)
+    assert res.status == INCONSISTENT and res.problems
+    p = _assert_rejection(res, cand, synth, INCONSISTENT)
+    assert [a["field"] for a in p["affected_fields"]] == [field] and p["validation_errors"] == []
+    a = p["affected_fields"][0]
+    assert a["synthesis_value"] == next(iter(over.values())) and a["candidate_value"] != a["synthesis_value"]
+
+
+def test_tc_norm_004_proposal_out_of_contract_is_recorded(regs):
+    cand = copy.deepcopy(phase2(regs, strategies=[FakeStrategy()])[3][-1])
+    cand["payload"]["exit_mechanism"]["type"] = "MANUAL"        # fuera del enum de §4.1
+    synth = _synth_msg(cand)
+    res = normalize(cand, synth)
+    assert res.status == "OUT_OF_CONTRACT"
+    p = _assert_rejection(res, cand, synth, "OUT_OF_CONTRACT")
+    assert p["affected_fields"] == [] and p["validation_errors"]
+
+
+def test_tc_norm_005_no_rejection_without_a_proposal(regs):
+    cand = phase2(regs, strategies=[FakeStrategy()])[3][-1]
+    other = normalize(cand, _synth_msg(cand, decision="DISAGREEMENT"))
+    synth_err = _synth_msg(cand)
+    synth_err["payload"]["status"] = "ERROR"
+    cand_err = {**copy.deepcopy(cand), "status": "FAILED"}
+    for res in (other, normalize(cand, synth_err), normalize(cand_err, _synth_msg(cand))):
+        assert res.status == "NOT_A_PROPOSAL"
+        assert res.proposal_message is None and res.rejection_message is None and res.e9 is None
+
+
+def test_cr019_rejection_schema_forbids_operative_fields_and_enforces_conditionals(regs):
+    from swingpilot.engines.normalizer import ProposalContractError, validate_rejection_payload
+    cand = phase2(regs, strategies=[FakeStrategy()])[3][-1]
+    p = normalize(cand, _synth_msg(cand, {"stop_loss": 89.0})).rejection_message["payload"]
+    for bad in ({**p, "stop_loss_price": 89.0}, {**p, "affected_fields": []},
+                {**p, "validation_errors": ["x"]}, {**p, "reason_code": "OUT_OF_CONTRACT"},
+                {**p, "affected_fields": [{"field": "precio", "synthesis_value": 1, "candidate_value": 2}]}):
+        with pytest.raises(ProposalContractError):
+            validate_rejection_payload(bad)
 
 
 def test_normalize_non_proposal_decisions(regs):
@@ -559,10 +619,18 @@ def test_feat_022_inconsistent_synthesis_no_proposal(tmp_path, regs):
         b = synth_from_candidate(inp)
         b["trade_proposal"]["stop_loss"] = 1.0
         return b
-    cyc, _, _ = build_cycle(tmp_path, regs, [FakeStrategy(status="RESEARCH")], synth=bad)
+    cyc, _, store = build_cycle(tmp_path, regs, [FakeStrategy(status="RESEARCH")], synth=bad)
     rep = cyc.run(market(), mode="RESEARCH")
-    assert rep.outcome == "NO_PROPOSAL" and rep.normalization.status == INCONSISTENT
-    assert rep.types()[-1] == "DECISION_SYNTHESIS_COMPLETED"
+    assert rep.outcome == "PROPOSAL_REJECTED" and rep.normalization.status == INCONSISTENT
+    assert "TRADE_PROPOSAL" not in rep.types()
+    assert rep.types()[-2:] == ["DECISION_SYNTHESIS_COMPLETED", "PROPOSAL_NORMALIZATION_REJECTED"]
+    # QA3E-01 / CONF-008: la inconsistencia queda en el EventStore y la cadena se reconstruye hasta E9.
+    chain = store.get_chain(rep.correlation_id)
+    assert chain.complete and len(chain.messages) == 9
+    stored = [m for m in chain.messages if m["message_type"] == "PROPOSAL_NORMALIZATION_REJECTED"]
+    e8 = next(m for m in chain.messages if m["message_type"] == "DECISION_SYNTHESIS_COMPLETED")
+    assert len(stored) == 1 and stored[0]["causation_id"] == e8["message_id"]
+    assert stored[0]["payload"]["affected_fields"][0]["field"] == "stop_loss"
 
 
 def test_tc_ac_07_deterministic_part_is_reproducible(tmp_path, regs):

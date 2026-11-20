@@ -78,3 +78,13 @@ Con `04dc2ea`, la prueba de control de QA3E-03 falla porque el método no exist�
 **Sin tocar:** QA3E-07..09 (observaciones fuera del alcance autorizado), `ai/orchestrator.py` y `engines/schemas.py` (el código ya era correcto; se probaron por mutación y se restauraron byte a byte), SNAP-0001, OOS/LOCKBOX. $0 de IA.
 
 **Estado de las FEAT:** sin cambios en `feature_list.json`; siguen IN_PROGRESS. FEAT-021 tiene QA3E-01 bloqueado por CONF-008.
+
+### QA3E-01: corregido con CR-019 (2026-11-20)
+
+**Autorización:** «Apruebo CR-019» (DEC-020); antes, «redacta CR-019 opción A». Base `bca19fc`.
+
+| Corrección | Pruebas | Con `bca19fc` | Corregido |
+|---|---|---|---|
+| Contrato v1.7: tipo `PROPOSAL_NORMALIZATION_REJECTED` (§2, 34 tipos; §3.8 B.10; B.8 puntos 2 y 5; data_flow E9; REQ-G-063; TC-NORM-002 actualizada y TC-NORM-004/005 nuevas). Código: catálogo en `contracts/message.py`; `normalizer.py` construye y valida el rechazo (esquema B.10, `affected_fields` estructurados, versión del normalizador 0.2.0); `cycle.py` lo registra en E9 (`outcome = PROPOSAL_REJECTED`). | `test_feat_022_inconsistent_synthesis_no_proposal` (EventStore: 9 eventos, E9 = rechazo con `causation_id` = E8); TC-NORM-002 (4 casos, campo afectado exacto); TC-NORM-004 (`OUT_OF_CONTRACT`); TC-NORM-005 (sin rechazo cuando no hay propuesta); esquema B.10 (campos operativos prohibidos y condicionales); catálogo = §2 (34) | 9/9 fallan. **Reproducción de QA3E-01:** la prueba del ciclo falla porque la cadena termina en E8 sin rastro de la inconsistencia. TC-NORM-005 y la prueba del esquema fallan allí porque la API no existía; no reproducen ningún defecto | 9/9 pasan |
+
+**Suite:** 470 passed, 5 skipped (467 + 3). Validadores → OK. CONF-008 RESUELTA. FEAT-021 y FEAT-022 siguen IN_PROGRESS; `feature_list.json` pasa a v1.13.0 (AC-021-2/3 citan B.10; evidencia de la QA).

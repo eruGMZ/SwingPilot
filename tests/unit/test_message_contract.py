@@ -126,4 +126,4 @@ def test_event_catalog_matches_contract_document():
     section = text.split("## 2. Catálogo de Tipos de Eventos")[1].split("**Identificador de cliente")[0]
     documented = re.findall(r"^\| ([A-Z_]+) \|", section, flags=re.M)
     assert tuple(documented) == EVENT_TYPES
-    assert len(EVENT_TYPES) == 33  # CR-018
+    assert len(EVENT_TYPES) == 34  # CR-018, CR-019
