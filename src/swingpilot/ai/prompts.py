@@ -69,7 +69,7 @@ class Prompt:
 
 
 # Historial: 0.1.0 inicial; decision_synthesis 0.1.1 exige citar los 3 analysis_id (QA, hallazgo 6).
-# IMPL-2 (propuesta, pendiente de aprobación en DEC-016): macro_analyst 0.2.0 (reglas de
+# IMPL-2 (aprobado por el propietario en DEC-016, 2026-11-19): macro_analyst 0.2.0 (reglas de
 # confirmation/statement_type, sin RECOMMENDATION de entrada, notas de método no son eventos);
 # strategy_analyst 0.2.0 (discard_reasons ≠ datos no recibidos; copiar id y versión).
 _VERSIONS = {"decision_synthesis": "0.1.1", "macro_analyst": "0.2.0", "strategy_analyst": "0.2.0"}

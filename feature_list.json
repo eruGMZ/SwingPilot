@@ -1294,6 +1294,33 @@
       ],
       "experiment_spent_usd": 0.480488,
       "config": "effort medium ×5; prompts market 0.1.0, macro 0.2.0, strategy 0.2.0, risk 0.1.0, synthesis 0.1.1 (DEC-016 aprobada 2026-11-19)"
-    }
+    },
+    "qa_reviews": [
+      {
+        "round": 1,
+        "reviewer": "QA Agent (sub-agente independiente, sonnet; solo contrato, código y evidencia)",
+        "date": "2026-11-20",
+        "executed": ".venv/bin/pytest -q tests → 256 passed, 3 skipped (sin corridas con costo)",
+        "verdict": "Sin bloqueantes ni mayores. Puntos 1, 2, 4 y 5 CONFORME; punto 3 OBSERVACIÓN",
+        "minors": [
+          {
+            "item": "DEC-016 con gasto acumulado desactualizado",
+            "action": "CORREGIDO"
+          },
+          {
+            "item": "Comentario de prompts.py decía 'pendiente de aprobación'",
+            "action": "CORREGIDO (sin cambio de texto ni versión de prompts)"
+          },
+          {
+            "item": "MAC-02 pasa con cero eventos",
+            "action": "NO SE CAMBIA: la entrada solo contiene una nota de método; cero eventos es el resultado esperado. La clasificación la cubren MAC-01 y MAC-03"
+          },
+          {
+            "item": "SYN-01 acepta DISAGREEMENT/INSUFFICIENT_INFO sin verificar el contenido del desacuerdo",
+            "action": "ESCALADO AL PROPIETARIO: TC-AC-06 acepta DISAGREEMENT; aceptar INSUFFICIENT_INFO es más laxo que TC-AC-06. Ambas corridas finales dieron DISAGREEMENT. Endurecer exige congelación v3 y repetir las 2 corridas"
+          }
+        ]
+      }
+    ]
   }
 }

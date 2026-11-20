@@ -49,7 +49,7 @@ Cambios de texto de 0.2.0 (`src/swingpilot/ai/prompts.py`, solo el rol; la parte
 | `2358Z_final-1` | **configuración aprobada** (batería v2) | 14 | PASA | $0.121384 |
 | `0001Z_final-2` (2026-11-20) | **configuración aprobada** (batería v2) | 14 | PASA | $0.123146 |
 
-Costo por ciclo completo de 5 agentes con medium: $0.0304 (CYC-01) y $0.0311 (CYC-02), frente a ~$0.030 de DEC-009. Latencia por llamada (medium): Haiku 3–17 s, Synthesis 10–15 s; dentro de 60 s por llamada y 5 min por ciclo (REQ-G-034). Gasto acumulado de IMPL-2: $0.235959 de $1.00.
+Costo por ciclo completo de 5 agentes con medium: $0.0304 (CYC-01) y $0.0311 (CYC-02), frente a ~$0.030 de DEC-009. Latencia por llamada (medium): Haiku 3–17 s, Synthesis 10–15 s; dentro de 60 s por llamada y 5 min por ciclo (REQ-G-034). Gasto acumulado de IMPL-2: $0.235959 de $1.00 al registrar la propuesta; $0.480488 tras las dos corridas finales.
 
 Observación abierta para el propietario (no se cambia por prompt sin decisión): el Macro Analyst devuelve `INSUFFICIENT_DATA` en casi todos los escenarios porque `macro_data` llega vacío y el contrato no define su fuente (relacionado con la CR pendiente de la fuente de noticias, Q37).
 

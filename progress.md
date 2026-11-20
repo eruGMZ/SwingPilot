@@ -1015,3 +1015,15 @@
 **Archivos:** `docs/decisions/DEC-016_plan-impl2-calibracion-agentes.md`, `feature_list.json` (evidencia FEAT-008..014; status sigue PENDING), `progress.md`, `session-handoff.md`, resultados en `tests/calibration/results/`.
 
 **Pendiente:** evaluación cualitativa del propietario sobre los dos informes `.md`; QA independiente (≤ 2 rondas); G4 con alcance IMPL-2; aprobación de cierre. Observación abierta: Macro con `macro_data` vacío.
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-2: QA independiente ronda 1 | COMPLETADO
+
+**QA ronda 1** (sub-agente independiente, sonnet, ~66K tokens; solo contrato, código y evidencia; sin corridas con costo): pytest 256 passed, 3 skipped. FEAT-008..014, tope de experimentación (Q38), corridas finales y prompts 0.2.0: CONFORME. checks.py: OBSERVACIÓN. Sin bloqueantes ni mayores.
+
+**Menores:** (1) gasto desactualizado en DEC-016 → corregido; (2) comentario «pendiente de aprobación» en prompts.py → corregido (sin cambio de texto ni versión de los prompts); (3) MAC-02 pasa con cero eventos → no se cambia (es el resultado esperado de esa entrada); (4) la expectativa de SYN-01 acepta INSUFFICIENT_INFO, más laxa que TC-AC-06 → escalado al propietario (las dos corridas finales dieron DISAGREEMENT; endurecerla exige congelación v3 y repetir las corridas). Registrado en `feature_list.json` → `impl2_plan.qa_reviews`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests` (tras las correcciones).
+
+**Pendiente:** evaluación cualitativa del propietario; decisión sobre el menor 4 y sobre `macro_data` vacío; G4 con alcance IMPL-2; aprobación de cierre. Rondas de QA usadas: 1 de 2. Sub-agentes: 1 (~66K tokens).
