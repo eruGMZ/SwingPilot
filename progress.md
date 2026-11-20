@@ -1239,3 +1239,31 @@
 1. **Bloqueo limitado a Linux y disco local:** la exclusión de `claim_partition` usa `flock` (POSIX). Con el registro de experimentos en un recurso de red (NFS/SMB) o fuera de Linux no está garantizada.
 2. **Límite de `n_resamples` pendiente del preregistro:** un valor válido pero muy grande no se acota (tarda, pero no da un veredicto inválido). El máximo lo fija el preregistro; no lo fija el Orquestador.
 3. **Fallo seguro ante construcción concurrente de la misma snapshot:** un proceso puede apartar el directorio de otro durante su ventana de confirmación. El resultado falla y nunca queda una snapshot incompleta tratada como válida. La construcción de snapshots es manual y única.
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: QA independiente focalizada de FEAT-018..022 (paso 3 de 3) | COMPLETADO — PENDIENTE DE DECISIÓN
+
+**Autorización:** «Autorizo lanzar la QA focalizada de FEAT-018..022 sobre 7bd631a». Revisado `04dc2ea`, con el mismo árbol que `7bd631a` (`ff2ef00`; `commit --amend` hecho fuera de la sesión que solo cambió el mensaje: perdió `Co-Authored-By` y `$0` quedó como `/usr/bin/zsh`).
+
+**QA** (sub-agente independiente, sonnet, solo lectura, sin red; ~115K tokens; $0 de IA): `harness/verification/IMPL-3_QA_engines.md`. 39 passed. Sin bloqueantes; 2 MAYOR (QA3E-01: la inconsistencia síntesis/candidato no se registra en el EventStore, B.8; QA3E-02: `requested_stop ≤ current_stop` se descarta en silencio en vez de registrarse como ERROR INVALID_STOP_REQUEST, B.6), 5 MENOR (03, 04, 05, 06, 10) y 3 OBS (07, 08, 09). El Orquestador confirmó por lectura QA3E-01, 02 y 03 contra el contrato y corrigió referencias de línea del informe. Veredictos: FEAT-018 y FEAT-022 CONFORME CON OBSERVACIONES; FEAT-019 CONFORME; FEAT-020 y FEAT-021 NO CONFORME.
+
+**Sin correcciones ni cambios de estado** (FEAT-018..022 siguen IN_PROGRESS). Sin commit ni push. Sub-agentes en la sesión: 1.
+
+**Siguiente:** decisión del propietario sobre la corrección de QA3E-01..10 y su forma de verificación.
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: corrección de QA3E-01..06 y QA3E-10 | INICIADO
+
+**Autorización del propietario:** «Autorizo corregir QA3E-01..06 y QA3E-10 según tu recomendación». Base `04dc2ea`. Cada hallazgo lleva una prueba determinista que falla con `04dc2ea` y pasa con la corrección; sin tercera ronda de QA. QA3E-06: el `correlation_id` distinto entre E2/E3 pasa a ser un ERROR registrado (B.7.1). **Fuera de alcance:** QA3E-07..09, SNAP-0001, OOS/LOCKBOX, gasto de IA, push.
+
+**Resultado (2026-11-20):** QA3E-02, 03, 04, 05, 06 y 10 CORREGIDOS, pendientes de revisión del propietario. **QA3E-01 BLOQUEADO:** registrado como CONF-008 en `implementation/conflict_register.md`. B.8 exige registrar la inconsistencia, pero el catálogo cerrado no define ningún tipo para ello. Se propone la opción A (tipo nuevo vía CR-019). Detalle y evidencia en `harness/verification/IMPL-3_QA_engines.md` §Correcciones.
+- **Archivos:** `src/swingpilot/engines/{common,regime,ml,strategy}.py`, `tests/unit/test_engines.py`, `implementation/conflict_register.md`.
+- **Pruebas:** 17 nuevas. Las 11 regresiones de código fallan con `04dc2ea` y pasan con la corrección. Las 4 mutaciones que antes sobrevivían (M1–M4) ahora las detecta la suite. Suite 467 passed, 5 skipped; validadores OK.
+- **DATA_STALE:** queda PENDING porque el contrato no fija su umbral para velas.
+- Sin commit ni push; $0 de IA.
+
+**Siguiente:** decisión del propietario sobre CONF-008 y revisión de las correcciones.
+
+**Aprobación del propietario (2026-11-20):** «Apruebo las correcciones, congela con commit y redacta CR-019 opción A». QA3E-02, 03, 04, 05, 06 y 10 aprobados; CONF-008 → opción A, que se tramita como CR-019 (redacción).

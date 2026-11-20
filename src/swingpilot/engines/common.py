@@ -30,6 +30,22 @@ class MarketInput:
         b = self.bars(tf)
         return bool(b) and b[-1].open_time == last_closed_open_time(TF_INTERVAL[tf], self.server_time_ms)
 
+    def inconsistency(self, tf: str) -> str | None:
+        """B.0 punto 4, DATA_INCONSISTENT (QA3E-03): duplicados, huecos o timestamps fuera de
+        orden en las velas de `tf`. Devuelve el motivo, o None si la serie es consistente.
+        DATA_STALE no se evalúa aquí: el contrato no fija su umbral para velas (PENDING)."""
+        b = self.bars(tf)
+        step = interval_ms(TF_INTERVAL[tf])
+        for prev, cur in zip(b, b[1:]):
+            d = cur.open_time - prev.open_time
+            if d == 0:
+                return f"{tf}: vela duplicada en {ms_to_iso(cur.open_time)}"
+            if d < 0:
+                return f"{tf}: vela fuera de orden en {ms_to_iso(cur.open_time)}"
+            if d != step:
+                return f"{tf}: hueco de {d // step - 1} velas antes de {ms_to_iso(cur.open_time)}"
+        return None
+
     def data_ref(self, tf: str) -> dict:
         b = self.bars(tf)
         return {"last_closed_open_time_utc": ms_to_iso(b[-1].open_time) if b else None,

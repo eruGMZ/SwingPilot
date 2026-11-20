@@ -219,6 +219,20 @@ def test_tc_msg_004_payloads_validate_and_missing_fields_are_rejected(regs):
         validate_engine_payload("STRATEGY_CANDIDATE", {**err, "entry_reference_price": 101.0})
 
 
+@pytest.mark.parametrize("case", ["condicion_no_satisfecha", "tp_igual_al_max", "tp_dentro_de_zona", "tp_bajo_zona"])
+def test_qa3e_10_b4_candidate_rules_are_enforced(regs, case):
+    """QA3E-10: B.4 exige condiciones satisfechas y take_profit por encima de la zona de entrada."""
+    cand = phase2(regs, strategies=[FakeStrategy()])[3][-1]["payload"]   # zona [100, 102]
+    validate_engine_payload("STRATEGY_CANDIDATE", {**cand, "take_profit": 110.0})   # control válido
+    bad = copy.deepcopy(cand)
+    if case == "condicion_no_satisfecha":
+        bad["conditions"][0]["satisfied"] = False
+    else:
+        bad["take_profit"] = {"tp_igual_al_max": 102.0, "tp_dentro_de_zona": 101.0, "tp_bajo_zona": 95.0}[case]
+    with pytest.raises(EnginePayloadError):
+        validate_engine_payload("STRATEGY_CANDIDATE", bad)
+
+
 def test_tc_msg_005_market_time_differs_from_processing_time(regs):
     mk = market()
     _, r, m, out = phase2(regs, mk=mk, strategies=[FakeStrategy()])
@@ -270,10 +284,96 @@ def test_tc_flow_006_exit_has_priority_and_stop_request(regs):
     assert [o["message_type"] for o in up] == ["STOP_ADJUSTMENT_REQUESTED", "NO_SETUP"]
     assert up[0]["payload"]["requested_stop"] == 96.5 and up[0]["destination"] == "risk_manager"
     assert reason(up)[1:] == ("PRE_PHASE3_BLOCK", "OPEN_POSITION")
-    down = phase2(regs, strategies=[FakeStrategy(trail=StopProposal(94.0, "TEST", {}))], position=pos)[3]
-    assert [o["message_type"] for o in down] == ["NO_SETUP"]   # nunca se pide bajar el stop (INV-009)
     with pytest.raises(EnginePayloadError, match="INVALID_STOP_REQUEST"):
         validate_engine_payload("STOP_ADJUSTMENT_REQUESTED", {**up[0]["payload"], "requested_stop": 95.0})
+
+
+@pytest.mark.parametrize("requested", [94.0, 95.0])   # bajar o mantener el stop actual (95)
+def test_qa3e_02_invalid_stop_request_is_recorded_as_error(regs, requested):
+    """B.6: `requested_stop ≤ current_stop` no se emite y queda registrada como ERROR INVALID_STOP_REQUEST."""
+    pos = OpenPosition(str(uuid.uuid4()), "S1", "1.0.0", 95.0)
+    out = phase2(regs, strategies=[FakeStrategy(trail=StopProposal(requested, "TEST", {}))], position=pos)[3]
+    assert [o["message_type"] for o in out] == ["STRATEGY_CANDIDATE"]          # sin STOP_ADJUSTMENT_REQUESTED
+    msg = out[0]
+    assert msg["status"] == "FAILED" and msg["payload"]["result_status"] == "ERROR"
+    err = msg["payload"]["error"]
+    assert err["code"] == "INVALID_STOP_REQUEST" and err["stage"] == "STRATEGY_EVALUATION"
+    assert err["strategy_id"] == "S1" and "entry_reference_price" not in msg["payload"]
+
+
+def _with(tf, bars):
+    mk = market()
+    return MarketInput({**mk.candles, tf: bars}, "snapshot", SERVER, "SNAP-TEST")
+
+
+def _dup(bars, i=-5):
+    return bars[:i] + [bars[i]] + bars[i:]
+
+
+def _gap(bars, n=10):
+    return bars[:-(n + 1)] + bars[-1:]
+
+
+def _swap(bars):
+    return bars[:-3] + [bars[-2], bars[-3]] + bars[-1:]
+
+
+@pytest.mark.parametrize("case,mk", [
+    ("D1_duplicada", lambda: _with("D1", _dup(series("1d", 250)))),
+    ("D1_hueco_10_dias", lambda: _with("D1", _gap(series("1d", 250)))),
+    ("D1_fuera_de_orden", lambda: _with("D1", _swap(series("1d", 250))))])
+def test_qa3e_03_regime_inconsistent_candles_are_data_inconsistent(case, mk):
+    msg, _ = RegimeEngine().run(e1(), mk())
+    p = msg["payload"]
+    assert msg["status"] == "FAILED" and p["result_status"] == "ERROR", (case, p)
+    assert p["error"]["code"] == "DATA_INCONSISTENT" and p["regime_label"] == "UNCLASSIFIED"
+
+
+@pytest.mark.parametrize("case,mk", [
+    ("H4_duplicada", lambda: _with("H4", _dup(series("4h", 250)))),
+    ("H4_hueco", lambda: _with("H4", _gap(series("4h", 250), 3))),
+    ("H4_fuera_de_orden", lambda: _with("H4", _swap(series("4h", 250))))])
+def test_qa3e_03_strategy_and_ml_inconsistent_candles(regs, case, mk):
+    out = phase2(regs, mk=mk(), strategies=[FakeStrategy()])[3]
+    p = out[-1]["payload"]
+    assert out[-1]["message_type"] == "STRATEGY_CANDIDATE" and p["result_status"] == "ERROR", (case, p)
+    assert p["error"]["code"] == "DATA_INCONSISTENT" and p["error"]["stage"] == "INPUT_VALIDATION"
+    exps, mr = regs
+    _approve(exps)
+    mr.register("M1", "1.0.0", data_hash="d" * 64, code_hash="c" * 64, params={}, experiment_id="EXP-ML")
+    mr.promote("M1", "1.0.0", requested_by="orquestador")
+    pm = MLEngine(mr, FakePredictor()).run(e1(), mk())["payload"]
+    assert pm["result_status"] == "ERROR" and pm["error"]["code"] == "DATA_INCONSISTENT", (case, pm)
+    assert pm["prediction"] is None
+
+
+def test_qa3e_03_consistent_series_still_completes(regs):
+    # Control: la serie sintética contigua no se marca como inconsistente.
+    assert all(market().inconsistency(tf) is None for tf in ("D1", "H4", "H1"))
+    msg, _ = RegimeEngine().run(e1(), market())
+    assert msg["payload"]["result_status"] == "COMPLETED"
+
+
+def test_qa3e_05_strategy_timeframe_must_match_engine():
+    s = FakeStrategy()
+    s.signal_timeframe = "D1"
+    with pytest.raises(ValueError, match="signal_timeframe"):
+        StrategyEngine([s])                                  # motor H4
+    assert StrategyEngine([s], signal_timeframe="D1").signal_timeframe == "D1"
+
+
+def test_qa3e_06_e2_e3_from_different_cycles_is_recorded_error(regs):
+    mk = market()
+    r, _ = RegimeEngine().run(e1(mk), mk)
+    m = MLEngine(regs[1]).run(e1(mk), mk)                    # otro ANALYSIS_REQUESTED → otro ciclo
+    assert r["correlation_id"] != m["correlation_id"]
+    out = StrategyEngine([FakeStrategy()]).run(r, m, mk, mode="PAPER")
+    assert [o["message_type"] for o in out] == ["STRATEGY_CANDIDATE"]
+    msg = out[0]
+    assert msg["status"] == "FAILED" and msg["correlation_id"] == r["correlation_id"]
+    err = msg["payload"]["error"]
+    assert err["code"] == "INTERNAL_ERROR" and err["stage"] == "INPUT_VALIDATION"
+    assert err["upstream_message_id"] == m["message_id"]
 
 
 def test_tc_ai_007_pre_phase3_block(regs):
@@ -433,10 +533,14 @@ def test_feat_022_strategy_error_stops_before_llm(tmp_path, regs):
     assert rep.outcome == "STRATEGY_ENGINE_ERROR" and client.calls == []
 
 
-def test_orchestrator_rejects_error_candidate_in_phase3(tmp_path, regs):
+@pytest.mark.parametrize("payload_from,envelope", [
+    ("boom", "FAILED"),          # caso original: sobre FAILED y payload ERROR
+    ("ok", "FAILED"),            # QA3E-04: sobre FAILED con payload COMPLETED
+    ("boom", "COMPLETED")])      # QA3E-04: sobre COMPLETED con payload ERROR
+def test_orchestrator_rejects_error_candidate_in_phase3(tmp_path, regs, payload_from, envelope):
     client = RoutingClient()
     req = e1()
-    _, r, m, out = phase2(regs, strategies=[FakeStrategy(boom=True)])
+    _, r, m, out = phase2(regs, strategies=[FakeStrategy(boom=payload_from == "boom")])
     # se re-derivan con el correlation_id de la petición
     from swingpilot.contracts import derive_message
     r2 = derive_message(req, source="regime_engine", destination="ai_orchestrator", message_type="REGIME_CLASSIFIED",
@@ -444,7 +548,8 @@ def test_orchestrator_rejects_error_candidate_in_phase3(tmp_path, regs):
     m2 = derive_message(req, source="ml_engine", destination="ai_orchestrator", message_type="ML_INFERENCE_COMPLETED",
                         data_timestamp_utc=m["data_timestamp_utc"], timeframe="H4", payload=m["payload"], status="COMPLETED")
     c2 = derive_message(r2, source="strategy_engine", destination="ai_orchestrator", message_type="STRATEGY_CANDIDATE",
-                        data_timestamp_utc=out[-1]["data_timestamp_utc"], timeframe="H4", payload=out[-1]["payload"], status="FAILED")
+                        data_timestamp_utc=out[-1]["data_timestamp_utc"], timeframe="H4", payload=out[-1]["payload"],
+                        status=envelope)
     res = orch(client).run_cycle(req, [r2, m2, c2])
     assert res.outcome == "NOT_RUN" and res.reason == "STRATEGY_ENGINE_ERROR" and client.calls == []
 

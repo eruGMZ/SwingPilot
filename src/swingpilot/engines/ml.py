@@ -75,6 +75,9 @@ class MLEngine:
         if self.predictor is None or (self.predictor.model_id, self.predictor.model_version) != (active["model_id"], active["version"]):
             return out("ERROR", "NO_ACTIVE_MODEL", _null_model(),
                        error={"code": "SPEC_NOT_FOUND", "message": "modelo ACTIVE sin predictor cargado"})
+        bad = market.inconsistency(tf)                       # QA3E-03
+        if bad:
+            return out("ERROR", "NO_ACTIVE_MODEL", _null_model(), error={"code": "DATA_INCONSISTENT", "message": bad})
         if not market.has_last_closed(tf):
             return out("ERROR", "NO_ACTIVE_MODEL", _null_model(),
                        error={"code": "DATA_UNAVAILABLE", "message": f"falta la última vela {tf} cerrada"})

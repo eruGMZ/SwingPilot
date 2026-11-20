@@ -7,10 +7,13 @@ decisión 4); sin estrategias APPROVED el resultado en Paper/Live es `NO_SETUP`
 (`NO_APPROVED_STRATEGY`).
 
 Orden de resolución de un ciclo (causa principal: E2 REGIME_CLASSIFIED):
-1. Error técnico aguas arriba (E2/E3 en ERROR) o falta de la última vela de la temporalidad de
-   señal → STRATEGY_CANDIDATE con `result_status = ERROR` (B.7.1). Nunca NO_SETUP.
+1. Error técnico aguas arriba (E2/E3 en ERROR o de ciclos distintos), velas inconsistentes o
+   falta de la última vela de la temporalidad de señal → STRATEGY_CANDIDATE con
+   `result_status = ERROR` (B.7.1). Nunca NO_SETUP.
 2. Gestión de la posición abierta (no afectada por bloqueos, REQ-G-096 (3)): señal de salida
-   → STRATEGY_EXIT_SIGNAL; trailing → STOP_ADJUSTMENT_REQUESTED (solo si sube el stop, B.6).
+   → STRATEGY_EXIT_SIGNAL; trailing → STOP_ADJUSTMENT_REQUESTED si sube el stop; si no lo sube,
+   la solicitud no se emite y se registra ERROR `INVALID_STOP_REQUEST` (B.6).
+Cada estrategia debe declarar la misma temporalidad de señal que el motor.
 3. Señal de salida en el ciclo → NO_SETUP `EXIT_SIGNAL_PRIORITY` (DEC-011).
 4. Bloqueo previo a la Fase 3 → NO_SETUP `PRE_PHASE3_BLOCK` con el estado.
 5. E2/E3 en INSUFFICIENT_DATA → NO_SETUP `UPSTREAM_INSUFFICIENT_DATA`.
@@ -98,6 +101,9 @@ class StrategyEngine:
                 raise ValueError(f"{s.strategy_id}: estado no válido {s.status}")
             if s.status == "APPROVED" and not s.experiment_ref:
                 raise ValueError(f"{s.strategy_id}: APPROVED exige experiment_ref (REQ-G-072)")
+            if s.signal_timeframe != signal_timeframe:                  # QA3E-05
+                raise ValueError(f"{s.strategy_id}: signal_timeframe {s.signal_timeframe} ≠ "
+                                 f"temporalidad del motor {signal_timeframe}")
         self.signal_timeframe = signal_timeframe
 
     # ------------------------------------------------------------------ utilidades
@@ -139,13 +145,19 @@ class StrategyEngine:
             raise ValueError(f"bloqueo no válido: {block}")
         cause = regime_msg
         rp, mp = regime_msg["payload"], ml_msg["payload"]
-        if ml_msg["correlation_id"] != regime_msg["correlation_id"]:
-            raise ValueError("E2 y E3 de ciclos distintos")
+        if ml_msg["correlation_id"] != regime_msg["correlation_id"]:   # QA3E-06: ERROR registrado (B.7.1)
+            return [self._error(cause, market, regime_msg, ml_msg, "INTERNAL_ERROR",
+                                f"E3 ({ml_msg['correlation_id']}) no pertenece al ciclo de E2 "
+                                f"({regime_msg['correlation_id']})", "INPUT_VALIDATION",
+                                upstream=ml_msg["message_id"])]
         # 1. errores técnicos aguas arriba / datos
         for up, stage in ((regime_msg, "REGIME_INPUT"), (ml_msg, "ML_INPUT")):
             if up["payload"]["result_status"] == "ERROR" or up["status"] == "FAILED":
                 return [self._error(cause, market, regime_msg, ml_msg, "UPSTREAM_ERROR",
                                     f"{up['message_type']} en ERROR", stage, upstream=up["message_id"])]
+        bad = market.inconsistency(self.signal_timeframe)           # QA3E-03
+        if bad:
+            return [self._error(cause, market, regime_msg, ml_msg, "DATA_INCONSISTENT", bad, "INPUT_VALIDATION")]
         if not market.has_last_closed(self.signal_timeframe):
             return [self._error(cause, market, regime_msg, ml_msg, "DATA_UNAVAILABLE",
                                 f"falta la última vela {self.signal_timeframe} cerrada (REQ-G-070)", "INPUT_VALIDATION")]
@@ -173,7 +185,12 @@ class StrategyEngine:
                      "reference_price": ex.reference_price, "supersedes_entry_candidates": []}
                 exit_msg = self._msg(cause, market, "STRATEGY_EXIT_SIGNAL", p, destination="execution_engine")
                 out.append(exit_msg)
-            elif st is not None and st.requested_stop > position.current_stop:
+            elif st is not None and not st.requested_stop > position.current_stop:
+                # B.6 (QA3E-02): solicitud inválida → no se emite y queda registrada como ERROR.
+                return [self._error(cause, market, regime_msg, ml_msg, "INVALID_STOP_REQUEST",
+                                    f"requested_stop {st.requested_stop} ≤ current_stop {position.current_stop} "
+                                    "(INV-009)", "STRATEGY_EVALUATION", strategy=strat)]
+            elif st is not None:
                 p = {**base_payload(ENGINE, ENGINE_VERSION, None, "COMPLETED", self._refs(market)),
                      "request_id": str(uuid.uuid4()), "operation_id": position.operation_id,
                      "strategy_id": strat.strategy_id, "strategy_version": strat.version,

@@ -122,3 +122,20 @@
 - **Estado:** RESUELTA — 2026-11-19 (DEC-014 Q30, CR-015 aplicada, contrato v1.4)
 - **Resolución (propietario):** se añade `STRATEGY_ANALYSIS_COMPLETED` al catálogo y se nombra E7. La mitigación provisional (salida validada pero no emitida como evento) se retiró del AI Orchestrator.
 - **Historial:** escalado el 2026-11-19; CR-015 (`harness/change_requests/CR-015_evento-analisis-strategy-analyst.md`) propuesta y aprobada el mismo día; añade `STRATEGY_ANALYSIS_COMPLETED` a api_contracts.md §2 y a data_flow.md §5 (E7).
+
+---
+
+### CONF-008
+
+- **Fecha de detección:** 2026-11-20 (QA independiente focalizada de FEAT-018..022, hallazgo QA3E-01; confirmado por el Orquestador de Desarrollo al corregirlo)
+- **Documentos en conflicto:** `implementation/api_contracts.md` §3.8 B.8 punto 2 y `test_plan.md` TC-NORM-002 vs. `api_contracts.md` §2 (catálogo cerrado de 33 tipos, REQ-G-063/064) y REQ-G-061 (todo mensaje registrado tiene un tipo del catálogo)
+- **Sección doc1:** B.8 punto 2: si la síntesis no es consistente con el candidato, «no se emite TRADE_PROPOSAL. `DECISION_SYNTHESIS_COMPLETED` se conserva y se registra la inconsistencia con el motivo `PROPOSAL_INCONSISTENT_WITH_CANDIDATE` y los campos afectados». TC-NORM-002: «se registra PROPOSAL_INCONSISTENT_WITH_CANDIDATE».
+- **Sección doc2:** §2: ningún tipo del catálogo transporta el resultado de la normalización; TRADE_PROPOSAL está prohibido en este caso por el propio B.8; E8 ya está registrado y el EventStore es append-only.
+- **Naturaleza del conflicto:** el contrato exige registrar la inconsistencia, pero no define el tipo con que se registra. Hoy queda solo en memoria (`CycleReport.normalization`), sin rastro en el EventStore. Registrarla exige elegir un tipo nuevo o ampliar uno existente, y cualquiera de las dos cosas modifica el contrato aprobado.
+- **Severidad:** MEDIUM. No afecta al riesgo ni a la ejecución: no se emite ninguna propuesta y Fail-Closed se mantiene. Afecta a la trazabilidad y a la auditoría (TC-AC-04).
+- **Estado:** ABIERTA. Escalada al propietario el 2026-11-20. FEAT-021 y el registro de QA3E-01 quedan bloqueados hasta su resolución.
+- **Opciones (para decisión del propietario; ninguna aplicada):**
+  - A. **Tipo nuevo** `PROPOSAL_NORMALIZATION_REJECTED`. Productor: la capa de validación del AI Orchestrator; `causation_id` = E8; payload con `reason_code` (`PROPOSAL_INCONSISTENT_WITH_CANDIDATE` | `OUT_OF_CONTRACT`) y `affected_fields`; ocupa la posición E9. Es el mismo patrón que CONF-007 y CR-015, y el catálogo pasa a 34 tipos.
+  - B. **Ampliar `NO_SETUP`** con un motivo nuevo. No se recomienda: `NO_SETUP` es del Strategy Engine, con `causation_id` = E2 (B.7), y mezclaría productores.
+  - C. **Registrarlo fuera del EventStore** (registro de auditoría aparte). No se recomienda: la cadena del ciclo quedaría incompleta (REQ-G-062).
+- **Recomendación del Orquestador:** A, mediante una CR (CR-019) con impacto en api_contracts §2 y §3.8 B.8, data_flow §5 (E9) y test_plan TC-NORM-002.

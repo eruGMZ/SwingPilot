@@ -65,6 +65,9 @@ class RegimeEngine:
                                  data_timestamp_utc=market.data_timestamp(tf), timeframe=tf)
             return msg, new_state
 
+        bad = market.inconsistency(tf)                       # QA3E-03
+        if bad:
+            return out("ERROR", error={"code": "DATA_INCONSISTENT", "message": bad})
         if not market.has_last_closed(tf):
             return out("ERROR", error={"code": "DATA_UNAVAILABLE",
                                        "message": f"falta la última vela {tf} cerrada (REQ-G-070)"})
