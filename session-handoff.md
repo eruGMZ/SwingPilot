@@ -1,5 +1,17 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-20) — ENV-01..04 y QA3R2-01..03 corregidos; base congelada para la QA de FEAT-018..022
+
+**Hecho y aprobado por el propietario:** (1) ENV-01..04: Python 3.14.4 (`.python-version`, instalado con uv), `requirements-dev.lock` con hashes SHA-256, `scripts/setup_env.sh`, scikit-learn excluido (DEC-017 Q44), `tests/regression/test_environment_lock.py`. (2) QA3R2-01..03 corregidos con regresiones que fallan con `5c17e92` (`IMPL-3_QA_ronda2.md` §Correcciones). Riesgos residuales aceptados en `progress.md`.
+
+**Entorno en otra máquina:** ejecutar `scripts/setup_env.sh` (requiere `uv`). Sin eso, `test_environment_lock.py` falla, que es lo esperado.
+
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 450 passed, 5 skipped. Validadores → OK.
+
+**Siguiente acción autorizada:** paso 3, la QA independiente focalizada de FEAT-018..022 (una sola revisión, solo lectura) sobre el commit congelado.
+
+**Sin cambios / pendiente:** FEAT-015/016 no aprobadas; SNAP-0001 no creada y sus cortes sin decidir; OOS/LOCKBOX intactos; CR-017, REQ-G-P08 y G5–G7 fuera de esta etapa; QA3R2-04..08 (observaciones) sin tocar; sin push.
+
 ## IMPL-3 «Integración cuantitativa» (2026-11-20) — EN CURSO: QA de 2 rondas completada
 
 **Estado:** DEC-017, DEC-018 y DEC-019 (CR-018 aprobada y aplicada). Contrato **v1.6**. `feature_list.json` v1.12.0. Código de FEAT-018..022 implementado (sin QA).

@@ -17,6 +17,18 @@ Fail-Closed (QA3-05, QA3-07):
   métricas declaradas. El número de pruebas sale del registro de experimentos.
 - El conteo de trades OOS declarado debe coincidir con la serie.
 
+Dominio y coherencia (QA3R2-01) → INCONCLUSIVE si no se cumple:
+- Equity estrictamente > 0 y con un punto inicial más uno por trade: len(equity) == n_trades + 1.
+- Cada paso de la equity tiene el mismo signo que el trade OOS correspondiente (sube con
+  ganancia, baja con pérdida, igual con 0 R): la curva debe corresponder a `oos_net_r`.
+- Retornos por periodo > −1 y su producto compuesto igual al crecimiento de la equity
+  (equity[-1] / equity[0], tolerancia relativa 1e-6): la serie de retornos debe cubrir la
+  misma curva OOS.
+- Parámetros del bootstrap enteros (n_resamples ≥ 1, block_size ≥ 1, seed ≥ 0); conteos de
+  trades enteros en [0, 2^53].
+- Cualquier fallo numérico del cálculo, o métrica derivada no finita (salvo Profit Factor
+  infinito sin pérdidas), da INCONCLUSIVE; nunca ELIGIBLE_FOR_HUMAN_REVIEW.
+
 No fijados por el contrato (campos obligatorios del preregistro, sin valor por defecto):
 definición del Sharpe (periodos por año), línea base, parámetros del bootstrap, varianza del
 Sharpe entre pruebas y umbral de probabilidad del DSR.
@@ -114,9 +126,50 @@ class Verdict:
 
 def _finite(*values) -> bool:
     for v in values:
-        if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v):
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return False
+        if isinstance(v, int):            # math.isfinite(int enorme) lanza OverflowError (QA3R2-01)
+            continue
+        if not math.isfinite(v):
             return False
     return True
+
+
+_COMPOUND_RTOL = 1e-6
+_MAX_COUNT = 2 ** 53                      # límite técnico: conteo exacto como float
+
+
+def _domain_errors(ev: ExperimentEvidence) -> list[str]:
+    """Dominio y coherencia de las series (QA3R2-01). Lista vacía = válido."""
+    errs = []
+    eq, net = ev.oos_equity, ev.oos_net_r
+    if any(x <= 0 for x in eq):
+        errs.append("equity ≤ 0")
+    if len(eq) != len(net) + 1:
+        errs.append(f"len(equity) = {len(eq)} ≠ trades OOS + 1 = {len(net) + 1}")
+    elif not errs:
+        for i, r in enumerate(net):
+            step = eq[i + 1] - eq[i]
+            if (step > 0) != (r > 0) or (step < 0) != (r < 0):
+                errs.append(f"paso {i} de la equity ({step:+.6g}) incoherente con el trade ({r:+.6g} R)")
+                break
+    rets = ev.oos_period_returns
+    if any(x <= -1 for x in rets):
+        errs.append("retorno por periodo ≤ −100%")
+    elif not errs and eq:
+        growth = math.prod(1 + x for x in rets)
+        target = eq[-1] / eq[0]
+        if not math.isclose(growth, target, rel_tol=_COMPOUND_RTOL):
+            errs.append(f"retornos compuestos ({growth:.6g}) ≠ crecimiento de la equity ({target:.6g})")
+    for part, n in ev.trades.items():
+        if isinstance(n, bool) or not isinstance(n, int) or not 0 <= n <= _MAX_COUNT:
+            errs.append(f"trades[{part!r}] = {n!r} no es entero en [0, 2^53]")
+    b = ev.bootstrap
+    for key, minimum in (("n_resamples", 1), ("block_size", 1), ("seed", 0)):
+        val = b.get(key, 1 if key == "block_size" else None)
+        if isinstance(val, bool) or not isinstance(val, int) or val < minimum:
+            errs.append(f"bootstrap.{key} = {val!r} no es entero ≥ {minimum}")
+    return errs
 
 
 def evaluate(ev: ExperimentEvidence, registry) -> Verdict:
@@ -132,24 +185,33 @@ def evaluate(ev: ExperimentEvidence, registry) -> Verdict:
                ev.sr_variance_across_trials, *ev.trades.values()]
     if not _finite(*numeric) or ev.periods_per_year <= 0 or ev.sr_variance_across_trials < 0 or not ev.oos_equity:
         return Verdict("INCONCLUSIVE", ["entradas no finitas, vacías o fuera de dominio (Fail-Closed)"], metrics)
+    domain = _domain_errors(ev)
+    if domain:
+        return Verdict("INCONCLUSIVE", [f"entradas fuera de dominio o incoherentes (Fail-Closed): {e}"
+                                        for e in domain], metrics)
     reasons = []
     for part, need in MIN_TRADES.items():
         if ev.trades.get(part, 0) < need:
             reasons.append(f"muestra insuficiente en {part}: {ev.trades.get(part, 0)} < {need}")
     if reasons:
         return Verdict("INCONCLUSIVE", reasons, metrics)
-    r = np.asarray(ev.oos_period_returns, dtype=float)
-    sr_period = float(r.mean() / r.std(ddof=1)) if len(r) > 1 and r.std(ddof=1) > 0 else 0.0
-    skew = float(((r - r.mean()) ** 3).mean() / r.std(ddof=0) ** 3) if r.std(ddof=0) > 0 else 0.0
-    kurt = float(((r - r.mean()) ** 4).mean() / r.std(ddof=0) ** 4) if r.std(ddof=0) > 0 else 3.0
-    pf, ex = profit_factor(ev.oos_net_r), expectancy(ev.oos_net_r)
-    dd = max_drawdown(ev.oos_equity)
-    sh = sharpe(ev.oos_period_returns, ev.periods_per_year)
-    dsr = deflated_sharpe_probability(sr_period, len(r), trials, ev.sr_variance_across_trials, skew, kurt)
-    lo, hi = bootstrap_ci_mean(ev.oos_net_r, n_resamples=ev.bootstrap["n_resamples"],
-                               seed=ev.bootstrap["seed"], block_size=ev.bootstrap.get("block_size", 1))
+    try:
+        r = np.asarray(ev.oos_period_returns, dtype=float)
+        sr_period = float(r.mean() / r.std(ddof=1)) if len(r) > 1 and r.std(ddof=1) > 0 else 0.0
+        skew = float(((r - r.mean()) ** 3).mean() / r.std(ddof=0) ** 3) if r.std(ddof=0) > 0 else 0.0
+        kurt = float(((r - r.mean()) ** 4).mean() / r.std(ddof=0) ** 4) if r.std(ddof=0) > 0 else 3.0
+        pf, ex = profit_factor(ev.oos_net_r), expectancy(ev.oos_net_r)
+        dd = max_drawdown(ev.oos_equity)
+        sh = sharpe(ev.oos_period_returns, ev.periods_per_year)
+        dsr = deflated_sharpe_probability(sr_period, len(r), trials, ev.sr_variance_across_trials, skew, kurt)
+        lo, hi = bootstrap_ci_mean(ev.oos_net_r, n_resamples=ev.bootstrap["n_resamples"],
+                                   seed=ev.bootstrap["seed"], block_size=ev.bootstrap.get("block_size", 1))
+    except (ValueError, OverflowError, MemoryError, ZeroDivisionError) as exc:   # QA3R2-01
+        return Verdict("INCONCLUSIVE", [f"fallo numérico del evaluador (Fail-Closed): {exc!r}"], metrics)
     metrics.update(profit_factor=pf, expectancy_r=ex, max_drawdown=dd, sharpe_oos=sh,
                    dsr_probability=dsr, expectancy_ci95=(lo, hi))
+    if not _finite(ex, dd, sh, dsr, lo, hi) or math.isnan(pf):
+        return Verdict("INCONCLUSIVE", ["métrica derivada no finita (Fail-Closed)"], metrics)
     if pf < PF_MIN:
         reasons.append(f"Profit Factor {pf:.3f} < {PF_MIN}")
     if ex < EXPECTANCY_MIN_R:

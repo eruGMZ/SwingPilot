@@ -1206,3 +1206,36 @@
 **Pruebas:** `tests/unit/test_engines.py` (36: TC-MSG-004/005, TC-FLOW-001/004..007/009..011, TC-AI-007, TC-NORM-001..003, TC-AC-01/03/04/07); `tests/security/test_impl3_isolation.py` ampliado a `engines`. `.venv/bin/pytest -q -p no:cacheprovider tests` → 426 passed, 5 skipped. Validadores → OK. Defecto propio detectado y corregido: el filtro de candidatos exigía sobre COMPLETED y rompía 47 pruebas de IMPL-1/2 (sobres PENDING); ahora rechaza solo FAILED o `result_status` ≠ COMPLETED.
 
 **Estados:** FEAT-018..022 IN_PROGRESS (sin QA independiente). `feature_list.json` v1.12.0. Sin commit; $0 de IA.
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: corrección de ENV-01..04 (entorno reproducible) | COMPLETADO — PENDIENTE DE REVISIÓN
+
+**Autorización del propietario:** «Aplicar ENV-01..04: fijar dependencias con versiones y hashes, resolver la dependencia de scikit-learn, documentar la versión de Python y los paquetes del sistema» (paso 1 de 3), «si es necesario, actualiza Python», «sí, sigue con el plan de ENV». Commit base `5c17e92`.
+
+**Hallazgo:** este equipo (Ubuntu 24.04.5) tenía Python 3.12.3 y un `.venv` incompleto (sin pandas, numpy, pyarrow ni websockets; anthropic 2.10.0). Se conserva como `.venv-py312.bak`.
+
+**Cambios:** versiones exactas en `requirements-dev.txt`; `requirements-dev.lock` (34 entradas con hashes SHA-256, universal, `--exclude-newer 2026-11-20`); `requirements-dev.constraints.txt`; `.python-version` = 3.14.4 (instalado con uv); `scripts/setup_env.sh` (uv, `--require-hashes`); scikit-learn excluido (DEC-017 Q44); `tests/regression/test_environment_lock.py` (5 pruebas); `.gitignore` (`.venv-*/`). Detalle y evidencia E1–E6 en `harness/verification/IMPL-3_entorno_reproducibilidad.md` §6.
+
+**Pruebas:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 431 passed, 5 skipped (426 + 5 nuevas). Instalación limpia sin caché con el mismo freeze; lock alterado rechazado; la prueba de regresión falla (2/5) con el intérprete anterior. Validadores → OK.
+
+**Sin cambios en:** `src/`, SNAP-0001, FEAT-015/016, CR-017, P08, G5–G7. Sin commit ni push. $0 de IA.
+
+**Siguiente:** paso 2, corregir QA3R2-01..03 con pruebas deterministas de regresión.
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: corrección de QA3R2-01..03 (paso 2 de 3) | INICIADO
+
+**Autorización del propietario:** «Autorizo el paso 2: corregir QA3R2-01, QA3R2-02 y QA3R2-03, cada uno con una prueba determinista de regresión que reproduzca el fallo original». Commit base `5c17e92` (más los cambios de ENV-01..04 sin commit).
+
+**Alcance:** QA3R2-01 (`research/acceptance.py`: rechazo de equity ≤ 0 e incoherente; nunca ELIGIBLE con entradas inválidas), QA3R2-02 (`research/snapshot.py`: ningún estado parcial consumible tras un fallo entre renombrado y manifiesto), QA3R2-03 (`research/partitions.py`: comprobación y registro de consumo del LOCKBOX atómicos entre procesos). Pruebas de regresión por hallazgo y suite completa. **Fuera de alcance:** tercera ronda de QA, SNAP-0001, cortes, FEAT-015/016, gasto de IA, push.
+
+**Resultado (2026-11-20):** QA3R2-01..03 CORREGIDOS, pendientes de revisión del propietario. Detalle, reproducciones con `5c17e92` y riesgos residuales en `harness/verification/IMPL-3_QA_ronda2.md` §Correcciones. Archivos: `src/swingpilot/research/{acceptance,snapshot,experiments,partitions}.py`, `tests/unit/{test_research,test_snapshot}.py`, `.gitignore`. Pruebas: 19 nuevas; cada regresión falla con `5c17e92` y pasa con la corrección; suite 450 passed, 5 skipped; validadores OK. Manifiesto de snapshot 1.1.0 → 1.2.0. Sin SNAP-0001, sin cambios de cortes, $0 de IA, sin commit ni push. **Siguiente:** revisión del propietario; luego, paso 3 (QA focalizada de FEAT-018..022) una vez congelados los cambios.
+
+**Aprobación del propietario (2026-11-20):** «Apruebo las correcciones QA3R2-01, QA3R2-02 y QA3R2-03. Autorizo congelar el estado mediante un commit en `develop`, sin push.»
+
+**Riesgos residuales aceptados (registrados por instrucción del propietario):**
+1. **Bloqueo limitado a Linux y disco local:** la exclusión de `claim_partition` usa `flock` (POSIX). Con el registro de experimentos en un recurso de red (NFS/SMB) o fuera de Linux no está garantizada.
+2. **Límite de `n_resamples` pendiente del preregistro:** un valor válido pero muy grande no se acota (tarda, pero no da un veredicto inválido). El máximo lo fija el preregistro; no lo fija el Orquestador.
+3. **Fallo seguro ante construcción concurrente de la misma snapshot:** un proceso puede apartar el directorio de otro durante su ventana de confirmación. El resultado falla y nunca queda una snapshot incompleta tratada como válida. La construcción de snapshots es manual y única.

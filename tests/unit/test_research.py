@@ -417,12 +417,13 @@ class FakeReg:
         return self.n
 
 
-def evidence(**kw):
-    rng = np.random.default_rng(3)
-    net = list(rng.normal(0.6, 1.0, 40))
-    eq = list(np.cumprod([1.0] + [1 + 0.01 * x for x in net]))
+def evidence(net=None, risk=0.01, **kw):
+    """Evidencia coherente (QA3R2-01): equity y retornos derivados de `net` (riesgo `risk` por R)."""
+    if net is None:
+        net = list(np.random.default_rng(3).normal(0.6, 1.0, 40))
+    eq = list(np.cumprod([1.0] + [1 + risk * x for x in net]))
     rets = list(np.diff(eq) / np.array(eq[:-1]))
-    base = dict(trades={"train_val": 120, "oos": 40, "lockbox": 35}, oos_net_r=net, oos_equity=eq,
+    base = dict(trades={"train_val": 120, "oos": len(net), "lockbox": 35}, oos_net_r=net, oos_equity=eq,
                 oos_period_returns=rets, periods_per_year=52, sr_variance_across_trials=0.01,
                 buy_and_hold_report={"return": 0.3}, baseline_beaten=True, dsr_min_probability=0.95,
                 bootstrap={"n_resamples": 2000, "seed": 7, "block_size": 1})
@@ -443,12 +444,13 @@ def _rejects(ev, fragment, trials=3):
 
 
 def test_tc_ml_005_threshold_failures_reject_with_reason():
-    _rejects(evidence(oos_equity=[1.0, 1.2, 0.9, 1.3]), "drawdown")
-    net = [1.0] * 10 + [-1.0] * 30
-    _rejects(evidence(oos_net_r=net), "Profit Factor")
-    _rejects(evidence(oos_net_r=[0.05] * 20 + [-0.02] * 20), "expectancy")
-    flat = [0.0001, -0.0001] * 20
-    _rejects(evidence(oos_period_returns=flat), "Sharpe OOS")
+    # Evidencia coherente (QA3R2-01): equity y retornos derivados de la serie de trades.
+    dd_net = list(np.random.default_rng(3).normal(0.6, 1.0, 40))
+    dd_net[10:16] = [-1.0] * 6
+    _rejects(evidence(dd_net, risk=0.05), "drawdown")              # 6 pérdidas de 5% → DD > 20%
+    _rejects(evidence([1.0] * 10 + [-1.0] * 30), "Profit Factor")
+    _rejects(evidence([0.05] * 20 + [-0.02] * 20), "expectancy")
+    _rejects(evidence([0.01, -0.01] * 20), "Sharpe OOS")
 
 
 def test_tc_ml_006_statistics_required_and_never_approved():
@@ -468,6 +470,39 @@ def test_tc_ml_006_statistics_required_and_never_approved():
 def test_qa3_05_non_finite_inputs_fail_closed(kw):
     v = A.evaluate(evidence(**kw), FakeReg(3))
     assert v.outcome == "INCONCLUSIVE" and "Fail-Closed" in v.reasons[0]
+
+
+_GOOD = evidence()
+
+
+@pytest.mark.parametrize("case, kw", [
+    # Reproducciones de la ronda 2: equity a cero, negativa y de 1 punto con 40 trades.
+    ("equity_cero", dict(oos_equity=[0.0] + _GOOD.oos_equity[1:])),
+    ("equity_negativa", dict(oos_equity=[-x for x in _GOOD.oos_equity])),
+    ("equity_un_punto", dict(oos_equity=[1.0])),
+    # Equity y retornos independientes de oos_net_r.
+    ("equity_longitud", dict(oos_equity=_GOOD.oos_equity[:-1])),
+    ("equity_signo_invertido", dict(oos_equity=[1.0] + [2.0 - x for x in _GOOD.oos_equity[1:]])),
+    ("retornos_de_otra_curva", dict(oos_period_returns=[0.02] * 40)),
+    ("retorno_menor_que_menos_uno", dict(oos_period_returns=[-1.5] + _GOOD.oos_period_returns[1:])),
+    # Parámetros del bootstrap: antes, excepción en vez de INCONCLUSIVE.
+    ("n_resamples_cero", dict(bootstrap={"n_resamples": 0, "seed": 7, "block_size": 1})),
+    ("n_resamples_float", dict(bootstrap={"n_resamples": 2000.0, "seed": 7, "block_size": 1})),
+    ("block_size_cero", dict(bootstrap={"n_resamples": 2000, "seed": 7, "block_size": 0})),
+    ("seed_negativa", dict(bootstrap={"n_resamples": 2000, "seed": -1, "block_size": 1})),
+    ("n_resamples_enorme", dict(bootstrap={"n_resamples": 10 ** 30, "seed": 7, "block_size": 1})),
+    ("trades_entero_enorme", dict(trades={"train_val": 10 ** 400, "oos": 40, "lockbox": 35})),
+    ("trades_float", dict(trades={"train_val": 120.0, "oos": 40, "lockbox": 35})),
+])
+def test_qa3r2_01_invalid_or_incoherent_inputs_never_eligible(case, kw):
+    v = A.evaluate(evidence(**kw), FakeReg(3))
+    assert v.outcome == "INCONCLUSIVE", (case, v)
+    assert "Fail-Closed" in v.reasons[0], (case, v.reasons)
+
+
+def test_qa3r2_01_valid_coherent_evidence_still_eligible():
+    # Control: la evidencia coherente por defecto sigue siendo ELIGIBLE (sin falsos rechazos).
+    assert A.evaluate(evidence(), FakeReg(3)).outcome == "ELIGIBLE_FOR_HUMAN_REVIEW"
 
 
 def test_qa3_07_declared_oos_count_must_match_series():

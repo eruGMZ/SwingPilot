@@ -1,0 +1,9 @@
+# Restricciones de dependencias TRANSITIVAS: versiones registradas en el entorno
+# verificado de IMPL-3 (IMPL-3_entorno_reproducibilidad.md §3). Solo se usa al
+# regenerar requirements-dev.lock; no se instala por sí solo.
+python-dateutil==4.0.0
+tzdata==2026.6
+pydantic==2.14.4
+httpx2==2.16.2
+referencing==0.37.0
+rpds-py==2026.9.1

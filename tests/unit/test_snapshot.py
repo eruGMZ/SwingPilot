@@ -201,6 +201,69 @@ def test_qa3_15_failed_write_leaves_no_orphan_and_allows_retry(tmp_path, monkeyp
     assert build(tmp_path).data_dir.is_dir()             # el reintento funciona
 
 
+def _fail_at_manifest_commit(monkeypatch, action):
+    """Hace fallar el `os.replace` del manifiesto (después del renombrado del directorio)."""
+    real = SN.os.replace
+
+    def replace(src, dst, *a, **k):
+        if str(dst).endswith(".json"):
+            action()
+        return real(src, dst, *a, **k)
+    monkeypatch.setattr(SN.os, "replace", replace)
+
+
+def test_qa3r2_02_failure_between_rename_and_manifest_rolls_back(tmp_path, monkeypatch):
+    def boom():
+        raise OSError("fallo simulado entre renombrado y manifiesto")
+    _fail_at_manifest_commit(monkeypatch, boom)
+    with pytest.raises(OSError, match="fallo simulado"):
+        build(tmp_path)
+    root, mdir = tmp_path / "var" / "snapshots", tmp_path / "research" / "snapshots"
+    assert list(root.iterdir()) == []                         # ni datos renombrados ni temporales
+    assert list(mdir.iterdir()) == []                         # ni manifiesto ni manifiesto temporal
+    monkeypatch.undo()
+    res = build(tmp_path)                                     # el reintento funciona
+    assert verify_snapshot(res.manifest_path, root)["train_val"]
+    assert res.manifest["incomplete_build_quarantined"] is None
+
+
+_KILL_SCRIPT = """
+import os, sys
+from pathlib import Path
+sys.path.insert(0, {unit!r})
+import test_snapshot as T
+real = T.SN.os.replace
+def replace(src, dst, *a, **k):
+    if str(dst).endswith(".json"):
+        os._exit(9)                       # muerte del proceso: no se ejecuta ningún except/finally
+    return real(src, dst, *a, **k)
+T.SN.os.replace = replace
+T.build(Path({tmp!r}))
+"""
+
+
+def test_qa3r2_02_killed_process_leaves_nothing_consumable_and_retry_quarantines(tmp_path):
+    import subprocess
+    script = _KILL_SCRIPT.format(unit=str(Path(__file__).parent), tmp=str(tmp_path))
+    proc = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=120)
+    assert proc.returncode == 9, proc.stderr
+    root, mdir = tmp_path / "var" / "snapshots", tmp_path / "research" / "snapshots"
+    manifest_path = mdir / "SNAP-TEST.json"
+    assert (root / "SNAP-TEST").is_dir() and not manifest_path.exists()   # estado tras la muerte
+    # Sin manifiesto, la snapshot no es consumible ni verificable como completa.
+    with pytest.raises(FileNotFoundError):
+        verify_snapshot(manifest_path, root)
+    with pytest.raises(FileNotFoundError):
+        PartitionLoader(manifest_path, root, tmp_path / "access.jsonl")
+    # El reintento aparta el directorio incompleto (sin borrarlo) y confirma una snapshot nueva.
+    res = build(tmp_path)
+    q = res.manifest["incomplete_build_quarantined"]
+    assert q and q.startswith(".incomplete-SNAP-TEST-") and (root / q).is_dir()
+    assert verify_snapshot(res.manifest_path, root)["train_val"]
+    assert sorted(p.name for p in root.iterdir()) == sorted(["SNAP-TEST", q])
+    assert not (mdir / "SNAP-TEST.json.tmp").exists()
+
+
 def test_train_validation_split_uses_manifest_cut(snap):
     res, tmp = snap
     loader = _loader(res, tmp)
@@ -334,6 +397,70 @@ def test_tc_ml_007_019_lockbox_single_use_persisted_in_registry(snap):
     if not ROOT:
         with pytest.raises(PermissionError):
             open(res.data_dir / "lockbox.parquet", "rb")   # vuelve a quedar sellado
+
+
+def _concurrent_loader(manifest_path, tmp, out, barrier):
+    """Proceso hijo (spawn). Cada hijo comprueba el consumo y espera al otro antes de seguir: es
+    el intercalado de la ronda 2. Con el bloqueo, el segundo no entra a la comprobación atómica
+    hasta que el primero registra; la espera acotada evita un interbloqueo y no cambia el
+    resultado."""
+    import threading
+    real = ExperimentRegistry.is_consumed
+
+    def is_consumed_then_wait(self, *a, **k):
+        result = real(self, *a, **k)
+        try:
+            barrier.wait(timeout=2)
+        except threading.BrokenBarrierError:
+            pass
+        return result
+    ExperimentRegistry.is_consumed = is_consumed_then_wait
+    reg = ExperimentRegistry(tmp / "registry.jsonl", tmp / "decisions")
+    loader = PartitionLoader(manifest_path, tmp / "var" / "snapshots", tmp / "access.jsonl", registry=reg)
+    try:
+        out.put(("LEIDO", len(loader.load_final(grant(), "lockbox"))))
+    except PartitionAccessError as exc:
+        out.put(("DENEGADO", str(exc)))
+    except BaseException as exc:                                       # noqa: BLE001
+        out.put(("ERROR", repr(exc)))
+
+
+def test_qa3r2_03_two_concurrent_loaders_consume_lockbox_once(snap):
+    import multiprocessing as mp
+    res, tmp = snap
+    reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
+    _advance_to_oos(reg)
+    ctx = mp.get_context("spawn")
+    barrier, out = ctx.Barrier(2), ctx.Queue()
+    procs = [ctx.Process(target=_concurrent_loader, args=(res.manifest_path, tmp, out, barrier)) for _ in range(2)]
+    for p in procs:
+        p.start()
+    results = sorted(out.get(timeout=120) for _ in procs)
+    for p in procs:
+        p.join(timeout=60)
+    assert [r[0] for r in results] == ["DENEGADO", "LEIDO"], results
+    assert "consumido" in results[0][1]
+    consumed = [r for r in reg.consumed_partitions() if r["partition"] == "lockbox"]
+    assert len(consumed) == 1                                     # un solo consumo en el registro
+    log = [json.loads(x) for x in (tmp / "access.jsonl").read_text().splitlines()]
+    assert sum(1 for r in log if r["partition"] == "lockbox" and r["allowed"]) == 1
+    if not ROOT:
+        with pytest.raises(PermissionError):
+            open(res.data_dir / "lockbox.parquet", "rb")          # sigue sellado
+
+
+def test_qa3r2_03_failed_read_keeps_partition_consumed_and_is_logged(snap):
+    res, tmp = snap
+    reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
+    _advance_to_oos(reg)
+    loader = _loader(res, tmp, reg)
+    loader.manifest["files"]["lockbox"]["sha256"] = "0" * 64      # fuerza el fallo de lectura
+    with pytest.raises(PartitionAccessError, match="SHA-256"):
+        loader.load_final(grant(), "lockbox")
+    assert reg.is_consumed("SNAP-TEST", "lockbox", "EXP-T")       # consumo conservador, documentado
+    assert any("lectura fallida" in r["reason"] for r in loader.access_history())
+    with pytest.raises(PartitionAccessError, match="consumido"):
+        _loader(res, tmp, reg).load_final(grant(), "lockbox")
 
 
 def test_tc_ml_019_new_lockbox_only_after_consumed_snapshot_end(tmp_path):

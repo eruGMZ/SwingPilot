@@ -8,6 +8,12 @@ TC-ML-001, TC-ML-007, TC-ML-012, TC-ML-016, TC-ML-019).
   partición y la snapshot (QA3-04); partición no consumida. El consumo se registra en el
   registro de experimentos (versionado) ANTES de leer, y también en el registro de accesos
   (QA3-06).
+- La comprobación de «no consumida» y su registro son atómicos entre procesos
+  (`ExperimentRegistry.claim_partition`, QA3R2-03): de dos cargadores concurrentes, solo uno
+  consume y lee; el otro queda denegado y anotado.
+- Una lectura fallida tras el registro (p. ej. SHA-256 distinto) deja la partición
+  CONSUMIDA, a propósito: el dato pudo quedar expuesto y no se permite un segundo intento. El
+  fallo se anota en el registro de accesos (QA3R2-03).
 - El control es en proceso: impide el uso accidental o no trazable desde el código; no
   sustituye permisos del sistema operativo frente a un usuario con privilegios.
 - DEC-018: en IMPL-3 no se evalúan OOS ni LOCKBOX; ninguna autorización real se emite.
@@ -104,11 +110,19 @@ class PartitionLoader:
         if reason:
             self._log(partition, False, reason, exp)
             raise PartitionAccessError(f"acceso a {partition} denegado: {reason}")
-        self.registry.record_partition_consumed(
+        claimed = self.registry.claim_partition(
             snapshot_id=self.manifest["snapshot_id"], partition=partition, experiment_id=exp,
             snapshot_last_open_time=self.manifest["range"]["last_open_time_ms"], decision_ref=grant.decision_ref)
+        if claimed is None:                                   # otro proceso consumió primero (QA3R2-03)
+            reason = f"{partition} ya consumido (evaluación única; consumo concurrente)"
+            self._log(partition, False, reason, exp)
+            raise PartitionAccessError(f"acceso a {partition} denegado: {reason}")
         self._log(partition, True, f"evaluación final única ({grant.decision_ref})", exp)
-        return self._read(partition)
+        try:
+            return self._read(partition)
+        except BaseException as exc:
+            self._log(partition, False, f"lectura fallida tras el consumo; la partición queda consumida: {exc!r}", exp)
+            raise
 
     def _deny_reason(self, grant: FinalEvaluationGrant | None, partition: str) -> str | None:
         if partition not in SEALED:

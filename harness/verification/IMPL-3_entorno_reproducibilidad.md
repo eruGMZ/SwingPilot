@@ -45,3 +45,49 @@ Instaladas **sin declarar**: scikit-learn 1.9.1, con scipy 1.18.1, joblib 1.6.0 
 ## 5. Estado
 
 Con las versiones de §3, la suite da 325 passed, 5 skipped. Las correcciones ENV-01..04 no se aplican sin indicación del propietario.
+
+---
+
+## 6. Corrección de ENV-01..04 (2026-11-20)
+
+**Autorización del propietario (2026-11-20):** «Aplicar ENV-01..04: fijar dependencias con versiones y hashes, resolver la dependencia de scikit-learn, documentar la versión de Python y los paquetes del sistema. Entregar evidencia de instalación reproducible.» Y también: «si es necesario, actualiza Python». Commit base: `5c17e92`.
+
+**Hecho al empezar:** este equipo (Ubuntu 24.04.5) **no era** el de §1–§3. Tenía Python 3.12.3 del sistema, y su `.venv` carecía de pandas, numpy, pyarrow y websockets y traía anthropic 2.10.0 en vez de 2.11.0. Es la deriva que describe ENV-01. El `.venv` anterior se conserva, sin uso, como `.venv-py312.bak` (ignorado por Git).
+
+### 6.1 Cambios
+
+| ID | Corrección | Archivos |
+|---|---|---|
+| ENV-01 | Las dependencias directas pasan a versión exacta (las de §3). Se añade un lock con **hashes SHA-256 de todas las distribuciones** (34 entradas, universal: Linux/Windows/macOS), generado con `uv pip compile --generate-hashes --universal --exclude-newer 2026-11-20T00:00:00Z`, con las transitivas de §3 como restricciones. La instalación se hace solo desde el lock con `--require-hashes`. | `requirements-dev.txt`, `requirements-dev.constraints.txt` (nuevo), `requirements-dev.lock` (nuevo) |
+| ENV-02 | **scikit-learn excluido** (con scipy, joblib y threadpoolctl): DEC-017 Q44 limita FEAT-019 a la infraestructura, sin modelo entrenado, y `src/` no lo importa. Se declarará cuando un preregistro aprobado lo justifique. Una prueba impide reinstalarlo sin que se note. | `requirements-dev.txt` (comentario), `tests/regression/test_environment_lock.py` |
+| ENV-03 | Procedimiento estándar con **uv** en lugar de get-pip.py y python3.14-venv (que Ubuntu 24.04 no trae). uv descarga CPython de python-build-standalone verificando su checksum y crea el venv sin pip del sistema. | `scripts/setup_env.sh` (nuevo) |
+| ENV-04 | La versión de Python queda declarada (**3.14.4**, la misma de §1 y de la evidencia de IMPL-3). La prueba de regresión falla si el intérprete o cualquier paquete instalado se separa del lock. | `.python-version` (nuevo), `tests/regression/test_environment_lock.py` (nuevo) |
+
+### 6.2 Sistema y artefactos (equipo de esta corrección)
+
+| Elemento | Valor |
+|---|---|
+| SO | Ubuntu 24.04.5 LTS, Linux 7.0.0-43-generic x86_64, glibc 2.39-0ubuntu8.12 |
+| Paquetes del sistema requeridos | Solo `uv` 0.12.5 (binario `~/.local/bin/uv`, SHA-256 `b65f23a4…de5f46`). No se usan `python3-venv`, `python3-pip` ni el Python del sistema (3.12.3). |
+| Intérprete | CPython 3.14.4 (python-build-standalone, Clang 22.1.3), `~/.local/share/uv/python/cpython-3.14.4-linux-x86_64-gnu/bin/python3.14`, SHA-256 `4e7a6eeb…9f63ce`; OpenSSL 3.5.6; SQLite 3.50.4 |
+| `requirements-dev.lock` | SHA-256 `6396aa4cb2132f280637cbd8a907b11645b592643fc0b6a3139da41bae240fc9` |
+| `requirements-dev.txt` | SHA-256 `f8210c78…40fe6fe` |
+| `requirements-dev.constraints.txt` | SHA-256 `b9155009…0655d` |
+| Paquetes instalados (32 en Linux) | annotated-types 0.8.0, anthropic 2.11.0, anyio 4.16.0, attrs 26.1.0, docstring-parser 0.18.0, h11 0.16.0, httpcore2 2.16.2, httpx2 2.16.2, idna 3.20, iniconfig 2.3.1, jiter 0.19.0, jsonschema 4.26.0, jsonschema-specifications 2025.9.1, numpy 2.5.5, opentelemetry-api 1.45.2, packaging 26.3, pandas 3.1.1, pluggy 1.7.0, pyarrow 26.0.1, pydantic 2.14.4, pydantic-core 2.50.5, pygments 2.21.0, pytest 9.2.0, python-dateutil 4.0.0, referencing 0.37.0, rpds-py 2026.9.1, sniffio 1.3.1, truststore 0.10.5, typing-extensions 4.16.0, typing-inspection 0.4.5, tzdata 2026.6, websockets 17.4 |
+
+### 6.3 Evidencia de instalación reproducible
+
+| # | Prueba | Resultado |
+|---|---|---|
+| E1 | `.venv` recreado: `uv venv --python 3.14.4` + `uv pip sync --require-hashes requirements-dev.lock`; `uv pip check` | 32 paquetes, todos compatibles; `import sklearn` → ModuleNotFoundError |
+| E2 | Segunda instalación desde cero en otra ruta, **sin caché** (`--no-cache`, todo descargado y verificado por hash) | `pip freeze` idéntico al de `.venv` (32 paquetes, `diff` vacío) |
+| E3 | Lock alterado: los hashes de websockets se sustituyen por `ffff…` | Instalación **rechazada** (exit 1, «hash mismatch»; hash calculado `ef03fb4b…9caa`) |
+| E4 | `tests/regression/test_environment_lock.py` en el `.venv` nuevo | 5 passed |
+| E5 | La misma prueba con el intérprete del `.venv` anterior (3.12.3) | **2 failed** (versión de Python y paquetes distintos del lock), 3 passed: la prueba detecta la deriva |
+| E6 | Suite completa `.venv/bin/pytest -q -p no:cacheprovider tests` antes de añadir la prueba nueva | 426 passed, 5 skipped (el mismo resultado registrado para IMPL-3); validadores OK |
+
+### 6.4 Riesgo residual
+
+- uv no está en el lock: se registra su versión y hash (§6.2). Otra versión de uv puede generar un lock con otro formato, pero instala los mismos hashes.
+- Laptop B (producción) y cualquier otro equipo deben recrear `.venv` con `scripts/setup_env.sh`. Hasta entonces, la prueba de regresión fallará allí, que es lo que se busca.
+- Los hashes de Parquet siguen dependiendo de la versión de pyarrow (ENV-05), que ahora queda fijada por el lock.

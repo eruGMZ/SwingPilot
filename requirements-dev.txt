@@ -1,7 +1,27 @@
-pytest
-jsonschema
-anthropic
-pandas
-numpy
-pyarrow
-websockets
+# requirements-dev.txt — dependencias DIRECTAS de SwingPilot (desarrollo e investigación)
+#
+# Origen: ENV-01..04 (harness/verification/IMPL-3_entorno_reproducibilidad.md),
+# autorizado por el propietario el 2026-11-20. Versiones exactas = las del entorno
+# verificado en IMPL-3 (informe §3), donde la suite dio 390/426 passed.
+#
+# NO instalar desde este archivo. Instalar SIEMPRE desde el lock con hashes:
+#   scripts/setup_env.sh            (o, a mano:)
+#   uv venv --python 3.14.4 .venv
+#   uv pip sync --python .venv/bin/python --require-hashes requirements-dev.lock
+#
+# Regenerar el lock (solo con cambio autorizado de dependencias):
+#   uv pip compile requirements-dev.txt --constraint requirements-dev.constraints.txt \
+#     --python-version 3.14 --generate-hashes --exclude-newer 2026-11-20T00:00:00Z \
+#     --universal --output-file requirements-dev.lock
+#
+# Python: 3.14.4 exacto (ver .python-version).
+# scikit-learn: EXCLUIDO a propósito (DEC-017 Q44: FEAT-019 es solo infraestructura,
+# sin modelo entrenado). Se declarará cuando un preregistro aprobado lo justifique.
+
+pytest==9.2.0
+jsonschema==4.26.0
+anthropic==2.11.0
+pandas==3.1.1
+numpy==2.5.5
+pyarrow==26.0.1
+websockets==17.4

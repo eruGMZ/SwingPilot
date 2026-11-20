@@ -17,6 +17,13 @@ DEC-005 P10; DEC-017 Q46; TC-ML-015, TC-ML-017).
   renombra al final (QA3-15). `train_val` queda de solo lectura; `oos` y `lockbox` quedan sin
   permisos (0o000) y solo `PartitionLoader` los abre con una autorización válida (QA3-06).
   Manifiesto con SHA-256 por archivo y versiones de las librerías escritoras en el repositorio.
+- Confirmación (QA3R2-02): el manifiesto es el punto de confirmación; una snapshot solo es
+  consumible (PartitionLoader, verify_snapshot) si su manifiesto existe. Orden: manifiesto
+  temporal → renombrado del directorio de datos → `os.replace` del manifiesto (atómico). Un
+  fallo en el proceso en cualquier punto deshace el directorio de datos y el manifiesto
+  temporal. Si el proceso muere sin poder deshacer, queda un directorio de datos sin
+  manifiesto: no es consumible, y el siguiente intento lo aparta como
+  `.incomplete-<id>-<marca>` (sin borrarlo) y lo deja anotado en el manifiesto nuevo.
 """
 import hashlib
 import json
@@ -43,7 +50,7 @@ SPLIT_PCT = (50, 20, 15, 15)              # DEC-005 P10, en enteros (QA3-10)
 PARTITIONS = ("train_val", "oos", "lockbox")
 SEALED = ("oos", "lockbox")
 SNAPSHOT_INTERVALS = ("1d", "4h", "1h")
-MANIFEST_SCHEMA_VERSION = "1.1.0"
+MANIFEST_SCHEMA_VERSION = "1.2.0"           # 1.2.0: incomplete_build_quarantined (QA3R2-02)
 COLUMNS = ["interval", "open_time", "close_time", "open", "high", "low", "close", "volume"]
 DAY_MS = 86_400_000
 SNAPSHOT_ID = re.compile(r"^SNAP-[0-9]{4}$|^SNAP-TEST[A-Z0-9-]*$")
@@ -130,7 +137,7 @@ def build_snapshot(client: BinancePublicClient, snapshot_id: str, data_root: Pat
     data_root, manifest_dir = Path(data_root), Path(manifest_dir)
     data_dir = data_root / snapshot_id
     manifest_path = manifest_dir / f"{snapshot_id}.json"
-    if data_dir.exists() or manifest_path.exists():
+    if manifest_path.exists():
         raise SnapshotError(f"la snapshot {snapshot_id} ya existe: una snapshot no se reescribe")
     downloaded_at = now().strftime("%Y-%m-%dT%H:%M:%SZ")
     server_ms = client.server_time_ms()
@@ -162,7 +169,13 @@ def build_snapshot(client: BinancePublicClient, snapshot_id: str, data_root: Pat
 
     data_root.mkdir(parents=True, exist_ok=True)
     manifest_dir.mkdir(parents=True, exist_ok=True)
+    quarantined = None
+    if data_dir.exists():                 # sin manifiesto: construcción interrumpida (QA3R2-02)
+        quarantined = f".incomplete-{snapshot_id}-{now().strftime('%Y%m%dT%H%M%SZ')}-{os.getpid()}"
+        os.rename(data_dir, data_root / quarantined)
     tmp_dir = Path(tempfile.mkdtemp(prefix=f".tmp-{snapshot_id}-", dir=data_root))
+    tmp_manifest = manifest_path.with_suffix(".json.tmp")
+    renamed = False
     try:
         files = {}
         for part in PARTITIONS:
@@ -182,14 +195,32 @@ def build_snapshot(client: BinancePublicClient, snapshot_id: str, data_root: Pat
             files[part] = {"file": f"{part}.parquet", "sha256": sha256_file(path), "rows": int(len(out)),
                            "per_interval": stats}
             os.chmod(path, MODE_SEALED if part in SEALED else MODE_READONLY)
+        manifest = _manifest(client, snapshot_id, downloaded_at, server_ms, start_date, range_start, range_end,
+                             first_open, cuts, files, quarantined)
+        with open(tmp_manifest, "w") as fh:
+            fh.write(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
         os.rename(tmp_dir, data_dir)
+        renamed = True
+        os.replace(tmp_manifest, manifest_path)          # confirmación (QA3R2-02)
     except BaseException:
-        for p in tmp_dir.glob("*"):
-            os.chmod(p, stat.S_IWUSR | stat.S_IRUSR)
-        shutil.rmtree(tmp_dir, ignore_errors=True)
+        _remove_tree(data_dir if renamed else tmp_dir)
+        tmp_manifest.unlink(missing_ok=True)
         raise
+    return SnapshotResult(manifest, manifest_path, data_dir)
+
+
+def _remove_tree(directory: Path) -> None:
+    for p in directory.glob("*"):
+        os.chmod(p, stat.S_IWUSR | stat.S_IRUSR)
+    shutil.rmtree(directory, ignore_errors=True)
+
+
+def _manifest(client, snapshot_id, downloaded_at, server_ms, start_date, range_start, range_end,
+              first_open, cuts, files, quarantined) -> dict:
     gaps_total = {iv: sum(files[p]["per_interval"][iv]["gaps"] for p in PARTITIONS) for iv in SNAPSHOT_INTERVALS}
-    manifest = {
+    return {
         "schema_version": MANIFEST_SCHEMA_VERSION,
         "snapshot_id": snapshot_id,
         "downloaded_at_utc": downloaded_at,
@@ -213,11 +244,8 @@ def build_snapshot(client: BinancePublicClient, snapshot_id: str, data_root: Pat
         "file_modes": {"train_val": "0o444", "oos": "0o000", "lockbox": "0o000"},
         "writer": {"python": platform.python_version(), "pandas": pd.__version__, "pyarrow": pyarrow.__version__},
         "lockbox": {"status": "SEALED", "rule": "no se carga en desarrollo; solo en la evaluación final única (REQ-G-109)"},
+        "incomplete_build_quarantined": quarantined,
     }
-    tmp_manifest = manifest_path.with_suffix(".json.tmp")
-    tmp_manifest.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
-    os.replace(tmp_manifest, manifest_path)
-    return SnapshotResult(manifest, manifest_path, data_dir)
 
 
 def load_manifest(manifest_path: Path) -> dict:

@@ -18,8 +18,15 @@
   autentica a una persona; deja la autorización trazable a un documento versionado.
 - Consumo de OOS/LOCKBOX (QA3-06): se registra aquí (archivo versionado), no solo en el
   registro de accesos.
+- Concurrencia (QA3R2-03): toda escritura toma un `flock` exclusivo sobre `<registro>.lock`;
+  `claim_partition` comprueba y anota el consumo dentro del mismo bloqueo, de modo que dos
+  procesos no pueden consumir a la vez la misma partición. Requiere un sistema POSIX (Linux,
+  como los equipos del proyecto) y un sistema de archivos local.
 """
+import contextlib
+import fcntl
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -104,23 +111,50 @@ class ExperimentRegistry:
                     return True
         return False
 
-    def record_partition_consumed(self, *, snapshot_id: str, partition: str, experiment_id: str,
-                                  snapshot_last_open_time: int, decision_ref: str) -> dict:
-        return self._append({"kind": "PARTITION_CONSUMED", "snapshot_id": snapshot_id, "partition": partition,
-                             "experiment_id": experiment_id, "snapshot_last_open_time": snapshot_last_open_time,
-                             "decision_ref": decision_ref, "actor": OWNER})
+    def claim_partition(self, *, snapshot_id: str, partition: str, experiment_id: str,
+                        snapshot_last_open_time: int, decision_ref: str) -> dict | None:
+        """Comprueba y registra el consumo de forma atómica entre procesos (QA3R2-03).
+        Devuelve el registro, o None si la partición ya estaba consumida."""
+        with self._locked():
+            if self.is_consumed(snapshot_id, partition, experiment_id):
+                return None
+            return self._write({"kind": "PARTITION_CONSUMED", "snapshot_id": snapshot_id, "partition": partition,
+                                "experiment_id": experiment_id, "snapshot_last_open_time": snapshot_last_open_time,
+                                "decision_ref": decision_ref, "actor": OWNER})
+
+    def record_partition_consumed(self, **kw) -> dict:
+        rec = self.claim_partition(**kw)
+        if rec is None:
+            raise ExperimentError(f"{kw['partition']} de {kw['snapshot_id']} ya consumido (evaluación única)")
+        return rec
 
     def trials_count(self) -> int:
         """Experimentos probados, incluidos antecedentes y rechazados (REQ-G-P17; DEC-018 decisión 4)."""
         return len(self.experiments())
 
     # --- escritura (append-only) -----------------------------------------------------------
-    def _append(self, rec: dict) -> dict:
-        rec = {"at_utc": self._now(), **rec}
+    @contextlib.contextmanager
+    def _locked(self):
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.path.with_name(self.path.name + ".lock"), "a") as lk:
+            fcntl.flock(lk, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(lk, fcntl.LOCK_UN)
+
+    def _write(self, rec: dict) -> dict:
+        """Escribe un registro; el llamador debe tener el bloqueo (`_locked`)."""
+        rec = {"at_utc": self._now(), **rec}
         with open(self.path, "a") as fh:
             fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
+            fh.flush()
+            os.fsync(fh.fileno())
         return rec
+
+    def _append(self, rec: dict) -> dict:
+        with self._locked():
+            return self._write(rec)
 
     def create(self, experiment_id: str, title: str, actor: str) -> dict:
         if experiment_id in self.experiments():

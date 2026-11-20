@@ -11,6 +11,7 @@ __pycache__/
 # Entornos virtuales
 venv/
 .venv/
+.venv-*/
 env/
 ENV/
 
@@ -43,3 +44,7 @@ Thumbs.db
 
 # Datos locales de ejecución (presupuesto de IA, registros)
 var/
+
+# Bloqueo del registro de experimentos (QA3R2-03) y manifiesto temporal de snapshot (QA3R2-02)
+research/experiments/*.lock
+research/snapshots/*.json.tmp
