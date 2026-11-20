@@ -187,7 +187,15 @@ class AIOrchestrator:
         for m in phase2:
             by_type.setdefault(m["message_type"], []).append(m)
 
-        candidates = by_type.get("STRATEGY_CANDIDATE", [])
+        # CR-018 B.7.1 (5): un STRATEGY_CANDIDATE con sobre FAILED o result_status distinto de
+        # COMPLETED (error técnico del Strategy Engine) termina el ciclo sin LLM. Los candidatos
+        # de IMPL-1/2 sin result_status siguen siendo válidos.
+        raw_candidates = by_type.get("STRATEGY_CANDIDATE", [])
+        if any(m["status"] == "FAILED" or m["payload"].get("result_status", "COMPLETED") != "COMPLETED"
+               for m in raw_candidates):
+            res.reason = "STRATEGY_ENGINE_ERROR"
+            return res  # cero llamadas a LLM
+        candidates = raw_candidates
         if "NO_SETUP" in by_type or len(candidates) != 1:
             res.reason = "NO_SETUP" if "NO_SETUP" in by_type or not candidates else "MULTIPLE_CANDIDATES"
             return res  # cero llamadas a LLM

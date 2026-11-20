@@ -1,6 +1,6 @@
 """Contrato universal de mensajes (REQ-G-060, REQ-G-061; api_contracts.md §1).
 
-Los 31 tipos de evento provienen del catálogo de api_contracts.md §2
+Los 33 tipos de evento provienen del catálogo de api_contracts.md §2
 (un test verifica que coinciden con el documento).
 """
 import uuid
@@ -25,6 +25,7 @@ EVENT_TYPES = (
     "HEARTBEAT", "PUBLIC_IP_CHANGED", "OPERATION_STATE_CHANGED",
     "AUTHORIZATION_EXPIRED", "AI_BUDGET_WARNING", "PROTECTIVE_CLOSE_SUBMITTED",
     "STRATEGY_ANALYSIS_COMPLETED",  # CR-015
+    "STRATEGY_EXIT_SIGNAL", "STOP_ADJUSTMENT_REQUESTED",  # CR-018
 )
 
 _UUID4 = r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"

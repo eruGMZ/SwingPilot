@@ -1,5 +1,56 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 «Integración cuantitativa» (2026-11-20) — EN CURSO: QA de 2 rondas completada
+
+**Estado:** DEC-017, DEC-018 y DEC-019 (CR-018 aprobada y aplicada). Contrato **v1.6**. `feature_list.json` v1.12.0. Código de FEAT-018..022 implementado (sin QA).
+
+| FEAT | Estado | QA ronda 2 |
+|---|---|---|
+| FEAT-015 Snapshot | READY_FOR_REVIEW | Conforme con observaciones (QA3R2-02, 03) |
+| FEAT-016 Datos en vivo | READY_FOR_REVIEW | Conforme con observaciones (QA3R2-05) |
+| FEAT-017 Research | IN_PROGRESS (AC-017-10/11 bloqueados) | Infraestructura conforme con observaciones (QA3R2-01: corregir antes de usar el evaluador) |
+| FEAT-019 ML | IN_PROGRESS (AC-019-4, CR-018) | Infraestructura conforme |
+| FEAT-018..022 | IN_PROGRESS | Implementadas en `src/swingpilot/engines/` (36 pruebas); sin QA independiente; pendientes AC-018-2/6, AC-020-8, AC-022-6 |
+
+**Informes:** `harness/verification/IMPL-3_QA_ronda1.md` (hallazgos y correcciones), `IMPL-3_QA_ronda2.md`, `IMPL-3_entorno_reproducibilidad.md`, `IMPL-3_EXP-0001_procedencia.md`.
+
+**Pendiente del propietario:**
+1. Hallazgos de la ronda 2 (3 MENOR, 5 OBS). Las rondas de QA están agotadas (2/2): corregirlos requiere indicar cómo se verifican.
+2. Cierre de FEAT-015/016 (no autorizado aún).
+3. ENV-01..04.
+4. Cortes de SNAP-0001 frente a los datos ya usados por Fase 0/EXP-0001. SNAP-0001 NO se crea sin autorización expresa.
+5. QA independiente de FEAT-018..022 (nueva tanda de rondas) y, si se quiere, corridas reales con LLM de FEAT-022 (USD 0.50).
+
+**Restricciones vigentes:** sin OOS/LOCKBOX; sin credenciales privadas; sin activar estrategias; IA $0.50 sin consumo; sin commit ni push.
+
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 426 passed, 5 skipped. Validadores → OK.
+
+**Siguiente acción autorizada:** ninguna de código hasta la indicación del propietario.
+
+### Planificación (histórico de esta sesión)
+
+**Pendiente en su momento (resuelto en DEC-018 salvo lo indicado arriba):** Q42, CR-018 B.6/B.7, EXP-0001, criterios de FEAT-015..022.
+
+### Registro inicial de FEAT (histórico de esta sesión)
+
+**Estado previo:** FEAT-015..022 registradas en `feature_list.json` v1.4.0 con status PENDING; plan en `impl3_plan`. Sin código.
+
+| FEAT | Contenido | Vacío del contrato |
+|---|---|---|
+| FEAT-015 | Snapshot histórica sellada (REQ-G-109) | Ubicación (Q46) |
+| FEAT-016 | Datos en vivo, velas cerradas, resync (REQ-G-097) | Fase no asignada en §7 (Q41) |
+| FEAT-017 | Research & Backtesting (preregistro, WF, modelo de ejecución) | — |
+| FEAT-018 | Regime Engine (REGIME_CLASSIFIED) | Clases y esquema (Q42, Q45) |
+| FEAT-019 | ML Engine (versionado, promoción, drift) | Esquema; alcance (Q44, Q45) |
+| FEAT-020 | Strategy Engine (STRATEGY_CANDIDATE, NO_SETUP) | Estrategia concreta; esquemas (Q43, Q45) |
+| FEAT-021 | Normalización TRADE_PROPOSAL §4.1 | — |
+| FEAT-022 | Ciclo Fase 1→4 con datos reales (salida de IMPL-3) | Tope de gasto (Q47) |
+
+- Bloqueo: Q41–Q47 del propietario. Q45 propone CR-018 (esquemas) antes del código de FEAT-018..021.
+- Sigue abierto: CR-017 (PROPUESTA, B.1–B.5).
+- Nota de entorno: esta máquina no tiene `.venv`; crearla con `requirements-dev.txt` antes de ejecutar pruebas.
+- (Superado: planificación aprobada en DEC-017.)
+
 ## Cierre de IMPL-2 (2026-11-20) — transición a IMPL-3
 
 **Estado:** IMPL-2 «Agentes especializados» CERRADA con aprobación del propietario (2026-11-20). Contrato v1.5. G0..G4 PASS (G4 con alcance IMPL-1 + IMPL-2); G5..G7 PENDING.

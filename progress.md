@@ -1060,3 +1060,149 @@
 **Abierto:** CR-017 (PROPUESTA): fuente de noticias y `macro_data`; G6: evaluación amplia de TC-SEC-003; G5..G7 PENDING.
 
 **Siguiente acción autorizada:** iniciar IMPL-3 «Integración cuantitativa» solo cuando el propietario lo indique (poblar sus FEAT desde el contrato v1.5).
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3 «Integración cuantitativa»: registro de FEAT y plan propuesto | PENDIENTE DE APROBACIÓN
+
+**Actividad:** a indicación del propietario («empieza por la recomendada»: propuesta de IMPL-3 antes que las preguntas de CR-017). Inicio de sesión según AGENTS.md. Registradas FEAT-015..022 (status PENDING) desde el contrato v1.5: architecture.md §7 fila 3; REQ-G-070..073, REQ-G-092, REQ-G-097, REQ-G-100..109, REQ-G-142; Módulo 15 (P10..P17, P21..P23); data_flow.md §1, §3, §5; test_plan.md §5, §8.2, §8.3, §9; DEC-005, DEC-011, DEC-013. FEAT-015 snapshot; FEAT-016 datos en vivo (propuesta de alcance: §7 no asigna la captura a ninguna fase); FEAT-017 Research & Backtesting; FEAT-018 Regime Engine; FEAT-019 ML Engine; FEAT-020 Strategy Engine; FEAT-021 normalización §4.1; FEAT-022 ciclo Fase 1→4 con datos reales. Vacíos del contrato marcados en `contract_gaps_pending` (clases de régimen, estrategias concretas, esquemas de REGIME_CLASSIFIED / ML_INFERENCE_COMPLETED / STRATEGY_CANDIDATE, señal de salida, motivos de NO_SETUP). Plan en `impl3_plan` con 7 preguntas abiertas (Q41–Q47). Sin cambios de código.
+
+**Archivos:** `feature_list.json` (v1.4.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** ninguna de código (no hay `.venv` en esta máquina; sin cambios en `src/` ni `tests/`); validate_manifest.py, validate_requirements.py, validate_gates.py → OK; referencias REQ/TC de FEAT-015..022 comprobadas contra el contrato.
+
+**Siguiente acción:** respuesta del propietario a Q41–Q47 y aprobación del plan de IMPL-3. CR-017 (preguntas B.1–B.5) sigue pendiente.
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: planificación aprobada (DEC-017), propuesta Q42, borrador CR-018 y criterios definitivos | PENDIENTE DE REVISIÓN
+
+**Aprobación:** el propietario aprobó la planificación de IMPL-3 con decisiones Q41–Q47, registradas en `docs/decisions/DEC-017_plan-impl3-integracion-cuantitativa.md`: Q41 captura en vivo aprobada (Laptop B en IMPL-5); Q42 pendiente de decisión; Q43 piloto Trend Following H4 (EXP-0001 antecedente; Mean Reversion H1 rechazada; cierre sin estrategia APPROVED); Q44 ML solo infraestructura; Q45 CR-018 aprobada para elaboración; Q46 Parquet fuera de Git con manifiestos y hashes en el repositorio; Q47 USD 0.50 (aviso 0.40, reserva atómica con reintentos y paralelas, sin gasto automático). Condiciones generales registradas en DEC-017.
+
+**Actividad (sin código):**
+- `harness/plans/IMPL-3_plan.md` (nuevo): alcance, bloqueos por FEAT, secuencia, almacenamiento, presupuesto y riesgos metodológicos.
+- `harness/plans/IMPL-3_Q42_regime_engine_propuesta.md` (nuevo): alternativas A–D, transición, incertidumbre, validación; recomendación B + D (volatilidad D1 + mediciones, solo contexto). Sin valores aprobados.
+- `harness/change_requests/CR-018_contratos-motores-cuantitativos.md` (nuevo, BORRADOR): reglas comunes, REGIME_CLASSIFIED, ML_INFERENCE_COMPLETED (NO_ACTIVE_MODEL), STRATEGY_CANDIDATE, STRATEGY_EXIT_SIGNAL (nuevo), STOP_ADJUSTMENT_REQUESTED (opcional), motivos de NO_SETUP, normalización §3.3 → §4.1 v1.1.0 (precios y salida desde el candidato, no del LLM). Contrato sigue en v1.5.
+- `feature_list.json` v1.5.0: criterios de aceptación definitivos propuestos de FEAT-015..022 con bloqueos (`blocked_by`); `impl3_plan` actualizado.
+
+**Observación:** EXP-0001 y el rechazo de Mean Reversion H1 no constan en el repositorio; se necesita su documentación para el preregistro del piloto (riesgo de contaminación de OOS/LOCKBOX y conteo para P17).
+
+**Archivos:** `docs/decisions/DEC-017_plan-impl3-integracion-cuantitativa.md`, `harness/plans/IMPL-3_plan.md`, `harness/plans/IMPL-3_Q42_regime_engine_propuesta.md`, `harness/change_requests/CR-018_contratos-motores-cuantitativos.md`, `feature_list.json`, `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** validate_manifest.py, validate_requirements.py, validate_gates.py → OK. Sin cambios de código; pytest no ejecutado (no hay `.venv` en esta máquina).
+
+**Siguiente acción:** revisión del propietario de la propuesta Q42, del borrador CR-018 y de los criterios de FEAT-015..022; aporte de la documentación de EXP-0001. Sin commit (DEC-017, condición 7).
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: DEC-018 e implementación autorizada de FEAT-015, FEAT-016, FEAT-017 (infraestructura) y FEAT-019 (infraestructura) | PENDIENTE DE REVISIÓN INDEPENDIENTE
+
+**Decisiones del propietario (DEC-018):** Q42 = B + D (volatilidad D1 en 3 categorías por percentiles solo con pasado; dirección como contexto; parámetros justificados con Train). CR-018 B.6 = `STOP_ADJUSTMENT_REQUESTED` como solicitud. B.7 = `NO_SETUP` + `PRE_PHASE3_BLOCK`; errores técnicos como `ERROR`. EXP-0001: no completar ni preregistrar el piloto sin su documentación y la comprobación de las particiones; EXP-0001 y Mean Reversion H1 en el historial. Autorizada la implementación de FEAT-015, FEAT-016 y la infraestructura de FEAT-017 y FEAT-019; FEAT-018/020/021/022 BLOQUEADAS. Restricciones: sin OOS/LOCKBOX, sin credenciales privadas, sin activar estrategias, IA $0.50 sin consumo.
+
+**Documentos:** `docs/decisions/DEC-018_revision-impl3-q42-cr018-exp0001.md` (nuevo); CR-018 → BORRADOR rev. 2 (B.6, B.7, `regime_label` v1; `UPSTREAM_ERROR` sale de NO_SETUP; pendiente de aprobación global).
+
+**Código (sin estrategias ni modelos):**
+- `src/swingpilot/market_data/` (FEAT-016 y base de FEAT-015): velas y cierre según hora del servidor; cliente REST público (solo /klines y /time, rechaza parámetros de autenticación); almacén SQLite inmutable con fuente y hora de recepción; `LiveFeed` Fail-Closed con resincronización desde último open_time + 1 y velas en espera; transporte WebSocket público.
+- `src/swingpilot/research/` (FEAT-015/017): snapshot sellada (Parquet de solo lectura en var/, manifiesto con SHA-256 en research/), cargador con OOS/LOCKBOX bloqueados y registro de accesos, registro de experimentos de 12 estados, preregistro congelado y desviaciones, histórico mínimo, ventanas WF, indicadores causales, escalado solo con Train, backtest con el modelo de ejecución preregistrado, evaluador de aceptación (nunca devuelve APPROVED); CLI de snapshot con `--confirm`.
+- `src/swingpilot/ml/registry.py` (FEAT-019): registro con hash datos+código+parámetros, promoción solo con experimento APPROVED, suspensión por degradación (P22) sin reentrenamiento.
+- `research/experiments/registry.jsonl`: EXP-0001 (PENDING_DOCUMENTATION) y ANT-MR-H1 (REJECTED; ID asignado por el Orquestador).
+
+**Defecto encontrado y corregido:** `resync()` ejecutado con `asyncio.to_thread` usaba la conexión SQLite desde otro hilo; el bucle del WebSocket reconectaba indefinidamente. Corregido y cubierto por prueba.
+
+**Parámetros no fijados por el contrato** (Sharpe, línea base, bootstrap, umbral del Deflated Sharpe): obligatorios en el preregistro, sin valor por defecto en el código.
+
+**Entorno:** el sistema no tenía `python3-venv` ni pip; `.venv` creado con `venv --without-pip` + `get-pip.py` (PyPA). `requirements-dev.txt` + pandas, numpy, pyarrow, websockets.
+
+**Archivos:** `src/swingpilot/market_data/*` (nuevo), `src/swingpilot/research/*` (nuevo), `src/swingpilot/ml/*` (nuevo), `tests/unit/test_market_data.py`, `tests/unit/test_snapshot.py`, `tests/unit/test_research.py`, `tests/unit/test_ml_registry.py`, `tests/security/test_impl3_isolation.py`, `tests/integration/test_binance_public_live.py` (nuevos), `research/README.md`, `research/experiments/registry.jsonl`, `requirements-dev.txt`, `docs/decisions/DEC-018_*.md`, `harness/change_requests/CR-018_*.md`, `feature_list.json` (v1.7.0), `progress.md`, `session-handoff.md`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests` → 325 passed, 5 skipped (antes 256 passed, 3 skipped); nuevas: 17 + 11 + 32 + 6 + 3 = 69. `RUN_BINANCE_PUBLIC_LIVE=1 … test_binance_public_live.py` → 2 passed (REST y WebSocket públicos reales). validate_manifest/requirements/gates → OK.
+
+**Estados:** FEAT-015 y FEAT-016 READY_FOR_REVIEW; FEAT-017 y FEAT-019 IN_PROGRESS (infraestructura lista; AC-017-10/11 y AC-019-4 bloqueados); FEAT-018/020/021/022 BLOCKED.
+
+**No hecho por estar fuera del alcance o requerir indicación:** snapshot definitiva (fija los cortes para siempre); evaluación OOS/LOCKBOX; preregistro del piloto; estrategias; gasto de IA; commit.
+
+**Siguiente acción:** revisión independiente (QA) de FEAT-015/016 y de la infraestructura de FEAT-017/019; indicación del propietario para crear la snapshot definitiva; aprobación global de CR-018 rev. 2; documentación de EXP-0001.
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: QA independiente ronda 1, entorno, CR-018 rev. 3 y procedencia de EXP-0001 | PENDIENTE DE DECISIÓN
+
+**Instrucción del propietario:** QA independiente de FEAT-015/016 y de la infraestructura de FEAT-017/019; revisión del entorno; esquema de errores técnicos en CR-018 (sin aplicar); búsqueda de EXP-0001; no crear SNAP-0001; sin gasto de IA, commit ni push.
+
+**QA ronda 1** (sub-agente independiente, sonnet, solo lectura, sin red; ~193K tokens; $0 del presupuesto de IA de IMPL-3): `harness/verification/IMPL-3_QA_ronda1.md`. 5 MAYOR (QA3-01 recuperación WebSocket sin reintento; QA3-02 descarga truncada sellada como válida; QA3-03 antecedentes en cualquier estado eluden OOS/LOCKBOX y promoción; QA3-04 decisión validada solo por nombre de archivo; QA3-05 evaluador falla en abierto con NaN), 11 MENOR y 3 observaciones. El Orquestador reejecutó QA3-01, 02, 03, 05 y 06 con el mismo resultado. Veredictos: FEAT-015, 016 y 017 NO CONFORME; FEAT-019 CONFORME CON OBSERVACIONES. FEAT-015 y FEAT-016 vuelven de READY_FOR_REVIEW a IN_PROGRESS. Sin correcciones aplicadas.
+
+**Entorno:** `harness/verification/IMPL-3_entorno_reproducibilidad.md`. get-pip.py idéntico al de `pypa/get-pip` (SHA-256 `356e0d0d…`) y pip 26.3 instalado idéntico al wheel de PyPI. Riesgos: ENV-01 MAYOR (requirements-dev.txt sin versiones), ENV-02..04 MENOR (scikit-learn sin declarar, procedimiento no estándar, versión de Python no registrada).
+
+**CR-018 rev. 3:** B.7.1. Error técnico del Strategy Engine en `STRATEGY_CANDIDATE` con `result_status = ERROR`, sobre `FAILED`, esquema condicional que prohíbe campos de candidato, `error.stage` y `upstream_message_id`, TC-FLOW-011; comparación con un evento independiente. Corrección de coherencia: `INVALID_CANDIDATE` pasa de NO_SETUP a error técnico. No aplicada (contrato v1.5).
+
+**EXP-0001:** `harness/verification/IMPL-3_EXP-0001_procedencia.md`. Documentación original encontrada en la historia de git del proyecto hermano `trading-bot` (commit `21c5f25`): preregistro v4 congelado (D-024), configuraciones A–D, motor con manifiesto de hashes, Fase 0 Mean Reversion H1 rechazada (4 configuraciones). **No recuperable:** resultados de Train de EXP-0001 (no existen en ninguna rama; se desconoce si llegó a ejecutarse), CSV previo de Fase 0, estado posterior del lockbox. No se abrió ningún CSV de precios ni se reconstruyeron resultados. **Integridad:** con 50/20/15/15, la OOS de SNAP-0001 (≈2024-02 → 2025-06) y parte del LOCKBOX (≈2025-06 → 2025-11) caen en datos ya usados por Fase 0/EXP-0001, y el resto del LOCKBOX en el LOCKBOX_OOS_001 de trading-bot («no plenamente ciego»). Requiere decisión del propietario antes de SNAP-0001.
+
+**Archivos:** `harness/verification/IMPL-3_QA_ronda1.md`, `IMPL-3_entorno_reproducibilidad.md`, `IMPL-3_EXP-0001_procedencia.md` (nuevos); `harness/change_requests/CR-018_*.md` (rev. 3); `feature_list.json` (v1.8.0); `progress.md`; `session-handoff.md`. Sin cambios en `src/` ni `tests/`.
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q tests` → 325 passed, 5 skipped (QA y Orquestador); reproducciones de la QA en `/tmp/claude-1000/qa-impl3/`; validadores → OK.
+
+**Siguiente acción:** decisión del propietario sobre (1) corregir QA3-01..19 y lanzar la QA ronda 2; (2) ENV-01..04; (3) cortes de SNAP-0001 y tratamiento de TF H4 y MR H1; (4) aprobación de CR-018 rev. 3.
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: corrección de QA3-01..19 y lanzamiento de la QA ronda 2 | EN REVISIÓN
+
+**Autorización del propietario:** «Autorizo corregir QA3-01..19 y lanzar la QA ronda 2».
+
+**Correcciones** (detalle por hallazgo en `harness/verification/IMPL-3_QA_ronda1.md` §Correcciones):
+- market_data: reintento de resync dentro de la conexión con espera exponencial y cola acotada (QA3-01); `klines_range(require_end)` (QA3-02); `RLock` en almacén y feed, generación por desconexión, `CancelledError` → `on_disconnect` (QA3-08); mensajes WS estrictos, `x` booleano, contraste con `E`, eventos acotados (QA3-16); política ante vela ausente en Binance documentada como PENDING (QA3-18).
+- research/snapshot y partitions: descarga completa obligatoria, rejilla hasta `range_end`, inicio de cotización declarado (QA3-02); `gaps_total` por partición (QA3-09); cortes enteros (QA3-10); escritura temporal y renombrado, id validado, LOCKBOX consumidos desde el registro (QA3-15); oos/lockbox con permisos 0o000, `verify_snapshot` solo `train_val`, consumo persistido en el registro de experimentos (QA3-06).
+- research/experiments: antecedentes restringidos, `eligible_state()` (QA3-03); decisiones por nombre `DEC-NNN…md` en `docs/decisions`, sin enlaces, que citen experimento, partición y snapshot (QA3-04).
+- research/acceptance: Fail-Closed ante no finitos (QA3-05); Sharpe, drawdown y DSR calculados internamente con el conteo del registro (QA3-07). El `ExperimentEvidence` cambia de interfaz.
+- research/backtest: la lógica solo ve el pasado (QA3-11); bruto, slippage y comisión separados; validación de señales (QA3-12).
+- research/scaling y preregistration: ajuste validado por fecha; «tras OOS» derivado del registro de accesos (QA3-13). indicators: percentil incremental (QA3-17).
+- ml/registry: suspensión ante no finitos (QA3-14); hashes SHA-256 validados; antecedentes no elegibles (QA3-03/18).
+- Pruebas: una o más por hallazgo; refuerzo de las pruebas débiles (QA3-19).
+
+**Pruebas ejecutadas:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 390 passed, 5 skipped (antes 325). Reproducciones de la ronda 1 reejecutadas (resultado en el informe). Validadores → OK.
+
+**QA ronda 2:** lanzada (sub-agente independiente nuevo, sonnet, solo lectura, sin red, $0 del presupuesto de IA de IMPL-3). Es la última ronda permitida.
+
+**Archivos:** `src/swingpilot/market_data/{candles,binance_public,store,live,stream}.py`, `src/swingpilot/research/{snapshot,partitions,cli,experiments,preregistration,indicators,scaling,backtest,acceptance}.py`, `src/swingpilot/ml/registry.py`, `tests/unit/{test_market_data,test_snapshot,test_research,test_ml_registry}.py`, `harness/verification/IMPL-3_QA_ronda1.md`, `feature_list.json` (v1.9.0), `progress.md`.
+
+**Sin cambios en:** snapshot (SNAP-0001 no creada), OOS/LOCKBOX, entorno (ENV-01..04 pendientes), CR-018 (no aplicada), presupuesto de IA. Sin commit.
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: QA independiente ronda 2 (última) | COMPLETADO — PENDIENTE DE DECISIÓN
+
+**QA ronda 2** (sub-agente nuevo, sonnet, solo lectura, sin red; ~149K tokens; $0 del presupuesto de IA): `harness/verification/IMPL-3_QA_ronda2.md`. pytest 390 passed, 5 skipped. Ronda 1: 17 de 19 CERRADOS; QA3-07 y QA3-15 PARCIALES. Nuevos: 0 bloqueantes, 0 MAYOR, 3 MENOR (QA3R2-01 evaluador con equity ≤ 0 o incoherente da ELIGIBLE; QA3R2-02 fallo entre renombrado y manifiesto; QA3R2-03 carrera de dos cargadores sobre el LOCKBOX) y 5 observaciones. Veredictos: FEAT-015 y FEAT-016 CONFORME CON OBSERVACIONES (→ READY_FOR_REVIEW); FEAT-017 infraestructura CONFORME CON OBSERVACIONES (sigue IN_PROGRESS por AC-017-10/11); FEAT-019 infraestructura CONFORME (sigue IN_PROGRESS por AC-019-4).
+
+**Sin correcciones de la ronda 2** (fuera de la autorización recibida). Rondas de QA agotadas (2/2).
+
+**Archivos:** `harness/verification/IMPL-3_QA_ronda2.md` (nuevo), `feature_list.json` (v1.10.0), `progress.md`, `session-handoff.md`.
+
+**Siguiente acción:** decisión del propietario sobre los hallazgos de la ronda 2 y su verificación; ENV-01..04; cortes de SNAP-0001; aprobación de CR-018 rev. 3; cierre de FEAT-015/016.
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: CR-018 rev. 3 aprobada (DEC-019) y aplicada — contrato v1.6 | COMPLETADO
+
+**Aprobación:** «Apruebo CR-018 rev. 3». Registrada en `docs/decisions/DEC-019_aprobacion-cr018-contratos-motores.md`.
+
+**Aplicación (B.9):** `implementation/api_contracts.md` (catálogo 33 tipos con STRATEGY_EXIT_SIGNAL y STOP_ADJUSTMENT_REQUESTED; nueva §3.8 con B.0–B.8 transcritos; §3.3 nota de normalización; §4.1 v1.1.0), `data_flow.md` (Fase 2, salida, E4/E9), `requirements.md` (REQ-G-063, 071, 073), `test_plan.md` (TC-MSG-004/005, TC-FLOW-009/010/011, TC-NORM-001/002/003), `architecture.md` (versión); los 5 documentos en v1.6. `src/swingpilot/contracts/message.py` y su prueba: catálogo de 33 tipos. CR-018 → APROBADA y APLICADA.
+
+**Estados:** FEAT-018/020/021/022 pasan de BLOCKED a PENDING (contrato resuelto; código a indicación del propietario). FEAT-019 AC-019-4 igual.
+
+**Pruebas:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 390 passed, 5 skipped; validadores → OK.
+
+**Archivos:** DEC-019 (nuevo), CR-018, `implementation/*.md`, `src/swingpilot/contracts/message.py`, `tests/unit/test_message_contract.py`, `feature_list.json` (v1.11.0), `progress.md`, `session-handoff.md`. Sin commit.
+
+---
+
+## 2026-11-20 | FASE 2 | IMPL-3: código de FEAT-018..022 (contrato v1.6) | IMPLEMENTADO — PENDIENTE DE QA
+
+**Autorización:** «Autorizo iniciar el código de FEAT-018 a FEAT-022».
+
+**Código nuevo (`src/swingpilot/engines/`):** `schemas.py` (esquemas §3.8 B.0–B.7.1 y validación adicional: entrada en zona, stop bajo la zona, `requested_stop` > actual); `common.py` (`MarketInput`, `data_refs`, última vela cerrada, sobre FAILED con ERROR); `regime.py` (FEAT-018: UNCLASSIFIED sin especificación aprobada; con `RegimeSpec` inyectada, INSUFFICIENT_DATA, persistencia K y TRANSITION); `ml.py` (FEAT-019 AC-019-4: NO_ACTIVE_MODEL, MODEL_SUSPENDED, INFERENCE_AVAILABLE solo con predictor inyectado); `strategy.py` (FEAT-020: motor vacío de estrategias; errores técnicos como STRATEGY_CANDIDATE ERROR; salida y trailing; prioridad de salida; PRE_PHASE3_BLOCK; elegibilidad por modo, ML y régimen; resolución binaria); `normalizer.py` (FEAT-021: TRADE_PROPOSAL §4.1 v1.1.0 desde el candidato, consistencia con la síntesis, v1.0.0 legible); `cycle.py` (FEAT-022: E1→E9 en el mismo EventStore, sin Risk Manager ni órdenes). `ai/orchestrator.py`: rechaza en la Fase 3 un STRATEGY_CANDIDATE FAILED o con `result_status` ≠ COMPLETED (B.7.1). `ml/registry.py`: `model_record()`.
+
+**No implementado (bloqueado o fuera de alcance):** piloto TF H4 (AC-020-8, DEC-018); parámetros del clasificador (AC-018-2/6); corridas reales con LLM y reserva por ciclo de USD 0.50 (AC-022-6, solo a petición).
+
+**Pruebas:** `tests/unit/test_engines.py` (36: TC-MSG-004/005, TC-FLOW-001/004..007/009..011, TC-AI-007, TC-NORM-001..003, TC-AC-01/03/04/07); `tests/security/test_impl3_isolation.py` ampliado a `engines`. `.venv/bin/pytest -q -p no:cacheprovider tests` → 426 passed, 5 skipped. Validadores → OK. Defecto propio detectado y corregido: el filtro de candidatos exigía sobre COMPLETED y rompía 47 pruebas de IMPL-1/2 (sobres PENDING); ahora rechaza solo FAILED o `result_status` ≠ COMPLETED.
+
+**Estados:** FEAT-018..022 IN_PROGRESS (sin QA independiente). `feature_list.json` v1.12.0. Sin commit; $0 de IA.

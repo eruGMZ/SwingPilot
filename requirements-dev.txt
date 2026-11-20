@@ -1,3 +1,7 @@
 pytest
 jsonschema
 anthropic
+pandas
+numpy
+pyarrow
+websockets

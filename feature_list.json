@@ -1,10 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "1.3.0",
+    "version": "1.12.0",
     "phase": "FASE 2",
-    "status": "IMPL-2_CERRADA",
-    "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5 y cerrada (2026-11-20). Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md).",
+    "status": "IMPL-3_EN_CURSO",
+    "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5 y cerrada (2026-11-20). Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md). IMPL-3 (Integración cuantitativa, FEAT-015..022) registrada desde el contrato v1.5 con status PENDING; planificación aprobada (DEC-017); implementación parcial autorizada (DEC-018, 2026-11-20): FEAT-015/016/017/019 IN_PROGRESS, FEAT-018/020/021/022 BLOCKED.",
     "last_updated": "2026-11-20",
     "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-3..IMPL-6 se registran al iniciarlas. READY_FOR_REVIEW = criterios con implementación, prueba y evidencia; pasa a DONE tras revisión independiente (QA o propietario), porque ningún agente aprueba su propio trabajo (AGENTS.md). DONE-PARTIAL = criterios de IMPL-1 cumplidos con dependencias explícitas de fases posteriores (criterio del propietario, 2026-11-19); no bloquea la salida de IMPL-1."
   },
@@ -1188,6 +1188,724 @@
         "status": "DONE-PARTIAL",
         "approved": "Propietario, 2026-11-20: «Apruebo el cierre de IMPL-2 con esos estados»"
       }
+    },
+    {
+      "id": "FEAT-015",
+      "title": "Snapshot histórica sellada y particiones Train+Val/OOS/LOCKBOX",
+      "implementation_phase": "IMPL-3 Integración cuantitativa (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-109",
+        "REQ-G-101",
+        "REQ-G-102",
+        "REQ-G-001",
+        "REQ-G-002"
+      ],
+      "contract_sections": [
+        "requirements.md REQ-G-109",
+        "data_flow.md §3",
+        "DEC-013",
+        "DEC-005 P10"
+      ],
+      "acceptance_criteria": [
+        "AC-015-1 Descarga por Binance REST público GET /api/v3/klines, BTC/USDT, 1d, 4h y 1h, desde 2017-08-17 hasta la fecha de snapshot; limit=1000 iterando con startTime; sin credenciales (REQ-G-109, DEC-017 Q41/Q46)",
+        "AC-015-2 Solo velas cerradas a la hora de corte según la hora del servidor de Binance; la vela en formación se excluye (REQ-G-070)",
+        "AC-015-3 Tres Parquet (train_val, oos, lockbox) con columna interval; cortes cronológicos 50/20/15/15 fijados una sola vez por fecha e idénticos para 1d, 4h y 1h (REQ-G-109, DEC-005 P10, TC-ML-015)",
+        "AC-015-4 Huecos como NaN sin interpolar; conteo de huecos por intervalo y partición en el manifiesto (TC-ML-017)",
+        "AC-015-5 Parquet fuera de Git (var/snapshots/<snapshot_id>/); en el repositorio, manifiesto JSON con snapshot_id, timestamp de descarga, parámetros de descarga, fechas de corte, filas por archivo, SHA-256 por archivo y versiones de las librerías escritoras (DEC-017 Q46)",
+        "AC-015-6 Comando de verificación que recalcula los SHA-256 y falla si un archivo difiere del manifiesto; los archivos hasheados no se reescriben (TC-ML-015)",
+        "AC-015-7 El cargador rechaza abrir lockbox.parquet salvo en una evaluación final única registrada y autorizada por el propietario; oos.parquet solo en la evaluación final única; todo intento queda registrado (TC-ML-001, TC-ML-016)",
+        "AC-015-8 Pruebas locales sin red (respuestas REST simuladas) para paginación, huecos, cortes y hashes; la descarga real es un paso manual opt-in, sin costo de API"
+      ],
+      "test_cases": [
+        "TC-ML-001",
+        "TC-ML-015",
+        "TC-ML-016",
+        "TC-ML-017"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/research/snapshot.py",
+        "src/swingpilot/research/partitions.py",
+        "src/swingpilot/research/cli.py",
+        "src/swingpilot/market_data/binance_public.py"
+      ],
+      "test_paths": [
+        "tests/integration/test_binance_public_live.py",
+        "tests/security/test_impl3_isolation.py",
+        "tests/unit/test_snapshot.py"
+      ],
+      "status": "READY_FOR_REVIEW",
+      "evidence": {
+        "command": ".venv/bin/pytest -q tests/unit/test_snapshot.py; RUN_BINANCE_PUBLIC_LIVE=1 .venv/bin/pytest -q tests/integration/test_binance_public_live.py",
+        "executed_at": "2026-11-20T02:39Z",
+        "unit": "11 passed",
+        "live_public_smoke": "2 passed (REST real con paginación limit=1000; sin credenciales)",
+        "suite": "pytest -q tests → 390 passed, 5 skipped (tras correcciones QA3-01..19)",
+        "covered": [
+          "AC-015-1 (cliente y paginación; real en prueba de humo)",
+          "AC-015-2",
+          "AC-015-3",
+          "AC-015-4",
+          "AC-015-5",
+          "AC-015-6",
+          "AC-015-7",
+          "AC-015-8"
+        ],
+        "pending": [
+          "Snapshot definitiva NO creada: fija las fechas de corte de forma permanente; requiere indicación del propietario (cli build-snapshot --confirm)"
+        ]
+      },
+      "inherited_from_impl2": [],
+      "depends_on_later_phases": [],
+      "notes": "DEC-013/CR-013; DEC-017 Q46 (Parquet fuera de Git; manifiesto y hashes en el repositorio). Snapshot aún no descargada. QA r2: conforme con observaciones; cierre (DONE) no autorizado aún por el propietario.",
+      "blocked_by": [],
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "authorization": {
+        "authorized_by": "DEC-018 (2026-11-20)",
+        "scope": "completa"
+      },
+      "qa_reviews": [
+        {
+          "round": 1,
+          "date": "2026-11-20",
+          "report": "harness/verification/IMPL-3_QA_ronda1.md",
+          "verdict": "NO CONFORME",
+          "open_findings": [
+            "QA3-02",
+            "QA3-03",
+            "QA3-04",
+            "QA3-06",
+            "QA3-09",
+            "QA3-10",
+            "QA3-15"
+          ],
+          "corrections": "aplicadas 2026-11-20 (harness/verification/IMPL-3_QA_ronda1.md §Correcciones); pendiente de QA ronda 2"
+        },
+        {
+          "round": 2,
+          "date": "2026-11-20",
+          "report": "harness/verification/IMPL-3_QA_ronda2.md",
+          "verdict": "CONFORME CON OBSERVACIONES",
+          "open_findings": [
+            "QA3R2-02",
+            "QA3R2-03",
+            "QA3R2-04",
+            "QA3R2-08"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FEAT-016",
+      "title": "Datos de mercado en vivo: solo velas cerradas y resincronización (Fase 1 del flujo)",
+      "implementation_phase": "IMPL-3 Integración cuantitativa (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-070",
+        "REQ-G-097",
+        "REQ-G-002",
+        "REQ-G-131"
+      ],
+      "contract_sections": [
+        "data_flow.md §1 FASE 1",
+        "DEC-013",
+        "CR-003 §C"
+      ],
+      "acceptance_criteria": [
+        "AC-016-1 Suscripción WebSocket pública kline_1d, kline_4h y kline_1h de BTC/USDT; solo se consumen mensajes con x = true (REQ-G-097, TC-DATA-004)",
+        "AC-016-2 La vela en formación nunca produce señal; el cierre se decide con la hora del servidor de Binance, no con el reloj local (REQ-G-070, TC-DATA-001)",
+        "AC-016-3 Si falta la última vela cerrada esperada → DATA_UNAVAILABLE y ningún análisis produce propuesta (TC-DATA-002)",
+        "AC-016-4 Al reconectar: REST con startTime = último open_time persistido + 1, recuperando todas las velas cerradas faltantes (no solo la última) y verificando contra la última vela en memoria; Fail-Closed hasta resincronizar (REQ-G-097, TC-DATA-003)",
+        "AC-016-5 Validación de integridad: duplicados, huecos y timestamps fuera de orden detectados y registrados; tiempo de mercado (open/close time) separado del tiempo de procesamiento (REQ-G-070)",
+        "AC-016-6 Velas (en vivo y recuperadas) persistidas localmente fuera de Git, con fuente (binance_ws | binance_rest) y timestamp de recepción",
+        "AC-016-7 Sin credenciales ni endpoints privados; ninguna operación ni orden (DEC-017 Q41, condición 2)",
+        "AC-016-8 Pruebas locales con WebSocket y REST simulados (desconexión de más de un intervalo, mensajes x=false/x=true, duplicados); prueba opcional opt-in contra el stream público real, sin costo",
+        "AC-016-9 Fuera de alcance: puesta en marcha continua en Laptop B, reinicio automático y latido (IMPL-5, DEC-017 Q41)"
+      ],
+      "test_cases": [
+        "TC-DATA-001",
+        "TC-DATA-002",
+        "TC-DATA-003",
+        "TC-DATA-004"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/market_data/candles.py",
+        "src/swingpilot/market_data/binance_public.py",
+        "src/swingpilot/market_data/store.py",
+        "src/swingpilot/market_data/live.py",
+        "src/swingpilot/market_data/stream.py"
+      ],
+      "test_paths": [
+        "tests/unit/test_market_data.py",
+        "tests/integration/test_binance_public_live.py",
+        "tests/security/test_impl3_isolation.py"
+      ],
+      "status": "READY_FOR_REVIEW",
+      "evidence": {
+        "command": ".venv/bin/pytest -q tests/unit/test_market_data.py; RUN_BINANCE_PUBLIC_LIVE=1 .venv/bin/pytest -q tests/integration/test_binance_public_live.py",
+        "executed_at": "2026-11-20T02:39Z",
+        "unit": "17 passed",
+        "live_public_smoke": "2 passed (WebSocket público real kline_1d/4h/1h + resincronización REST)",
+        "suite": "pytest -q tests → 390 passed, 5 skipped (tras correcciones QA3-01..19)",
+        "covered": [
+          "AC-016-1..AC-016-8"
+        ],
+        "pending": [],
+        "defect_found_and_fixed": "resync() en asyncio.to_thread usaba la conexión SQLite desde otro hilo: el bucle reconectaba sin fin; corregido (check_same_thread=False, acceso secuencial)"
+      },
+      "inherited_from_impl2": [],
+      "depends_on_later_phases": [
+        "IMPL-5: puesta en marcha continua en Laptop B (DEC-007 Q22; DEC-017 Q41)"
+      ],
+      "notes": "Alcance aprobado en DEC-017 Q41. Solo endpoints públicos de mercado. QA r2: conforme con observaciones; cierre (DONE) no autorizado aún por el propietario.",
+      "blocked_by": [],
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "authorization": {
+        "authorized_by": "DEC-018 (2026-11-20)",
+        "scope": "completa"
+      },
+      "qa_reviews": [
+        {
+          "round": 1,
+          "date": "2026-11-20",
+          "report": "harness/verification/IMPL-3_QA_ronda1.md",
+          "verdict": "NO CONFORME",
+          "open_findings": [
+            "QA3-01",
+            "QA3-08",
+            "QA3-16",
+            "QA3-18"
+          ],
+          "corrections": "aplicadas 2026-11-20 (harness/verification/IMPL-3_QA_ronda1.md §Correcciones); pendiente de QA ronda 2"
+        },
+        {
+          "round": 2,
+          "date": "2026-11-20",
+          "report": "harness/verification/IMPL-3_QA_ronda2.md",
+          "verdict": "CONFORME CON OBSERVACIONES",
+          "open_findings": [
+            "QA3R2-05"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FEAT-017",
+      "title": "Research & Backtesting: preregistro, ciclo de vida de experimentos, Walk-Forward y modelo de ejecución",
+      "implementation_phase": "IMPL-3 Integración cuantitativa (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-100",
+        "REQ-G-103",
+        "REQ-G-104",
+        "REQ-G-106",
+        "REQ-G-107",
+        "REQ-G-108",
+        "REQ-G-142",
+        "REQ-G-081"
+      ],
+      "contract_sections": [
+        "data_flow.md §3",
+        "DEC-005",
+        "DEC-011",
+        "DEC-013"
+      ],
+      "acceptance_criteria": [
+        "AC-017-1 Registro de experimentos con los 12 estados (IDEA..APPROVED/REJECTED/INCONCLUSIVE) y transiciones condicionadas; ninguna transición a APPROVED sin HUMAN_REVIEW del propietario; la IA no puede aprobar (REQ-G-104, REQ-G-107)",
+        "AC-017-2 Experimentos REJECTED o INCONCLUSIVE se conservan con sus resultados; el registro es append-only (TC-ML-010)",
+        "AC-017-3 Preregistro con los campos de REQ-G-103 (incluidas ventanas WF, embargo, step, roll, nº de ventanas, modelo de ejecución, hash de la snapshot, conteo de huecos y declaración de régimen) que se congela con hash antes de cualquier evaluación confirmatoria; un cambio posterior queda como desviación y el experimento deja de ser confirmatorio (TC-ML-013)",
+        "AC-017-4 Histórico mínimo calculado con la tasa de trades del backtest piloto estimada solo con Train; si no alcanza 2 ventanas WF + OOS + LOCKBOX, el experimento no pasa de DESIGN (TC-ML-014)",
+        "AC-017-5 Walk-Forward solo dentro de Train+Val: 24 m entrenamiento → 2 m embargo → 6 m prueba, paso 6 m, ≥ 2 ventanas; ninguna observación de entrenamiento en el embargo o la prueba (REQ-G-106, TC-ML-011)",
+        "AC-017-6 Modelo de ejecución del backtest: entrada a la apertura de la vela siguiente a la señal; stop dentro de la vela al precio del stop con slippage 0.10% adverso; hueco a la apertura con slippage adverso; stop primero si toca stop y TP; comisión max(real, 0.10%) por lado; resultados bruto, costos y neto separados (REQ-G-109, REQ-G-142, TC-ML-018)",
+        "AC-017-7 Indicadores sin look-ahead (prueba de truncado: el valor en t no cambia al añadir datos posteriores) y normalización ajustada solo con la partición permitida (REQ-G-102, TC-ML-002, TC-ML-003)",
+        "AC-017-8 Evaluador de aceptación implementado y probado con datos sintéticos: muestra mínima, PF ≥ 1.3, expectancy ≥ 0.10 R, DD ≤ 20%, Sharpe OOS ≥ 0.8, IC bootstrap 95% > 0, línea base ingenua, corrección por nº de experimentos que incluye los antecedentes declarados (TC-ML-004..006)",
+        "AC-017-9 OOS y LOCKBOX de evaluación única; LOCKBOX consumido queda registrado y no se reutiliza (TC-ML-007, TC-ML-012, TC-ML-019)",
+        "AC-017-10 Piloto Trend Following H4 (DEC-017 Q43): NO se completa ni se preregistra hasta recuperar la documentación de EXP-0001 y comprobar la integridad de las particiones (DEC-018 decisión 4)",
+        "AC-017-11 Backtest piloto reproducible sobre Train para estimar la tasa de trades; Walk-Forward dentro de Train+Val permitido; la evaluación OOS y la del LOCKBOX NO se ejecutan en IMPL-3 sin autorización explícita del propietario",
+        "AC-017-12 Todo se ejecuta en modo Research, sin órdenes (REQ-G-081)",
+        "AC-017-13 El historial de experimentación incluye EXP-0001 y Mean Reversion H1 (REJECTED) como antecedentes declarados por el propietario y los cuenta en la corrección por número de experimentos (DEC-018 decisión 4, REQ-G-P17)"
+      ],
+      "test_cases": [
+        "TC-ML-002",
+        "TC-ML-003",
+        "TC-ML-004",
+        "TC-ML-005",
+        "TC-ML-006",
+        "TC-ML-007",
+        "TC-ML-010",
+        "TC-ML-011",
+        "TC-ML-012",
+        "TC-ML-013",
+        "TC-ML-014",
+        "TC-ML-018",
+        "TC-ML-019"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/research/experiments.py",
+        "src/swingpilot/research/preregistration.py",
+        "src/swingpilot/research/backtest.py",
+        "src/swingpilot/research/indicators.py",
+        "src/swingpilot/research/scaling.py",
+        "src/swingpilot/research/acceptance.py",
+        "research/experiments/registry.jsonl"
+      ],
+      "test_paths": [
+        "tests/unit/test_research.py",
+        "tests/unit/test_snapshot.py"
+      ],
+      "status": "IN_PROGRESS",
+      "evidence": {
+        "command": ".venv/bin/pytest -q tests/unit/test_research.py",
+        "executed_at": "2026-11-20T02:39Z",
+        "unit": "32 passed",
+        "suite": "pytest -q tests → 390 passed, 5 skipped (tras correcciones QA3-01..19)",
+        "covered": [
+          "AC-017-1",
+          "AC-017-2",
+          "AC-017-3",
+          "AC-017-4",
+          "AC-017-5",
+          "AC-017-6",
+          "AC-017-7",
+          "AC-017-8 (con datos sintéticos)",
+          "AC-017-9 (con FEAT-015)",
+          "AC-017-12",
+          "AC-017-13 (EXP-0001 y ANT-MR-H1 en research/experiments/registry.jsonl)"
+        ],
+        "pending": [
+          "AC-017-10 bloqueado: documentación de EXP-0001 (DEC-018 decisión 4)",
+          "AC-017-11: backtest piloto en Train tras el preregistro (depende de AC-017-10 y de la snapshot definitiva)"
+        ],
+        "parameters_not_fixed_by_contract": "Definición del Sharpe, línea base ingenua, parámetros del bootstrap y umbral de probabilidad del Deflated Sharpe: campos obligatorios del preregistro, sin valor por defecto en el código"
+      },
+      "inherited_from_impl2": [],
+      "depends_on_later_phases": [],
+      "notes": "DEC-017 Q43. EXP-0001 y el rechazo de Mean Reversion H1 no constan en el repositorio: PENDING de aporte del propietario. Si EXP-0001 usó datos que caen en el OOS o el LOCKBOX de la nueva snapshot, se declara en el preregistro (REQ-G-101/102). Infraestructura lista para revisión; la FEAT sigue IN_PROGRESS por AC-017-10/11.",
+      "blocked_by": [
+        "AC-017-10: documentación de EXP-0001 y comprobación de la integridad de las particiones (DEC-018 decisión 4)"
+      ],
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "authorization": {
+        "authorized_by": "DEC-018 (2026-11-20)",
+        "scope": "infraestructura general; SIN preregistro definitivo del piloto (AC-017-10) ni evaluación OOS/LOCKBOX"
+      },
+      "qa_reviews": [
+        {
+          "round": 1,
+          "date": "2026-11-20",
+          "report": "harness/verification/IMPL-3_QA_ronda1.md",
+          "verdict": "NO CONFORME (infraestructura)",
+          "open_findings": [
+            "QA3-03",
+            "QA3-04",
+            "QA3-05",
+            "QA3-07",
+            "QA3-11",
+            "QA3-12",
+            "QA3-13",
+            "QA3-17"
+          ],
+          "corrections": "aplicadas 2026-11-20 (harness/verification/IMPL-3_QA_ronda1.md §Correcciones); pendiente de QA ronda 2"
+        },
+        {
+          "round": 2,
+          "date": "2026-11-20",
+          "report": "harness/verification/IMPL-3_QA_ronda2.md",
+          "verdict": "CONFORME CON OBSERVACIONES (infraestructura)",
+          "open_findings": [
+            "QA3R2-01",
+            "QA3R2-06",
+            "QA3R2-07"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "FEAT-018",
+      "title": "Regime Engine: clasificación determinista de régimen (REGIME_CLASSIFIED, E2)",
+      "implementation_phase": "IMPL-3 Integración cuantitativa (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-057",
+        "REQ-G-071",
+        "REQ-G-061",
+        "REQ-G-062"
+      ],
+      "contract_sections": [
+        "api_contracts.md §2",
+        "data_flow.md §1 FASE 2, §5 (E2)",
+        "architecture.md §2"
+      ],
+      "acceptance_criteria": [
+        "AC-018-1 Emite REGIME_CLASSIFIED conforme al esquema aprobado en CR-018 §B.2, con correlation_id del ciclo y causation_id = E1",
+        "AC-018-2 Clasificación v1 (DEC-018 decisión 1): volatilidad D1 en tres categorías por percentiles calculados solo con datos pasados; mediciones de dirección solo como contexto (measurements); nombres, cortes, ventana mínima, histéresis y persistencia justificados con Train y aprobados por el propietario; hasta entonces regime_label = UNCLASSIFIED",
+        "AC-018-3 INSUFFICIENT_DATA con missing_data si no hay historial suficiente; ERROR estructurado ante datos inconsistentes; nunca una etiqueta por defecto distinta de UNCLASSIFIED",
+        "AC-018-4 Determinista y sin look-ahead (prueba de truncado); sin dependencia de LLM (TC-AC-07)",
+        "AC-018-5 No es decisor: solo condiciona una estrategia si su definición aprobada lo declara (REQ-G-071)",
+        "AC-018-6 Parámetros ajustados solo con Train; validación de estabilidad y utilidad según el método aprobado (propuesta Q42 §6)"
+      ],
+      "test_cases": [
+        "TC-AC-07",
+        "TC-MSG-003"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/engines/common.py",
+        "src/swingpilot/engines/regime.py",
+        "src/swingpilot/engines/schemas.py"
+      ],
+      "test_paths": [
+        "tests/security/test_impl3_isolation.py",
+        "tests/unit/test_engines.py"
+      ],
+      "status": "IN_PROGRESS",
+      "evidence": {
+        "engines_command": ".venv/bin/pytest -q tests/unit/test_engines.py",
+        "engines_executed_at": "2026-11-20",
+        "engines_unit": "36 passed",
+        "suite": "pytest -q tests → 426 passed, 5 skipped",
+        "engines_covered": [
+          "AC-018-1",
+          "AC-018-3",
+          "AC-018-4",
+          "AC-018-5"
+        ],
+        "engines_pending": [
+          "AC-018-2: clasificación v1 sin parámetros aprobados → UNCLASSIFIED (DEC-018)",
+          "AC-018-6: justificación con Train tras SNAP-0001"
+        ],
+        "qa": "sin QA independiente todavía (requiere indicación del propietario)"
+      },
+      "inherited_from_impl2": [],
+      "depends_on_later_phases": [],
+      "notes": "Q42 decidida en DEC-018: alternativas B + D. Parámetros de la clasificación: pendientes de justificación con Train y aprobación (DEC-018).",
+      "blocked_by": [
+        "AC-018-2: clasificación v1 sin parámetros aprobados → UNCLASSIFIED (DEC-018)",
+        "AC-018-6: justificación con Train tras SNAP-0001"
+      ],
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "authorization": {
+        "authorized_by": "Propietario, 2026-11-20: «Autorizo iniciar el código de FEAT-018 a FEAT-022»",
+        "scope": "código conforme al contrato v1.6"
+      },
+      "contract_gaps_pending_resolved": "CR-018 aplicada (api_contracts.md §3.8, contrato v1.6)"
+    },
+    {
+      "id": "FEAT-019",
+      "title": "ML Engine: inferencia versionada, promoción y degradación (ML_INFERENCE_COMPLETED, E3)",
+      "implementation_phase": "IMPL-3 Integración cuantitativa (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-092",
+        "REQ-G-105",
+        "REQ-G-057",
+        "REQ-G-071"
+      ],
+      "contract_sections": [
+        "requirements.md Módulo 15 P21..P23",
+        "DEC-005",
+        "data_flow.md §5 (E3)"
+      ],
+      "acceptance_criteria": [
+        "AC-019-1 Registro de modelos: ID + versión no reutilizable, hash de datos + código + parámetros (REQ-G-092, REQ-G-P23)",
+        "AC-019-2 Promoción solo desde HUMAN_REVIEW → APPROVED con registro de aprobación; cualquier otro intento se rechaza y se registra (TC-ML-009)",
+        "AC-019-3 Degradación: expectancy de los últimos 20 trades bajo el límite inferior del IC OOS, o PSI > 0.25 → modelo suspendido, Fail-Closed, sin reentrenamiento automático (REQ-G-P21/P22, TC-ML-008)",
+        "AC-019-4 Emite ML_INFERENCE_COMPLETED conforme a CR-018 §B.3; sin modelo APPROVED → inference_status = NO_ACTIVE_MODEL y la familia ML-Based no es elegible",
+        "AC-019-5 Sin modelo entrenado ni inferencias productivas en IMPL-3; las pruebas usan un modelo de juguete solo dentro de tests/ (DEC-017 Q44)",
+        "AC-019-6 Determinista y sin dependencia de LLM; la salida no se usa como confianza para resolver candidatos (TC-AC-07, TC-FLOW-007)"
+      ],
+      "test_cases": [
+        "TC-ML-008",
+        "TC-ML-009",
+        "TC-AC-07",
+        "TC-FLOW-007"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/engines/ml.py",
+        "src/swingpilot/ml/registry.py"
+      ],
+      "test_paths": [
+        "tests/security/test_impl3_isolation.py",
+        "tests/unit/test_engines.py",
+        "tests/unit/test_ml_registry.py"
+      ],
+      "status": "IN_PROGRESS",
+      "evidence": {
+        "command": ".venv/bin/pytest -q tests/unit/test_ml_registry.py",
+        "executed_at": "2026-11-20T02:39Z",
+        "unit": "6 passed",
+        "suite": "pytest -q tests → 426 passed, 5 skipped",
+        "covered": [
+          "AC-019-1",
+          "AC-019-2",
+          "AC-019-3",
+          "AC-019-5",
+          "AC-019-6 (sin dependencia de LLM)"
+        ],
+        "pending": [
+          "AC-019-4 bloqueado por CR-018 (evento ML_INFERENCE_COMPLETED)"
+        ],
+        "design_choice": "A lo sumo un modelo ACTIVE; un modelo SUSPENDED no vuelve a ACTIVE (P21)",
+        "engines_command": ".venv/bin/pytest -q tests/unit/test_engines.py",
+        "engines_executed_at": "2026-11-20",
+        "engines_unit": "36 passed",
+        "engines_covered": [
+          "AC-019-4 (NO_ACTIVE_MODEL, MODEL_SUSPENDED, INFERENCE_AVAILABLE con predictor de prueba)"
+        ],
+        "engines_pending": [],
+        "qa": "sin QA independiente todavía (requiere indicación del propietario)"
+      },
+      "inherited_from_impl2": [],
+      "depends_on_later_phases": [],
+      "notes": "DEC-017 Q44: solo infraestructura. Infraestructura lista para revisión; la FEAT sigue IN_PROGRESS por AC-019-4.",
+      "contract_gaps_pending": [
+        "Esquema del payload de ML_INFERENCE_COMPLETED: no definido (Q45, CR propuesta) → CR-018 (borrador)"
+      ],
+      "blocked_by": [],
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "authorization": {
+        "authorized_by": "Propietario, 2026-11-20: «Autorizo iniciar el código de FEAT-018 a FEAT-022»",
+        "scope": "código conforme al contrato v1.6"
+      },
+      "qa_reviews": [
+        {
+          "round": 1,
+          "date": "2026-11-20",
+          "report": "harness/verification/IMPL-3_QA_ronda1.md",
+          "verdict": "CONFORME CON OBSERVACIONES (infraestructura)",
+          "open_findings": [
+            "QA3-03",
+            "QA3-14",
+            "QA3-18"
+          ],
+          "corrections": "aplicadas 2026-11-20 (harness/verification/IMPL-3_QA_ronda1.md §Correcciones); pendiente de QA ronda 2"
+        },
+        {
+          "round": 2,
+          "date": "2026-11-20",
+          "report": "harness/verification/IMPL-3_QA_ronda2.md",
+          "verdict": "CONFORME (infraestructura)",
+          "open_findings": []
+        }
+      ]
+    },
+    {
+      "id": "FEAT-020",
+      "title": "Strategy Engine: estrategias versionadas, STRATEGY_CANDIDATE y NO_SETUP (Fase 2 del flujo)",
+      "implementation_phase": "IMPL-3 Integración cuantitativa (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-071",
+        "REQ-G-072",
+        "REQ-G-057",
+        "REQ-G-096",
+        "REQ-G-140"
+      ],
+      "contract_sections": [
+        "data_flow.md §1 FASE 2",
+        "api_contracts.md §2 (STRATEGY_CANDIDATE, NO_SETUP)",
+        "DEC-011"
+      ],
+      "acceptance_criteria": [
+        "AC-020-1 Estrategias como definiciones versionadas (ID + versión, entrada, salida, invalidación, familia, estado APPROVED|RESEARCH, referencia al experimento) (REQ-G-072)",
+        "AC-020-2 En modo Paper/Live solo son elegibles estrategias APPROVED; sin ninguna → NO_SETUP con NO_APPROVED_STRATEGY (DEC-017 Q43)",
+        "AC-020-3 Emite STRATEGY_CANDIDATE conforme a CR-018 §B.4, sin campo de confianza, con exit_mechanism completo (INV-007)",
+        "AC-020-4 Sin candidato → NO_SETUP (NO_CANDIDATE) y cero llamadas a LLM (TC-FLOW-001)",
+        "AC-020-5 2+ candidatos de entrada (aunque coincidan) → NO_SETUP (MULTIPLE_ENTRY_CANDIDATES) con descartados y motivo; exactamente 1 → STRATEGY_CANDIDATE (TC-FLOW-004, TC-FLOW-005)",
+        "AC-020-6 Entrada + salida → STRATEGY_EXIT_SIGNAL y NO_SETUP (EXIT_SIGNAL_PRIORITY); la entrada se re-evalúa en el siguiente ciclo; en IMPL-3 la salida solo se registra (TC-FLOW-006)",
+        "AC-020-7 Control previo a la Fase 3 → NO_SETUP (PRE_PHASE3_BLOCK) sin LLM, con estados simulados del Risk Manager hasta IMPL-4 (REQ-G-096, TC-AI-007)",
+        "AC-020-8 El piloto Trend Following H4 existe como estrategia RESEARCH usable en backtest y no elegible en Paper/Live",
+        "AC-020-9 Determinista y sin dependencia de LLM (TC-AC-07)"
+      ],
+      "test_cases": [
+        "TC-FLOW-001",
+        "TC-FLOW-004",
+        "TC-FLOW-005",
+        "TC-FLOW-006",
+        "TC-FLOW-007",
+        "TC-AI-007",
+        "TC-AC-07"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/engines/schemas.py",
+        "src/swingpilot/engines/strategy.py"
+      ],
+      "test_paths": [
+        "tests/security/test_impl3_isolation.py",
+        "tests/unit/test_engines.py"
+      ],
+      "status": "IN_PROGRESS",
+      "evidence": {
+        "engines_command": ".venv/bin/pytest -q tests/unit/test_engines.py",
+        "engines_executed_at": "2026-11-20",
+        "engines_unit": "36 passed",
+        "suite": "pytest -q tests → 426 passed, 5 skipped",
+        "engines_covered": [
+          "AC-020-1",
+          "AC-020-2",
+          "AC-020-3",
+          "AC-020-4",
+          "AC-020-5",
+          "AC-020-6",
+          "AC-020-7 (estados simulados)",
+          "AC-020-9"
+        ],
+        "engines_pending": [
+          "AC-020-8: piloto TF H4 no definido (DEC-018 decisión 4, EXP-0001)"
+        ],
+        "qa": "sin QA independiente todavía (requiere indicación del propietario)"
+      },
+      "inherited_from_impl2": [
+        "STRATEGY_CANDIDATE con la forma del contrato usado en la calibración (FEAT-010, FEAT-014)"
+      ],
+      "depends_on_later_phases": [
+        "IMPL-4: estados de bloqueo reales del Risk Manager para el control previo a Fase 3",
+        "IMPL-5: ejecución de la señal de salida (TC-FLOW-006, TC-FLOW-008)"
+      ],
+      "notes": "DEC-017 Q43: piloto Trend Following H4 (EMA200, ADX14 > 25, trailing stop ATR) como hipótesis de investigación; IMPL-3 cierra sin estrategia APPROVED.",
+      "blocked_by": [
+        "AC-020-8: piloto TF H4 no definido (DEC-018 decisión 4, EXP-0001)"
+      ],
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "authorization": {
+        "authorized_by": "Propietario, 2026-11-20: «Autorizo iniciar el código de FEAT-018 a FEAT-022»",
+        "scope": "código conforme al contrato v1.6"
+      },
+      "contract_gaps_pending_resolved": "CR-018 aplicada (api_contracts.md §3.8, contrato v1.6)",
+      "contract_gaps_note": "Estrategias concretas: el piloto sigue sin preregistro (EXP-0001, DEC-018)."
+    },
+    {
+      "id": "FEAT-021",
+      "title": "Normalización de TRADE_PROPOSAL al contrato del Risk Manager y consistencia con lo cuantitativo",
+      "implementation_phase": "IMPL-3 Integración cuantitativa (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-073",
+        "REQ-G-074",
+        "REQ-G-071"
+      ],
+      "contract_sections": [
+        "api_contracts.md §3.3",
+        "§4.1",
+        "architecture.md §7 fila 3"
+      ],
+      "acceptance_criteria": [
+        "AC-021-1 Normalizador determinista (no LLM) que construye TRADE_PROPOSAL §4.1 v1.1.0 desde el STRATEGY_CANDIDATE del ciclo: asset, direction, strategy_id/version, entry_price_target, stop_loss_price y exit_mechanism (CR-018 §B.8)",
+        "AC-021-2 Consistencia exigida a la síntesis: misma estrategia y versión, stop idéntico, entry_zone contenida, take_profit nulo o igual; si falla, no hay TRADE_PROPOSAL y se registra PROPOSAL_INCONSISTENT_WITH_CANDIDATE",
+        "AC-021-3 La propuesta normalizada valida contra §4.1 v1.1.0 antes de emitirse; si no, OUT_OF_CONTRACT sin emisión",
+        "AC-021-4 causation_id = E8; correlation_id del ciclo; referencias al candidato y a la síntesis en el payload",
+        "AC-021-5 TRADE_PROPOSAL no es orden ni autorización: no llega a ningún consumidor de ejecución en IMPL-3 (REQ-G-073)"
+      ],
+      "test_cases": [
+        "TC-AC-02",
+        "TC-AC-03",
+        "TC-AC-06"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/ai/orchestrator.py",
+        "src/swingpilot/engines/normalizer.py"
+      ],
+      "test_paths": [
+        "tests/security/test_impl3_isolation.py",
+        "tests/unit/test_engines.py"
+      ],
+      "status": "IN_PROGRESS",
+      "evidence": {
+        "engines_command": ".venv/bin/pytest -q tests/unit/test_engines.py",
+        "engines_executed_at": "2026-11-20",
+        "engines_unit": "36 passed",
+        "suite": "pytest -q tests → 426 passed, 5 skipped",
+        "engines_covered": [
+          "AC-021-1",
+          "AC-021-2",
+          "AC-021-3",
+          "AC-021-4",
+          "AC-021-5"
+        ],
+        "engines_pending": [],
+        "qa": "sin QA independiente todavía (requiere indicación del propietario)"
+      },
+      "inherited_from_impl2": [
+        "Decision Synthesis y su contrato §3.3 (FEAT-012)"
+      ],
+      "depends_on_later_phases": [
+        "IMPL-4: consumo real por el Risk Manager (RISK_APPROVED/RISK_REJECTED)"
+      ],
+      "notes": "Cierra la dependencia de IMPL-3 de FEAT-012 (normalización §4.1). La regla exacta de consistencia se propone en el plan detallado tras Q45.",
+      "blocked_by": [],
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "authorization": {
+        "authorized_by": "Propietario, 2026-11-20: «Autorizo iniciar el código de FEAT-018 a FEAT-022»",
+        "scope": "código conforme al contrato v1.6"
+      }
+    },
+    {
+      "id": "FEAT-022",
+      "title": "Ciclo Fase 1 → Fase 4 con datos y motores reales (criterio de salida de IMPL-3)",
+      "implementation_phase": "IMPL-3 Integración cuantitativa (architecture.md §7)",
+      "requirement_ids": [
+        "REQ-G-070",
+        "REQ-G-071",
+        "REQ-G-073",
+        "REQ-G-062",
+        "REQ-G-076",
+        "REQ-G-141"
+      ],
+      "contract_sections": [
+        "data_flow.md §1, §5 (E1..E8)",
+        "architecture.md §7 fila 3"
+      ],
+      "acceptance_criteria": [
+        "AC-022-1 Ciclo integrado Fase 1 → Fase 2 → (Fase 3 → Fase 4 → TRADE_PROPOSAL normalizada si hay candidato) con eventos E1..E9 encadenados por correlation_id y causation_id; termina en E9, sin Risk Manager ni órdenes (DEC-017, condición 6)",
+        "AC-022-2 Ejecución local por defecto: velas de la snapshot (solo train_val) o simuladas y agentes LLM con fixtures; sin costo",
+        "AC-022-3 Casos cubiertos: NO_SETUP por cada motivo alcanzable en IMPL-3 sin LLM; un candidato válido que llega a la síntesis; síntesis inconsistente sin propuesta",
+        "AC-022-4 La propuesta se relaciona con estrategia (ID/versión), inferencia (E3) y evidencia reproducible (snapshot_id/hash, versiones de motor, estrategia y prompts) — criterio de salida de architecture.md §7 fila 3",
+        "AC-022-5 Reconstrucción del ciclo desde los registros hasta E9 (TC-AC-04, alcance IMPL-3); parte determinista idéntica con la misma entrada (TC-AC-07)",
+        "AC-022-6 Corridas reales con LLM solo a petición explícita del propietario por corrida, nunca automáticas; libro propio con tope incremental USD 0.50, aviso a USD 0.40, bloqueo a USD 0.50; reserva atómica por ciclo antes de lanzarlo que cubre las llamadas paralelas de la Fase 3, la síntesis y 1 reintento por llamada; además del tope mensual de $5 (DEC-017 Q47)",
+        "AC-022-7 Modelos y effort sin cambios (DEC-009, DEC-016)"
+      ],
+      "test_cases": [
+        "TC-AC-01",
+        "TC-AC-03",
+        "TC-AC-04",
+        "TC-AC-07",
+        "TC-FLOW-001",
+        "TC-FLOW-005"
+      ],
+      "implementation_paths": [
+        "src/swingpilot/engines/cycle.py"
+      ],
+      "test_paths": [
+        "tests/security/test_impl3_isolation.py",
+        "tests/unit/test_engines.py"
+      ],
+      "status": "IN_PROGRESS",
+      "evidence": {
+        "engines_command": ".venv/bin/pytest -q tests/unit/test_engines.py",
+        "engines_executed_at": "2026-11-20",
+        "engines_unit": "36 passed",
+        "suite": "pytest -q tests → 426 passed, 5 skipped",
+        "engines_covered": [
+          "AC-022-1",
+          "AC-022-2",
+          "AC-022-3",
+          "AC-022-4",
+          "AC-022-5",
+          "AC-022-7"
+        ],
+        "engines_pending": [
+          "AC-022-6: corridas reales con LLM y reserva por ciclo (USD 0.50) no implementadas; solo a petición del propietario"
+        ],
+        "qa": "sin QA independiente todavía (requiere indicación del propietario)"
+      },
+      "inherited_from_impl2": [
+        "Ciclo de los 5 agentes (FEAT-014)"
+      ],
+      "depends_on_later_phases": [
+        "IMPL-4: Risk Manager y Risk Analyst con RISK_APPROVED real",
+        "IMPL-5: cadena hasta ORDER_FILLED (TC-AC-03 completo)"
+      ],
+      "notes": "Las corridas reales con LLM tienen costo; tope propuesto en Q47.",
+      "blocked_by": [
+        "AC-022-6: corridas reales con LLM y reserva por ciclo (USD 0.50) no implementadas; solo a petición del propietario"
+      ],
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "authorization": {
+        "authorized_by": "Propietario, 2026-11-20: «Autorizo iniciar el código de FEAT-018 a FEAT-022»",
+        "scope": "código conforme al contrato v1.6"
+      }
     }
   ],
   "live_api_evidence": {
@@ -1395,6 +2113,113 @@
     "open": [
       "CR-017 (PROPUESTA): fuente de noticias y macro_data",
       "G6: TC-SEC-003 amplio"
+    ]
+  },
+  "impl3_plan": {
+    "status": "IMPLEMENTACIÓN PARCIAL AUTORIZADA (DEC-018, 2026-11-20): FEAT-015, FEAT-016, FEAT-017 (infraestructura), FEAT-019 (infraestructura); FEAT-018/020/021/022 BLOQUEADAS",
+    "proposed_at": "2026-11-20",
+    "source": "architecture.md §7 fila 3; requirements.md REQ-G-070..073, REQ-G-092, REQ-G-097, REQ-G-100..109, REQ-G-142, Módulo 15 (P10..P17, P21..P23); data_flow.md §1, §3, §5; test_plan.md §5, §8.2, §8.3, §9; DEC-005, DEC-011, DEC-013; session-handoff.md (cierre IMPL-2)",
+    "exit_criterion": "Las propuestas se relacionan con estrategias, inferencias y evidencia reproducible (architecture.md §7, fila 3)",
+    "features": [
+      "FEAT-015",
+      "FEAT-016",
+      "FEAT-017",
+      "FEAT-018",
+      "FEAT-019",
+      "FEAT-020",
+      "FEAT-021",
+      "FEAT-022"
+    ],
+    "proposed_sequence": [
+      "1. Aprobación de los criterios de FEAT-015..022 → se puede empezar lo que no depende de CR-018 ni de Q42: FEAT-015, FEAT-016, FEAT-017 (salvo el preregistro del piloto sin EXP-0001) y FEAT-019 AC-1..3/5",
+      "2. CR-018 aprobada y aplicada (v1.6) → FEAT-019 AC-4, FEAT-020, FEAT-021; FEAT-018 con UNCLASSIFIED",
+      "3. Q42 decidida → clasificación de FEAT-018",
+      "4. Preregistro del piloto (con EXP-0001) y backtest piloto en Train; Walk-Forward en Train+Val",
+      "5. FEAT-022 local; corridas reales con LLM solo a petición del propietario",
+      "6. QA independiente (≤ 2 rondas), G4 con alcance IMPL-3, aprobación de cierre"
+    ],
+    "dependencies_to_add": "Contrato (architecture.md §5): pandas, NumPy, scikit-learn; Parquet requiere pyarrow; cliente WebSocket por definir en el plan detallado. XGBoost/PyTorch solo con justificación en un preregistro.",
+    "decision": "docs/decisions/DEC-017_plan-impl3-integracion-cuantitativa.md (Q41–Q47)",
+    "plan": "harness/plans/IMPL-3_plan.md",
+    "q42_proposal": "harness/plans/IMPL-3_Q42_regime_engine_propuesta.md (PENDIENTE DE DECISIÓN)",
+    "cr_018": "APROBADA y APLICADA (DEC-019, 2026-11-20); contrato v1.6",
+    "experiment_budget_usd": {
+      "cap": 0.5,
+      "warn": 0.4,
+      "ledger": "propio de IMPL-3",
+      "auto_spend": false
+    },
+    "resolved_questions": {
+      "Q41": "APROBADA: captura WebSocket pública en IMPL-3; Laptop B en IMPL-5",
+      "Q42": "APROBADA (DEC-018): B + D; volatilidad D1 en 3 categorías por percentiles solo con pasado; dirección como contexto; parámetros justificados con Train",
+      "Q43": "APROBADA: piloto Trend Following H4 (EXP-0001 antecedente); Mean Reversion H1 rechazada; cierre sin estrategia APPROVED",
+      "Q44": "APROBADA: ML solo infraestructura",
+      "Q45": "APROBADA PARA ELABORACIÓN: CR-018 en borrador",
+      "Q46": "APROBADA: Parquet fuera de Git; manifiestos y hashes en el repositorio",
+      "Q47": "APROBADA CON CONDICIONES: USD 0.50, aviso 0.40, reserva atómica con reintentos y paralelas, sin gasto automático"
+    },
+    "open_items": [
+      "Documentación de EXP-0001 y comprobación de la integridad de las particiones",
+      "Parámetros del Regime Engine justificados con Train (tras la snapshot)",
+      "ENV-01..04 (entorno)",
+      "Decisión sobre cortes de SNAP-0001 frente a datos ya usados por EXP-0001/Fase 0",
+      "Hallazgos de QA ronda 2 (3 menores, 5 observaciones): corregir requiere indicación del propietario y forma de verificación (rondas agotadas)",
+      "Indicación del propietario para el código de FEAT-018..022 y AC-019-4"
+    ],
+    "decision_review": "docs/decisions/DEC-018_revision-impl3-q42-cr018-exp0001.md",
+    "restrictions": [
+      "No evaluar OOS ni LOCKBOX",
+      "Sin credenciales privadas de Binance",
+      "No activar estrategias",
+      "Presupuesto IA USD 0.50 sin consumo por defecto",
+      "Sin commit ni push sin autorización"
+    ],
+    "environment": "Python 3.14.4; .venv creado sin python3-venv (venv --without-pip + get-pip.py de PyPA); dependencias en requirements-dev.txt",
+    "qa_reviews": [
+      {
+        "round": 1,
+        "date": "2026-11-20",
+        "report": "harness/verification/IMPL-3_QA_ronda1.md",
+        "major": [
+          "QA3-01",
+          "QA3-02",
+          "QA3-03",
+          "QA3-04",
+          "QA3-05"
+        ],
+        "minor": 11,
+        "observations": 3,
+        "status": "CORREGIDOS por el Orquestador (2026-11-20); pendiente de verificación en ronda 2"
+      },
+      {
+        "round": 2,
+        "date": "2026-11-20",
+        "report": "harness/verification/IMPL-3_QA_ronda2.md",
+        "blocking": 0,
+        "major": 0,
+        "minor": [
+          "QA3R2-01",
+          "QA3R2-02",
+          "QA3R2-03"
+        ],
+        "observations": [
+          "QA3R2-04",
+          "QA3R2-05",
+          "QA3R2-06",
+          "QA3R2-07",
+          "QA3R2-08"
+        ],
+        "round1_partial": [
+          "QA3-07",
+          "QA3-15"
+        ],
+        "status": "ABIERTOS; rondas de QA agotadas (2/2)"
+      }
+    ],
+    "qa_rounds_max": 2,
+    "related_reports": [
+      "harness/verification/IMPL-3_entorno_reproducibilidad.md",
+      "harness/verification/IMPL-3_EXP-0001_procedencia.md"
     ]
   }
 }
