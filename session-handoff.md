@@ -1,5 +1,12 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-23) — FEAT-016 cerrada como DONE
+
+**Aprobación del propietario (2026-11-23):** FEAT-016 pasa de READY_FOR_REVIEW a DONE. No es DONE-PARTIAL porque AC-016-9 excluye la operación continua de IMPL-3. `feature_list.json` v1.14.0 incluye la aprobación, `closure_verification` sobre `c384386` (470 passed, 5 skipped) y la evidencia pública del 2026-11-20 conservada.
+**Riesgo residual aceptado:** QA3R2-05 (resync sin reintento con una conexión WebSocket silenciosa; Fail-Closed intacto). Está asignado a **IMPL-5**: recuperación autónoma ante conexiones silenciosas.
+**Sin commit:** solo registros (`feature_list.json`, `progress.md`, `session-handoff.md`). No se tocó código ni contratos.
+**Siguiente acción autorizada:** ninguna. Esperar indicación del propietario (commit de este cierre; FEAT-015; FEAT-017..022; AC pendientes; SNAP-0001).
+
 ## IMPL-3 (2026-11-20) — QA de motores cerrada; CR-019 aplicada (contrato v1.7)
 
 **Commits (sin push):** `04dc2ea` (ENV-01..04 y QA3R2-01..03), `bca19fc` (QA3E-02..06 y 10; CONF-008). **Sin commit:** CR-019 aprobada (DEC-020) y aplicada, que corrige QA3E-01, pendiente de revisión del propietario.

@@ -1299,3 +1299,17 @@ Sin commit ni push. $0 de IA.
 **Siguiente:** revisión del propietario. El commit requiere su indicación.
 
 **Aprobación del propietario (2026-11-20):** «Apruebo, congela con commit sin push». CR-019 y la corrección de QA3E-01 quedan aprobadas.
+
+---
+
+## 2026-11-23 | FASE 2 | IMPL-3: cierre de FEAT-016 (Datos de mercado en vivo) | COMPLETADO
+
+**Revisión previa (Orquestador, sobre `c384386`):** QA3R2-05 (OBS) solo afecta a la recuperación automática ante una conexión WebSocket silenciosa. No afecta a la seguridad: `data_status`/`can_generate_signals` usan la hora del servidor, así que el resultado es DATA_UNAVAILABLE y no hay señal (Fail-Closed). AC-016-1..9 se cumplen. Desde `5c17e92` no cambió `market_data/` ni sus pruebas. Pruebas sin red: FEAT-016 40 passed; suite 470 passed, 5 skipped; validadores OK. Sin pruebas contra servicios externos ni nueva auditoría. Veredicto: APTO PARA CIERRE.
+
+**Aprobación del propietario (2026-11-23):** «Apruebo formalmente el cierre de FEAT-016 como DONE.» DONE, no DONE-PARTIAL, porque AC-016-9 excluye expresamente la operación continua de IMPL-3.
+
+**Cambios (solo registros):** `feature_list.json` v1.14.0. FEAT-016 pasa de READY_FOR_REVIEW a DONE, con `owner_approval`, `evidence.closure_verification` (470 passed, 5 skipped, HEAD `c384386`) y la evidencia pública del 2026-11-20T02:39Z conservada. Se añade `accepted_residual_risks`: QA3R2-05 aceptado y asignado a IMPL-5, que debe implementar la recuperación autónoma ante conexiones WebSocket silenciosas.
+
+Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub-agentes: 0.
+
+**Siguiente:** indicación del propietario. Pendientes: cierre de FEAT-015; FEAT-017..022; AC-018-2/6, AC-020-8, AC-022-6; SNAP-0001.

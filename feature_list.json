@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "1.13.0",
+    "version": "1.14.0",
     "phase": "FASE 2",
     "status": "IMPL-3_EN_CURSO",
     "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5 y cerrada (2026-11-20). Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md). IMPL-3 (Integración cuantitativa, FEAT-015..022) registrada desde el contrato v1.5 con status PENDING; planificación aprobada (DEC-017); implementación parcial autorizada (DEC-018, 2026-11-20): FEAT-015/016/017/019 IN_PROGRESS, FEAT-018/020/021/022 BLOCKED.",
-    "last_updated": "2026-11-20",
+    "last_updated": "2026-11-23",
     "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-3..IMPL-6 se registran al iniciarlas. READY_FOR_REVIEW = criterios con implementación, prueba y evidencia; pasa a DONE tras revisión independiente (QA o propietario), porque ningún agente aprueba su propio trabajo (AGENTS.md). DONE-PARTIAL = criterios de IMPL-1 cumplidos con dependencias explícitas de fases posteriores (criterio del propietario, 2026-11-19); no bloquea la salida de IMPL-1."
   },
   "features": [
@@ -1338,13 +1338,28 @@
         "tests/integration/test_binance_public_live.py",
         "tests/security/test_impl3_isolation.py"
       ],
-      "status": "READY_FOR_REVIEW",
+      "status": "DONE",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit/test_market_data.py; RUN_BINANCE_PUBLIC_LIVE=1 .venv/bin/pytest -q tests/integration/test_binance_public_live.py",
         "executed_at": "2026-11-20T02:39Z",
         "unit": "17 passed",
-        "live_public_smoke": "2 passed (WebSocket público real kline_1d/4h/1h + resincronización REST)",
+        "live_public_smoke": "2 passed (WebSocket público real kline_1d/4h/1h + resincronización REST) — evidencia de 2026-11-20T02:39Z conservada; no se reejecutó al cerrar (sin servicios externos)",
         "suite": "pytest -q tests → 390 passed, 5 skipped (tras correcciones QA3-01..19)",
+        "closure_verification": {
+          "head": "c384386",
+          "executed_at": "2026-11-23",
+          "commands": [
+            ".venv/bin/pytest -q -p no:cacheprovider tests/unit/test_market_data.py tests/security/test_impl3_isolation.py",
+            ".venv/bin/pytest -q -p no:cacheprovider tests",
+            "python3 scripts/validate_{manifest,requirements,gates}.py"
+          ],
+          "results": {
+            "feat_016_offline": "40 passed",
+            "suite": "470 passed, 5 skipped",
+            "validators": "manifest OK, requirements OK, gates OK"
+          },
+          "code_unchanged_since_qa_round2": "git log 5c17e92..c384386 sin cambios en src/swingpilot/market_data/ ni en sus pruebas"
+        },
         "covered": [
           "AC-016-1..AC-016-8"
         ],
@@ -1355,7 +1370,26 @@
       "depends_on_later_phases": [
         "IMPL-5: puesta en marcha continua en Laptop B (DEC-007 Q22; DEC-017 Q41)"
       ],
-      "notes": "Alcance aprobado en DEC-017 Q41. Solo endpoints públicos de mercado. QA r2: conforme con observaciones; cierre (DONE) no autorizado aún por el propietario.",
+      "notes": "Alcance aprobado en DEC-017 Q41. Solo endpoints públicos de mercado. QA r2: conforme con observaciones. Cerrada como DONE con aprobación del propietario (2026-11-23); no DONE-PARTIAL porque AC-016-9 excluye expresamente la operación continua de IMPL-3.",
+      "owner_approval": {
+        "approved_by": "propietario",
+        "approved_at": "2026-11-23",
+        "status_change": "READY_FOR_REVIEW → DONE",
+        "evidence": "«Apruebo formalmente el cierre de FEAT-016 como DONE.» «No utilizar DONE-PARTIAL, porque AC-016-9 excluye expresamente la operación continua de IMPL-3.»"
+      },
+      "accepted_residual_risks": [
+        {
+          "id": "QA3R2-05",
+          "severity": "OBS",
+          "source": "harness/verification/IMPL-3_QA_ronda2.md",
+          "description": "En market_data/stream.py el reintento de resync solo se evalúa al llegar un mensaje; con una conexión WebSocket abierta pero silenciosa no hay reintento y el feed no se recupera solo.",
+          "safety_impact": "Ninguno: data_status/can_generate_signals usan la hora del servidor de Binance; sin velas nuevas → DATA_UNAVAILABLE y ninguna señal (Fail-Closed; AC-016-2/3/4 se mantienen).",
+          "accepted_by": "propietario",
+          "accepted_at": "2026-11-23",
+          "assigned_to": "IMPL-5",
+          "required_action": "Implementar recuperación autónoma ante conexiones WebSocket silenciosas (p. ej. timeout de lectura que dispare resync o reconexión) junto con la operación continua en Laptop B."
+        }
+      ],
       "blocked_by": [],
       "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
       "authorization": {
