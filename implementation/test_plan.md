@@ -1,8 +1,8 @@
-# SwingPilot — Test Plan v1.7
+# SwingPilot — Test Plan v1.8
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.7 (CR-019, DEC-020, 2026-11-20: evento PROPOSAL_NORMALIZATION_REJECTED) — v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.8 (CR-020, DEC-021, 2026-11-24: contabilidad de pruebas de REQ-G-P17; TC-ML-006 actualizada y TC-ML-020..024 nuevas) — v1.7 (CR-019, DEC-020, 2026-11-20: evento PROPOSAL_NORMALIZATION_REJECTED) — v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -259,9 +259,9 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Input: resultados netos de costes que incumplen uno de: Profit Factor ≥ 1.3, expectancy ≥ 0.10 R, drawdown ≤ 20%, Sharpe OOS ≥ 0.8
 - Expected: experimento REJECTED; la comparación con comprar y mantener queda reportada
 
-### TC-ML-006 — Requisitos estadísticos (REQ-G-P17)
+### TC-ML-006 — Requisitos estadísticos (REQ-G-P17, CR-020)
 - Input: experimento que cumple umbrales
-- Expected: se calcula IC bootstrap 95% del expectancy (> 0), comparación con línea base ingenua y corrección por número de experimentos; sin cualquiera de ellos no se aprueba
+- Expected: se calcula IC bootstrap 95% del expectancy (> 0), comparación con línea base ingenua y corrección por número de configuraciones evaluadas con el conteo congelado y reconstruido (REQ-G-P17, CR-020); sin cualquiera de ellos no se aprueba
 
 ### TC-ML-007 — LOCKBOX de un solo uso
 - Input: segunda evaluación sobre el mismo LOCKBOX
@@ -314,6 +314,26 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 ### TC-ML-019 — LOCKBOX consumido (REQ-G-109, CR-013)
 - Input: snapshot nueva tras haber evaluado un LOCKBOX
 - Expected: el LOCKBOX evaluado queda registrado como consumido; no se reutiliza como LOCKBOX; solo datos posteriores al final de la snapshot anterior pueden formar un LOCKBOX nuevo; la declaración de régimen y el criterio con todas las ventanas WF constan en el preregistro
+
+### TC-ML-020 — Unidad del conteo y doble conteo (REQ-G-P17, CR-020)
+- Input: ideas, configuraciones no evaluadas, rechazadas y abandonadas; corridas idénticas; escenarios de costes puros y usados para seleccionar; pares planificados y evaluados antes y después de congelar; repetición nativa de una configuración de antecedente
+- Expected: ideas y configuraciones no evaluadas no cuentan; rechazadas y abandonadas cuentan; corrida idéntica o escenario puro de costes no suma; escenario de costes usado para seleccionar sí suma; un par planificado y luego evaluado cuenta una sola vez en el conteo congelado; un par evaluado antes de congelar no se suma dos veces; la repetición nativa de una configuración de antecedente suma un par nuevo
+
+### TC-ML-021 — Procedencia de antecedentes (REQ-G-104, REQ-G-P17, CR-020)
+- Input: registros `ANTECEDENT_PROVENANCE` nuevos, sustituciones, reducciones y líneas `AUTORIZA: PROCEDENCIA` válidas e inválidas
+- Expected: append-only; la consulta consolidada separa el estado original inmutable de la procedencia documental vigente; reducción sin decisión o sin evidencia → rechazada; actualización posterior no cambia el conteo congelado de un experimento ya congelado; `supersedes` incoherente → conteo indeterminado (Fail-Closed). Se rechazan: identificador inválido o inexistente; enteros con signo, ceros a la izquierda o no ASCII; conteos que no coinciden con el registro; línea no exacta o incrustada; decisión con ruta, fuera de `docs/decisions`, enlace simbólico o ilegible; evidencia vacía o mal formada
+
+### TC-ML-022 — Conteo congelado y regla de selección (REQ-G-103, REQ-G-P17, CR-020)
+- Input: congelación con conteo declarado coincidente y no coincidente; `candidate_selection_rule` válida y mal formada; evaluación con configuraciones planificadas no evaluadas; `trials_accounting` alterado; selección distinta de la regla
+- Expected: congelación rechazada si el conteo declarado no coincide con el reconstruido o si la regla está mal formada, cita configuraciones no planificadas o métricas no declaradas; el evaluador usa el conteo congelado y no el conteo vivo; las configuraciones planificadas no evaluadas no lo reducen; `trials_accounting` alterado → INCONCLUSIVE; selección distinta de la regla → desviación e INCONCLUSIVE
+
+### TC-ML-023 — Registro duradero del inicio de evaluación (REQ-G-104, CR-020)
+- Input: solicitud que no supera las validaciones previas (incluido un estado, transición o autorización que no permite evaluar); escritura fallida o incierta; registro presente tras una escritura incierta; reintento; configuración no planificada
+- Expected: solicitud rechazada → sin registro, sin evaluación y no cuenta; escritura fallida o incierta → la evaluación no empieza y el cargador no entrega datos; registro presente tras escritura incierta → cuenta aunque no haya ejecución; reintento idempotente; configuración no planificada → cuenta, se registra `DEVIATION` y el veredicto es INCONCLUSIVE
+
+### TC-ML-024 — Pruebas posteriores a la congelación (REQ-G-P17, CR-020)
+- Input: pruebas de otros experimentos posteriores a la congelación, con y sin puntos de decisión posteriores del experimento evaluado
+- Expected: NO RELEVANTE solo con las cinco evidencias positivas (registro legible; preregistro vinculado por SHA-256; selección presente y reproducible con resultados recuperables y hash coincidente; todos los pares evaluados planificados; `informed_by` válido en las decisiones posteriores): se informa y el conteo congelado no cambia. RELEVANTE: conteo de evaluación = congelado + pares relevantes, con el congelado conservado. INDETERMINADA → INCONCLUSIVE si falta el registro de selección, el archivo de resultados o su hash, o si `informed_by` falta o cita referencias inexistentes o posteriores; `informed_by` vacío en una desviación posterior → INDETERMINADA; `DEVIATION` histórico sin `informed_by` se conserva sin reescribir y se trata como ausente; un conteo de evaluación mayor no evita INCONCLUSIVE si hubo desviación o selección fuera de la regla
 
 ---
 
@@ -743,7 +763,7 @@ La suite de regresión se ejecuta automáticamente en cada cambio al código del
 
 ## 12. Parámetros del Test Plan (estado tras CR-008)
 
-Todos los parámetros que bloqueaban casos de prueba están resueltos: P03–P06 (DEC-004), P07 (DEC-006), P10–P17 (DEC-005). Los casos afectados (TC-INV-001-A, TC-INV-003-B, TC-PS-001..004, TC-ML-001..010, TC-FL-004) usan esos valores. Solo **REQ-G-P08** (validación con contador) sigue PENDING y bloquea cualquier caso que valide cálculos fiscales de ganancia o impuesto.
+Todos los parámetros que bloqueaban casos de prueba están resueltos: P03–P06 (DEC-004), P07 (DEC-006), P10–P17 (DEC-005; contabilidad de pruebas de P17 concretada por DEC-021/CR-020, TC-ML-006 y TC-ML-020..024). Los casos afectados (TC-INV-001-A, TC-INV-003-B, TC-PS-001..004, TC-ML-001..010, TC-FL-004) usan esos valores. Solo **REQ-G-P08** (validación con contador) sigue PENDING y bloquea cualquier caso que valide cálculos fiscales de ganancia o impuesto.
 
 ---
 

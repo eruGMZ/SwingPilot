@@ -1,5 +1,49 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — Aplicación contractual de CR-020 APROBADA; D2 resuelta (método y contrato); commit en develop, sin push
+
+**Aprobación del propietario (2026-11-24):** aplicación contractual de CR-020, contrato v1.8, DEC-021 y `feature_list.json` v1.17.0; REQ-4036 como fuente extraída; omisión de las líneas `AUTORIZA: PROCEDENCIA` en DEC-021 (los registros reales de procedencia requieren una autorización separada).
+**D2:** RESUELTA metodológica y contractualmente; implementación y verificación PENDIENTES. CONF-009 y CONF-010 OPEN.
+**Limitación:** los validadores existentes no verifican la corrección semántica del texto del contrato.
+**Siguiente acción autorizada:** ninguna. Esperar la autorización expresa de implementación de CR-020.
+
+### Registro previo a la aprobación — CR-020 aplicada solo contractualmente; sin commit
+
+**Aprobación del propietario:** CR-020 revisión 3 y sus decisiones; tres detalles de implementación (formas de `candidate_selection_rule`, validación de procedencia, validaciones previas con la condición de que la evaluación la permitan el estado, las transiciones y las autorizaciones vigentes; un estado no terminal no basta). Solo aplicación contractual.
+**Aplicado:** DEC-021 (nuevo); contrato v1.8 (REQ-G-P17, REQ-G-103, REQ-G-104; TC-ML-006, TC-ML-020..024); `feature_list.json` v1.17.0 (AC-017-3/8/13; FEAT-017 sigue IN_PROGRESS); CR-020 §H; historial de CONF-009/010.
+**D2:** resolución metodológica y contractual APROBADA; implementación y verificación PENDIENTES. CONF-009 y CONF-010 OPEN.
+**Validadores:** manifest, requirements y gates → OK. Suite funcional no ejecutada.
+**Sin cambios:** código, registro de experimentos, estados y transiciones, estados de FEAT, D3–D7; SNAP-0001 no creada.
+**Archivos modificados (sin commit, desde `259dbf6`):** CR-020 (nuevo), DEC-021 (nuevo), `implementation/{requirements,architecture,api_contracts,data_flow,test_plan,conflict_register}.md`, `feature_list.json`, `progress.md`, `session-handoff.md`.
+**Siguiente acción autorizada:** ninguna. Esperar la aprobación expresa del propietario para el commit o la implementación de CR-020.
+
+## IMPL-3 (2026-11-24) — CR-020 revisión 3 (PROPUESTA): R1–R4 incorporadas; lista para aprobación final; sin commit
+
+**Decisiones del propietario (no aprueban la CR):** R1–R4 con condiciones (§B.3 de CR-020) y cuatro ambigüedades resueltas (§B.4): solicitud rechazada ≠ evaluada; `N_eval` no restaura el carácter confirmatorio; registro duradero = límite contable de un inicio autorizado, no prueba de ejecución; NO RELEVANTE solo con evidencia positiva suficiente.
+**§F:** sin decisiones metodológicas abiertas; pendiente la aprobación final de CR-020 (incluye las formas de `candidate_selection_rule`, los patrones de R4 y las validaciones previas, redactados por el Orquestador).
+**Estado:** CR-020 PROPUESTA; D2 pendiente de aprobación contractual; CONF-009 y CONF-010 OPEN; D3–D7 PENDIENTES; FEAT-017 IN_PROGRESS; contrato v1.7.
+**Archivos modificados (sin commit, acumulados desde `259dbf6`):** CR-020 (nuevo), `implementation/conflict_register.md`, `progress.md`, `session-handoff.md`. Sin pruebas ejecutadas.
+**Siguiente acción autorizada:** ninguna. Esperar la aprobación final expresa de CR-020.
+
+## IMPL-3 (2026-11-24) — CR-020 revisión 2 (PROPUESTA) con decisiones del propietario; D2 pendiente de aprobación contractual; sin commit
+
+**Decisiones del propietario (no aprueban la CR):** población de todas las familias BTC/USDT; conteo congelado con conciliación de pruebas posteriores basada en evidencia, sin LLM, e INCONCLUSIVE si la influencia es indeterminable; configuraciones planificadas incluidas aunque no se evalúen; reducción de cotas solo con evidencia y aprobación, prospectiva; `ANTECEDENT_PROVENANCE` aprobado como solución propuesta de CONF-009 (estado original separado de la procedencia vigente). CONF-010 MEDIUM confirmada.
+**CR-020 rev. 2:** ver §C (conteos y doble conteo, registro duradero, procedencia append-only, conciliación C.4, distinción de resultados C.5, texto contractual C.6). Decisiones abiertas R1–R4 (§F). Conteo inicial 8 = 4 verificadas documentalmente + 4 de cota.
+**Estado:** CR-020 PROPUESTA; D2 pendiente de aprobación contractual; CONF-009 y CONF-010 OPEN; D3–D7 PENDIENTES; FEAT-017 IN_PROGRESS; contrato v1.7.
+**Archivos modificados (sin commit):** CR-020 (nuevo), `implementation/conflict_register.md`, `progress.md`, `session-handoff.md`. Sin pruebas ejecutadas.
+**Siguiente acción autorizada:** ninguna. Esperar la aprobación expresa del propietario.
+
+## IMPL-3 (2026-11-24) — D2: dirección aprobada; resolución contractual PENDIENTE de CR-020; CONF-010 registrado; sin commit
+
+**Base:** `259dbf6` (`develop` = `origin/develop`).
+**D2 (identificador de revisión, no DEC):** dirección metodológica aprobada (opción B): configuraciones evaluadas; rechazadas y abandonadas cuentan; ideas y no evaluadas confirmadas no cuentan; cota conservadora para ejecución desconocida; conteo histórico inicial 8 (MR H1: 4 documentadas; EXP-0001: 4 como cota). Regla del máximo NO aprobada. **Resolución contractual PENDIENTE de CR-020.**
+**CR-020 (PROPUESTA):** `harness/change_requests/CR-020_contabilidad-pruebas-trials-count.md`. Conteo congelado y verificado contra el registro; tipos `ANTECEDENT_PROVENANCE` (opción B de CONF-009) y `CONFIGURATION_EVALUATED`; contrato v1.8 propuesto. Decisiones abiertas en su §F.
+**Conflictos abiertos:** CONF-009 (LOW; reevaluación obligatoria antes del cierre de FEAT-017); CONF-010 (MEDIUM propuesta).
+**Archivos modificados:** CR-020 (nuevo), `implementation/conflict_register.md`, `progress.md`, `session-handoff.md`. Sin pruebas ejecutadas.
+**Sin cambios:** contrato v1.7, código, registro de experimentos, AC, `feature_list.json`, estados de FEAT, cortes; D3–D7 PENDIENTES; SNAP-0001 no creada.
+**Bloqueos:** AC-017-10 (D3–D7); AC-017-11; CR-020 y sus decisiones §F; O4; coherencia `execution_model`/`ExecutionModel`; TC-ML-012.
+**Siguiente acción autorizada:** ninguna. Esperar la aprobación expresa del propietario.
+
 ## IMPL-3 (2026-11-24) — D1 APROBADA (nivel documental); CONF-009 LOW/OPEN con reevaluación obligatoria; commit en develop, sin push
 
 **Aprobación del propietario (2026-11-24):** los cuatro cambios documentales de `2e13c27`; D1 resuelta a nivel documental; CONF-009 con severidad LOW y estado OPEN.
