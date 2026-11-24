@@ -642,8 +642,11 @@ class ExperimentRegistry:
         evaluar. Validaciones previas fallidas → EvaluationRequestRejected (nada escrito, no
         cuenta). Escritura fallida o incierta → PersistenceUncertainError: la evaluación no
         empieza. Idempotente. Una configuración no planificada exige `deviation_builder`, que
-        construye el registro DEVIATION (preregistration.begin_evaluation); se escribe en el
-        mismo bloqueo, después del registro de evaluación."""
+        construye el registro DEVIATION (preregistration.begin_evaluation). QA-CR020-01: la
+        DEVIATION se construye y valida ANTES de escribir nada (si no es válida → rechazo sin
+        escritura); se escribe en el mismo bloqueo, después del registro de evaluación. Si solo
+        consta la evaluación (persistencia parcial), el par cuenta (conservador), el cargador
+        deniega los datos hasta que conste la DEVIATION y el reintento solo añade la DEVIATION."""
         if not valid_experiment_id(experiment_id):
             raise EvaluationRequestRejected(f"experimento no válido: {experiment_id!r} (formato EXP-NNNN)")
         if not valid_config_id(config_id):
@@ -676,6 +679,20 @@ class ExperimentRegistry:
                     "(preregistration.begin_evaluation)")
             existing = next((r for r in records if r.get("kind") == "CONFIGURATION_EVALUATED"
                              and r.get("experiment_id") == experiment_id and r.get("config_id") == config_id), None)
+            dev = None
+            if not planned and not any(r.get("kind") == "DEVIATION" and r.get("experiment_id") == experiment_id
+                                       and r.get("config_id") == config_id for r in records):
+                # QA-CR020-01: la DEVIATION obligatoria se construye y valida ANTES de escribir nada
+                # (B.4.1, R2). Si no es válida, la solicitud se rechaza: nada escrito, nada contado.
+                try:
+                    dev = deviation_builder()
+                except Exception as exc:
+                    raise EvaluationRequestRejected(
+                        f"DEVIATION obligatoria de {experiment_id}/{config_id} no válida: {exc}; "
+                        "solicitud rechazada, nada escrito") from exc
+                if not isinstance(dev, dict) or dev.get("kind") != "DEVIATION" or dev.get("config_id") != config_id:
+                    raise EvaluationRequestRejected("el constructor no devolvió la DEVIATION de esta configuración; "
+                                                    "solicitud rechazada, nada escrito")
             rec = existing
             if existing is None:
                 try:
@@ -686,12 +703,7 @@ class ExperimentRegistry:
                     raise PersistenceUncertainError(
                         f"escritura de CONFIGURATION_EVALUATED {experiment_id}/{config_id} incierta: {exc!r}; "
                         "la evaluación no empieza") from exc
-            if not planned and not any(r.get("kind") == "DEVIATION" and r.get("experiment_id") == experiment_id
-                                       and r.get("config_id") == config_id for r in records):
-                dev = deviation_builder()
-                if not isinstance(dev, dict) or dev.get("kind") != "DEVIATION" or dev.get("config_id") != config_id:
-                    raise ExperimentError("el constructor no devolvió la DEVIATION de esta configuración; "
-                                          "la evaluación no empieza")
+            if dev is not None:
                 try:
                     self._write(dev)
                 except BaseException as exc:
@@ -706,6 +718,10 @@ class ExperimentRegistry:
             if not any(r.get("kind") == "CONFIGURATION_EVALUATED" and r.get("experiment_id") == experiment_id
                        and r.get("config_id") == config_id for r in again):
                 raise PersistenceUncertainError(f"{experiment_id}/{config_id} no consta tras escribir; "
+                                                "la evaluación no empieza")
+            if not planned and not any(r.get("kind") == "DEVIATION" and r.get("experiment_id") == experiment_id
+                                       and r.get("config_id") == config_id for r in again):
+                raise PersistenceUncertainError(f"DEVIATION de {experiment_id}/{config_id} no consta tras escribir; "
                                                 "la evaluación no empieza")
             return rec
 

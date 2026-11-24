@@ -26,7 +26,10 @@ TC-ML-001, TC-ML-007, TC-ML-012, TC-ML-016, TC-ML-019).
 - CR-020 (§C.3.2) y A2 (opción B del propietario): `load_train_val_for_configuration` solo
   entrega Train+Val si el par (experimento, configuración) está en la evidencia VALIDADA del
   registro (`accounting()["pairs"]`). Registro ausente, ilegible, corrupto, mal formado o
-  incoherente → denegado, anotado y sin leer datos (Fail-Closed). La lectura sin configuración
+  incoherente → denegado, anotado y sin leer datos (Fail-Closed). QA-CR020-01: si la configuración
+  no estaba planificada en la congelación, exige además su DEVIATION obligatoria validada
+  (`preregistration.evaluation_evidence_error`); con persistencia parcial (evaluación escrita,
+  DEVIATION ausente) el par cuenta pero los datos se deniegan hasta conciliar. La lectura sin configuración
   es privada (`_load_train_val_for_inspection`): solo para comprobar la integridad de la snapshot
   (FEAT-015); una guarda estática impide usarla fuera de este módulo en `src/` y `scripts/`.
 - Límite de arquitectura: es un control de las vías de acceso de la aplicación, no de seguridad
@@ -46,6 +49,7 @@ import pandas as pd
 import pyarrow
 import pyarrow.parquet as pq
 
+from .preregistration import evaluation_evidence_error
 from .snapshot import MODE_SEALED, SEALED, SealingError, enforce_sealing, load_manifest, sha256_file
 
 
@@ -141,6 +145,8 @@ class PartitionLoader:
                 pairs = self.registry.accounting()["pairs"]
                 if (experiment_id, config_id) not in pairs:
                     reason = f"sin inicio de evaluación registrado para {experiment_id}/{config_id} (CR-020)"
+                else:                               # QA-CR020-01: no planificada → DEVIATION validada
+                    reason = evaluation_evidence_error(self.registry, experiment_id, config_id)
             except Exception as exc:
                 reason = f"registro de experimentos ilegible, corrupto o incoherente: {exc!r}"
         if reason:

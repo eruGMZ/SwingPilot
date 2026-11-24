@@ -515,6 +515,32 @@ def _replay(registry, experiment_id) -> list[dict]:
     return out
 
 
+def evaluation_evidence_error(registry, experiment_id: str, config_id: str) -> str | None:
+    """Evidencia obligatoria para entregar datos de un par ya registrado (QA-CR020-01; CR-020 §C.3.2).
+    Configuración planificada en la congelación → None. No planificada → exige su DEVIATION
+    (`field` = trials_count, `config_id` del par) en las desviaciones VALIDADAS del registro
+    (`_replay`: SHA-256 de PREREGISTERED, orden y forma). Ausente, mal formada o registro
+    incoherente → motivo (el cargador deniega). Sin efectos: no escribe nada."""
+    try:
+        _, experiments = _read(registry)
+        exp = experiments.get(experiment_id)
+        if exp is None or exp.get("origin") != REGISTRY_ORIGIN:
+            return f"{experiment_id} no es un experimento nativo registrado"
+        pre = [h for h in exp["history"] if h.get("kind") == "TRANSITION" and h.get("to") == "PREREGISTERED"]
+        acc = (pre[0].get("evidence") or {}).get("trials_accounting") if len(pre) == 1 else None
+        if len(pre) != 1 or accounting_shape_error(acc):
+            return f"{experiment_id}: sin congelación válida con «trials_accounting»"
+        if config_id in acc["planned_config_ids"]:
+            return None
+        devs = _replay(registry, experiment_id)
+    except Exception as exc:
+        return f"evidencia de desviaciones ilegible o incoherente: {exc}"
+    if not any(d.get("config_id") == config_id and d["field"] == "trials_count" for d in devs):
+        return (f"{config_id} no está planificada y falta su DEVIATION obligatoria; datos denegados hasta "
+                "conciliar la evidencia (QA-CR020-01)")
+    return None
+
+
 def confirmatory_status(registry, experiment_id: str) -> dict:
     """Carácter confirmatorio reconstruido desde el registro, consultable en HUMAN_REVIEW
     (ORQ-017-01, O2). No cambia reglas de aprobación, transiciones ni el evaluador. Ante

@@ -1,5 +1,17 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE CONTROL (2026-11-24) — QA-CR020-01 corregido y aceptado por el propietario; pendiente de reverificación independiente; commit en develop, sin push
+
+**Aceptación del propietario (2026-11-24):** corrección funcional y evidencia aprobadas (validación previa de la desviación, rechazo sin escritura ni acceso, contabilidad conservadora y acceso denegado tras persistencia parcial, reintento idempotente, 11 pruebas nuevas, 789 passed / 5 skipped, validadores OK, Fail-Closed ante desviaciones mal formadas con conciliación manual sin reescribir historial, congelación legible exigida). Detalle: `harness/verification/IMPL-3_QA-CR020-01_correccion.md` §8. QA-CR020-03 sigue sin resolver, incluida la durabilidad de registros legibles tras un fallo de `fsync`. Commit de los ocho archivos, sin push; pruebas no reejecutadas para el commit. **Siguiente acción autorizada:** ninguna; esperar instrucciones del propietario.
+
+**Base:** `e645a27` (`develop` = `origin/develop`); base funcional auditada `f2f05a9`.
+**Autorización:** corregir solo QA-CR020-01 (contrato v1.8, CR-020).
+**Hecho:** la DEVIATION obligatoria de una configuración no planificada se valida antes de escribir nada; una solicitud rechazada no escribe, no cuenta ni da acceso; la persistencia parcial cuenta (conservador) pero el cargador deniega los datos hasta conciliar; el reintento no duplica. Detalle: `harness/verification/IMPL-3_QA-CR020-01_correccion.md`.
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 789 passed, 5 skipped; validadores → OK. Regresiones `tests/unit/test_qa_cr020_01.py`: 9 failed con la base sin corregir, 11 passed con la corrección.
+**Archivos modificados (sin commit):** `src/swingpilot/research/{experiments,preregistration,partitions}.py`, `research/README.md`, `tests/unit/test_qa_cr020_01.py` (nuevo), `harness/verification/IMPL-3_QA-CR020-01_correccion.md` (nuevo), `progress.md`, `session-handoff.md`.
+**Sin resolver:** QA-CR020-02, 03, 04, 05, 06, O3 y O4. CONF-009 y CONF-010 OPEN; D2 pendiente de cierre; FEAT-015 DONE; FEAT-017 IN_PROGRESS. Informe y sondas de la QA independiente conservados sin cambios.
+**Siguiente acción autorizada:** ninguna. Esperar la revisión del propietario.
+
 ## PUNTO DE CONTROL (2026-11-24) — QA independiente de CR-020: CONFORME CON OBSERVACIONES; evidencia preservada y aprobada; commit en develop, sin push
 
 **Aprobación del propietario de la preservación (2026-11-24):** aprueba el informe en español, las 11 sondas reproducibles y las actualizaciones de continuidad; acepta la normalización a QA-CR020-O3 y QA-CR020-O4 sin cambios de contenido ni de clasificación. `f2f05a9` se conserva como la base funcional auditada. Commit de los cuatro archivos autorizados en develop, sin push; pruebas y sondas no reejecutadas para el commit. Los ocho elementos siguen sin resolver; D2 pendiente de cierre. **Siguiente acción autorizada:** ninguna; esperar instrucciones del propietario.
