@@ -57,6 +57,11 @@ class DeviationPersistenceUncertain(PreregistrationError):
     """La escritura de una desviación falló después de empezar (ORQ-017-01)."""
 
 
+class ConfirmatoryStatusUnverifiable(PreregistrationError):
+    """No consta ninguna pérdida demostrada del carácter confirmatorio, pero la evidencia no basta
+    para certificarlo (QA-CR020-02; opción A del propietario). No equivale a «no confirmatorio»."""
+
+
 class EvaluationPersistenceUncertain(PreregistrationError):
     """El inicio de evaluación (o su DEVIATION) no consta con certeza: la evaluación no empieza
     (CR-020 §C.3.2)."""
@@ -205,7 +210,10 @@ class FrozenPreregistration:
     @property
     def confirmatory(self) -> bool:
         """Derivado del registro usado en `record_deviation` (ORQ-017-01). Sin registro o con
-        una escritura incierta pendiente → PreregistrationError: nunca se certifica por defecto."""
+        una escritura incierta pendiente → PreregistrationError: nunca se certifica por defecto.
+        No recibe `selection_inputs`: tras la selección de candidata, sin pérdida demostrada →
+        ConfirmatoryStatusUnverifiable; use `confirmatory_status(registry, selection_inputs=…)`
+        (QA-CR020-02)."""
         if self._persistence_uncertain:
             raise PreregistrationError(
                 f"persistencia incierta de la desviación {self._persistence_uncertain}: reconstruya el estado "
@@ -215,14 +223,16 @@ class FrozenPreregistration:
                                        "(use confirmatory_status(registry)) (ORQ-017-01)")
         return self.confirmatory_status(self._registry)["confirmatory"]
 
-    def confirmatory_status(self, registry) -> dict:
-        """Estado reconstruido desde el registro, ligado al SHA-256 de este preregistro."""
+    def confirmatory_status(self, registry, *, selection_inputs: bytes | None = None) -> dict:
+        """Estado reconstruido desde el registro, ligado al SHA-256 de este preregistro. Tras la
+        selección de candidata exige `selection_inputs` (QA-CR020-02)."""
         if self._persistence_uncertain:
             raise PreregistrationError(
                 f"persistencia incierta de la desviación {self._persistence_uncertain}: reconstruya el estado "
                 "desde el registro con un objeto nuevo antes de certificar nada (ORQ-017-01)")
         self.verify()
-        status = confirmatory_status(registry, self.experiment_id)
+        status = confirmatory_status(registry, self.experiment_id, preregistration=self,
+                                     selection_inputs=selection_inputs)
         if status["preregistration_sha256"] != self.sha256:
             raise PreregistrationError("el SHA-256 de este preregistro no coincide con el de PREREGISTERED en el "
                                        "registro (ORQ-017-01)")
@@ -553,14 +563,104 @@ def evaluation_evidence_error(registry, experiment_id: str, config_id: str) -> s
     return None
 
 
-def confirmatory_status(registry, experiment_id: str) -> dict:
-    """Carácter confirmatorio reconstruido desde el registro, consultable en HUMAN_REVIEW
-    (ORQ-017-01, O2). No cambia reglas de aprobación, transiciones ni el evaluador. Ante
-    evidencia ausente, ilegible, corrupta o incoherente → PreregistrationError."""
+def _selection_finding(records, experiment_id, x_pairs, planned, preregistration, sha, selection_inputs):
+    """Selección de candidata frente a la regla congelada (CR-020 §C.3.4; QA-CR020-02). Devuelve
+    (selección, violación, motivo_no_verificable). Sin selección registrada → (None, False, None).
+    Misma reproducción que el evaluador (trials.py); nunca lanza: lo no verificable es un motivo."""
+    sels = [r for r in records if isinstance(r, dict) and r.get("kind") == "TRANSITION"
+            and r.get("experiment_id") == experiment_id and r.get("to") == "OOS_EVALUATION"]
+    if not sels:
+        return None, False, None
+    if len(sels) != 1:
+        return None, None, "más de un registro de selección de candidata"
+    sev = sels[0].get("evidence") or {}
+    selected, sha_in = sev.get("selected_config_id"), sev.get("selection_inputs_sha256")
+    if not isinstance(selected, str) or not isinstance(sha_in, str):
+        return None, None, "selección sin configuración o sin hash del archivo de resultados"
+    if not isinstance(preregistration, FrozenPreregistration):
+        return None, None, "falta el preregistro congelado con la regla de selección"
+    try:
+        preregistration.verify()
+    except PreregistrationError as exc:
+        return None, None, f"preregistro congelado alterado: {exc}"
+    if preregistration.sha256 != sha or preregistration.experiment_id != experiment_id:
+        return None, None, "el preregistro no es el vinculado a PREREGISTERED"
+    if not isinstance(selection_inputs, (bytes, bytearray)) or hashlib.sha256(selection_inputs).hexdigest() != sha_in:
+        return None, None, "archivo de resultados de la selección ausente o con hash distinto"
+    if x_pairs is None or planned is None:
+        return None, None, "pares evaluados o configuraciones planificadas no reconstruibles"
+    try:
+        doc = json.loads(bytes(selection_inputs).decode("utf-8"))
+        results = doc["results"]
+        if doc.get("experiment_id") != experiment_id or not isinstance(results, dict) or set(results) != x_pairs:
+            raise ValueError("los resultados no corresponden exactamente a los pares evaluados")
+        rule = parse_selection_rule(preregistration.content["candidate_selection_rule"], planned,
+                                    preregistration.content.get("metrics"))
+        expected = apply_selection_rule(rule, results)
+    except Exception as exc:
+        return None, None, f"selección no reproducible: {exc!r}"
+    return {"selected_config_id": selected, "rule_config_id": expected}, expected != selected, None
+
+
+def confirmatory_findings(registry, experiment_id: str, *, preregistration=None,
+                          selection_inputs: bytes | None = None) -> dict:
+    """Evidencia del carácter confirmatorio (REQ-G-103 v1.8/v1.9; CR-020 §C.3.2, §C.3.4, §C.4.1;
+    QA-CR020-02). Causas DEMOSTRADAS de pérdida, las únicas del contrato:
+    - desviación de un campo de diseño tras la exposición a OOS/LOCKBOX (REQ-G-103, CR-011);
+    - desviación de `candidate_selection_rule`, en cualquier momento (CR-020 §C.3.4);
+    - pares evaluados de X fuera de `planned_config_ids` congelado en PREREGISTERED, conste o no
+      su DEVIATION obligatoria (C.3.2, C.4.1.4);
+    - candidata seleccionada distinta de la que da la regla congelada (C.3.4, C.4.1.5).
+    Lo que no puede comprobarse va a `unverified`: no es pérdida demostrada (los INCONCLUSIVE
+    probatorios del evaluador no lo son) ni certifica nada. Registro ilegible, corrupto o
+    incoherente → PreregistrationError (como antes). Sin efectos: no escribe nada."""
     devs = _replay(registry, experiment_id)
+    sha = _preregistered_sha(registry, experiment_id)
+    records, experiments = _read(registry)
     after = [d["deviation_id"] for d in devs if d["after_oos"] and d["field"] in DESIGN_FIELDS]
-    return {"experiment_id": experiment_id, "preregistration_sha256": _preregistered_sha(registry, experiment_id),
-            "confirmatory": not after, "deviations": devs, "design_deviations_after_oos": after}
+    rule_changes = [d["deviation_id"] for d in devs if d["field"] == "candidate_selection_rule"]
+    unverified, planned, x_pairs, unplanned = [], None, None, None
+    pre = [h for h in experiments[experiment_id]["history"]
+           if h.get("kind") == "TRANSITION" and h.get("to") == "PREREGISTERED"]
+    acc = (pre[0].get("evidence") or {}).get("trials_accounting")
+    if accounting_shape_error(acc):
+        unverified.append(f"«trials_accounting» congelado ausente o mal formado: {accounting_shape_error(acc)}")
+    else:
+        planned = list(acc["planned_config_ids"])
+        try:
+            pairs = registry.accounting(records=records, require_complete=False)["pairs"]
+        except Exception as exc:
+            unverified.append(f"pares evaluados no reconstruibles: {exc}")
+        else:
+            x_pairs = {c for (e, c) in pairs if e == experiment_id}
+            unplanned = sorted(x_pairs - set(planned))
+    selection, violation, why = _selection_finding(records, experiment_id, x_pairs, planned, preregistration, sha,
+                                                   selection_inputs)
+    if why:
+        unverified.append(why)
+    lost = bool(after or rule_changes or unplanned or violation)
+    return {"experiment_id": experiment_id, "preregistration_sha256": sha, "confirmatory": not lost,
+            "deviations": devs, "design_deviations_after_oos": after, "selection_rule_changes": rule_changes,
+            "unplanned_config_ids": unplanned, "selection": selection, "selection_rule_violation": violation,
+            "unverified": unverified}
+
+
+def confirmatory_status(registry, experiment_id: str, *, preregistration=None,
+                        selection_inputs: bytes | None = None) -> dict:
+    """Carácter confirmatorio reconstruido desde el registro, consultable en HUMAN_REVIEW
+    (ORQ-017-01, O2). No cambia reglas de aprobación ni transiciones. Pérdida demostrada →
+    `confirmatory` = False, aunque falte otra evidencia (se informa en `unverified`). Sin pérdida
+    demostrada y con evidencia no verificable → ConfirmatoryStatusUnverifiable: nunca se certifica
+    por defecto (opción A del propietario, QA-CR020-02). Tras la selección de candidata, verificarlo
+    exige el preregistro congelado y `selection_inputs`. Registro ilegible, corrupto o incoherente
+    → PreregistrationError."""
+    st = confirmatory_findings(registry, experiment_id, preregistration=preregistration,
+                               selection_inputs=selection_inputs)
+    if st["confirmatory"] and st["unverified"]:
+        raise ConfirmatoryStatusUnverifiable(
+            f"{experiment_id}: carácter confirmatorio no verificable (QA-CR020-02): {st['unverified']}; "
+            "aporte el preregistro congelado y el archivo de resultados de la selección (selection_inputs)")
+    return st
 
 
 def freeze(prereg: dict) -> FrozenPreregistration:

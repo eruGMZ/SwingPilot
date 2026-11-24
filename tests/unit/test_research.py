@@ -438,7 +438,8 @@ def test_qa3r2_07_authorization_without_consumption_is_not_exposure(reg):
     assert fz.oos_seen(reg) is False
     reg.transition("EXP-0101", "AUDIT", actor="orquestador")
     fz.record_deviation("wf_design", NEW_WF, "sin exposición real", informed_by=[], registry=reg, access_history=[])
-    assert fz.confirmatory
+    # QA-CR020-02: tras la selección, certificarlo exige el archivo de resultados (solo se aporta la entrada)
+    assert fz.confirmatory_status(reg, selection_inputs=SELECTION_INPUTS)["confirmatory"]
 
 
 def test_qa3r2_07_other_experiment_consumption_does_not_count(reg):
@@ -458,9 +459,10 @@ def test_qa3r2_07_pre_exposure_and_non_design_deviations_preserved(reg):
     fz = freeze(prereg())
     fz.record_deviation("wf_design", NEW_WF, "antes de la exposición", informed_by=[], registry=reg)
     _consume(reg, "oos")
-    assert fz.confirmatory                                   # la desviación previa no cambia
+    # QA-CR020-02: tras la selección, certificarlo exige el archivo de resultados (solo se aporta la entrada)
+    assert fz.confirmatory_status(reg, selection_inputs=SELECTION_INPUTS)["confirmatory"]   # la desviación previa no cambia
     d = fz.record_deviation("limitations", "otra", "campo no de diseño tras OOS", informed_by=[], registry=reg)
-    assert d["after_oos"] is True and fz.confirmatory        # campo fuera de DESIGN_FIELDS
+    assert d["after_oos"] is True and fz.confirmatory_status(reg, selection_inputs=SELECTION_INPUTS)["confirmatory"]
     fz.record_deviation("metrics", "otra", "campo de diseño tras OOS", informed_by=[], registry=reg)
     assert not fz.confirmatory
     assert fz.content["wf_design"]["n_windows"] == 2         # el contenido congelado no cambia
@@ -575,7 +577,7 @@ def test_orq_017_01_exposure_chronology_is_file_order(reg):
     _consume(reg, "lockbox")
     after_nd = fz.record_deviation("limitations", "otra", "no de diseño tras exposición", informed_by=[], registry=reg)
     assert before["after_oos"] is False and after_nd["after_oos"] is True
-    st = _rebuild(fz).confirmatory_status(_fresh_reg(reg))
+    st = _rebuild(fz).confirmatory_status(_fresh_reg(reg), selection_inputs=SELECTION_INPUTS)   # QA-CR020-02
     assert st["confirmatory"] is True and len(st["deviations"]) == 2
     after_d = fz.record_deviation("metrics", "otra", "de diseño tras exposición", informed_by=[], registry=reg)
     st = _rebuild(fz).confirmatory_status(_fresh_reg(reg))

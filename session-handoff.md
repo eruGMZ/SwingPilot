@@ -1,8 +1,48 @@
 # session-handoff.md — SwingPilot Harness
 
-## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: QA-CR020-02
+## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: QA-CR020-04
 
-**Base:** commit «fix(impl-3): implement CR-021 durable evaluation authorization» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push). Árbol limpio. Contrato **v1.9** congelado (DEC-023).
+**Base:** commit «fix(impl-3): resolve QA-CR020-02 confirmatory status consistency» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push; comprobar con `git status -sb`). Contrato **v1.9** sin cambios.
+**Última evidencia:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 822 passed, 5 skipped; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK. Registro real sin cambios (SHA-256 `07efad20…`). Pruebas no reejecutadas para el commit.
+
+**Estado de los hallazgos de la QA independiente de CR-020** (`harness/verification/IMPL-3_CR-020_QA_independiente.md`, sin modificar):
+
+| Hallazgo | Estado |
+|---|---|
+| QA-CR020-01 | CORREGIDO y aceptado; pendiente de reverificación independiente (`IMPL-3_QA-CR020-01_correccion.md`) |
+| QA-CR020-02 | CORREGIDO y aceptado; pendiente de reverificación independiente (`IMPL-3_QA-CR020-02_correccion.md` §9) |
+| QA-CR020-03 | CORREGIDO y aceptado; pendiente de reverificación independiente (CR-021; `IMPL-3_CR-021_implementacion.md` §10) |
+| **QA-CR020-04** | **SIN RESOLVER — siguiente trabajo; ninguna implementación autorizada** |
+| QA-CR020-05 | Sin resolver; solapamiento con P1 de CR-021 (no cerrar sin decisión) |
+| QA-CR020-06 | Sin resolver; `feature_list.json` desactualizado (incluido el bloque `cr021`) |
+| QA-CR020-O3, O4 | Sin resolver (observaciones) |
+
+**QA-CR020-04 (para la sesión siguiente):** ambigüedad contractual. CR-020 §C.4.2, caso 2: una prueba posterior `T` es RELEVANTE si un punto de decisión de X «cita en `informed_by` el experimento o el par de `T`»; el código solo reconoce la cita del par exacto (`src/swingpilot/research/trials.py:129-139`; el informe cita `:126-133`, desplazadas por la corrección de QA-CR020-02). Reproducción: sonda P5 de `harness/verification/IMPL-3_CR-020_QA_sondas.py` (`N_eval` = 2 frente a 3 con la lectura literal). La interpretación implementada es la menos conservadora. Requiere aclaración del propietario antes de cualquier cambio; no ampliar a otros hallazgos.
+
+**Obligaciones de reverificación independiente pendientes** (para una QA posterior):
+- QA-CR020-01 y QA-CR020-03: relación escritura/`fsync` de la evidencia sobre el mismo descriptor nuevo; orden de emisión del marcador; acceso real a datos entre procesos, no solo predicados de conteo.
+- QA-CR020-02: coherencia entre la consulta (`confirmatory_status` / `confirmatory_findings`) y el evaluador; vinculación del preregistro congelado; validación del hash del archivo de resultados de la selección; ausencia de certificación confirmatoria falsa.
+
+**Estado general:** CONF-009 y CONF-010 OPEN (CONF-009 con reevaluación obligatoria antes del cierre de FEAT-017); D2 pendiente de cierre; FEAT-015 DONE; FEAT-017 IN_PROGRESS; D3–D7 PENDIENTES; SNAP-0001 no creada; gates sin cambios.
+**Restricciones vigentes:** sin particiones reales, experimentos, SNAP-0001 ni IA; registro real solo lectura; commit y push solo con indicación del propietario.
+**Siguiente acción autorizada:** ninguna. Esperar instrucciones del propietario (ninguna implementación autorizada para QA-CR020-04).
+
+**Aceptación del propietario — corrección de QA-CR020-02 (2026-11-24):** aprobada bajo el contrato v1.9 (detalle en `IMPL-3_QA-CR020-02_correccion.md` §9 y `progress.md`). Commit de los nueve archivos, sin push.
+
+## PUNTO DE CONTROL (2026-11-24) — QA-CR020-02 CORREGIDO (aceptado por el propietario y en commit; ver el punto de reanudación superior)
+
+**Base:** `0051014` en `develop` (= `origin/develop`; la indicación previa de «1 commit por delante» estaba desactualizada y se corrigió abajo). Cambios sin commit. Contrato **v1.9** sin cambios.
+**Autorización:** corrección de QA-CR020-02 bajo el contrato v1.9, opción A (no verificable → `PreregistrationError`).
+**Hecho:** `confirmatory_status` aplica las causas contractuales de pérdida (diseño tras la exposición; par no planificado, conste o no su DEVIATION; selección distinta de la regla congelada; desviación de `candidate_selection_rule` en cualquier momento, CR-020 §C.3.4, sin bloqueo contractual). Pérdida demostrada → `False`; no verificable → `ConfirmatoryStatusUnverifiable`. El evaluador conserva sus códigos y su orden. Detalle: `harness/verification/IMPL-3_QA-CR020-02_correccion.md`.
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 822 passed, 5 skipped; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK; `tests/unit/test_qa_cr020_02.py` → 11 passed (10 failed frente a `0051014`, 6 de ellos fallos de comportamiento genuinos). Registro real sin cambios (`07efad20…`).
+**Archivos (sin commit):** `src/swingpilot/research/{preregistration,trials}.py`, `research/README.md`, `tests/unit/test_qa_cr020_02.py` (nuevo), `tests/unit/test_research.py` y `tests/unit/test_cr021_durability.py` (solo entradas de verificación), `harness/verification/IMPL-3_QA-CR020-02_correccion.md` (nuevo), `progress.md`, `session-handoff.md`.
+**Cambio de uso:** tras la selección de candidata, la consulta de HUMAN_REVIEW debe pasar `preregistration` y `selection_inputs`; la propiedad `FrozenPreregistration.confirmatory` lanza `ConfirmatoryStatusUnverifiable` en ese caso si no hay pérdida demostrada.
+**Pendiente:** QA-CR020-01 y 03 pendientes de reverificación independiente (obligaciones en el punto anterior); QA-CR020-02 pendiente de revisión del propietario y de reverificación independiente; QA-CR020-04, 05, 06, O3 y O4 sin resolver. CONF-009 y CONF-010 OPEN; FEAT-015 DONE; FEAT-017 IN_PROGRESS; `feature_list.json` sin cambios.
+**Siguiente acción autorizada:** ninguna. Esperar la revisión del propietario (commit y push solo con su indicación).
+
+## PUNTO DE CONTROL (2026-11-24) — reanudación en QA-CR020-02 (sustituido por el punto de reanudación superior)
+
+**Base:** commit «fix(impl-3): implement CR-021 durable evaluation authorization» en `develop` (publicado: `develop` = `origin/develop`, comprobado el 2026-11-24; corrige la indicación anterior «1 commit por delante», que estaba desactualizada). Árbol limpio. Contrato **v1.9** congelado (DEC-023).
 **Última evidencia:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 811 passed, 5 skipped; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK. Registro real sin cambios (SHA-256 `07efad20…`; H_doc 4, H_bound 4, E 0, G 8).
 
 **Cerrado en diseño y aprobado — NO reabrir:** CR-021 revisión 2 (DEC-023): `EVALUATION_PERSISTED`, I2a/I2b, R2, copias idénticas, duplicados conflictivos Fail-Closed, P1–P5. Implementación aceptada por el propietario (`harness/verification/IMPL-3_CR-021_implementacion.md` §10). Cualquier cambio de ese diseño exige una CR nueva.

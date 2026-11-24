@@ -18,7 +18,7 @@ import hashlib
 import json
 
 from .experiments import ExperimentRegistry, accounting_shape_error
-from .preregistration import PreregistrationError, apply_selection_rule, confirmatory_status, parse_selection_rule
+from .preregistration import PreregistrationError, apply_selection_rule, confirmatory_findings, parse_selection_rule
 
 TRIALS_COUNT_INCONSISTENT = "TRIALS_COUNT_INCONSISTENT"
 SUBSEQUENT_UNDETERMINED = "SUBSEQUENT_TRIAL_INFLUENCE_UNDETERMINED"
@@ -71,13 +71,16 @@ def reconcile(registry, frozen, selection_inputs: bytes | None) -> dict:
     out["trials_live"] = full["H_doc"] + full["H_bound"] + full["E"]
 
     # 2. Carácter confirmatorio (desviaciones, reglas vigentes + REQ-G-103 v1.8)
+    # QA-CR020-02: misma fuente que confirmatory_status. Aquí solo deciden las desviaciones; la
+    # configuración no planificada y la selección conservan sus códigos y su orden (abajo).
     try:
-        st = confirmatory_status(registry, eid)
+        st = confirmatory_findings(registry, eid)
     except PreregistrationError as exc:
         return _fail(out, "DEVIATIONS_INCOHERENT", str(exc))
-    if not st["confirmatory"]:
+    if st["design_deviations_after_oos"] or st["selection_rule_changes"]:
         return _fail(out, "NOT_CONFIRMATORY", f"desviaciones de diseño tras la exposición: "
-                                              f"{st['design_deviations_after_oos']}")
+                                              f"{st['design_deviations_after_oos']}; cambios de la regla de "
+                                              f"selección congelada (CR-020 §C.3.4): {st['selection_rule_changes']}")
     planned = set(acc["planned_config_ids"])
     x_pairs = {c for (e, c) in full["pairs"] if e == eid}
     unplanned = sorted(x_pairs - planned)

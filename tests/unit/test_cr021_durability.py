@@ -429,7 +429,8 @@ def test_p1_control_clean_registry_allows_every_path(reg, tmp_path, monkeypatch)
     assert gate(reg, tmp_path)[0] == "DELIVERED"
     assert A.evaluate(evidence(), reg, preregistration=fz, selection_inputs=inputs).outcome == \
         "ELIGIBLE_FOR_HUMAN_REVIEW"
-    assert reg.trials_count() == 2 and len(confirmatory_status(reg, X1)["deviations"]) == 1
+    st = confirmatory_status(reg, X1, preregistration=fz, selection_inputs=inputs)   # QA-CR020-02: entradas de verificación
+    assert reg.trials_count() == 2 and len(st["deviations"]) == 1
 
 
 @pytest.mark.parametrize("corruption", sorted(CORRUPTIONS))
