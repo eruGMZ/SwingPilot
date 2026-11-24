@@ -1,5 +1,12 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — D1 APROBADA (nivel documental); CONF-009 LOW/OPEN con reevaluación obligatoria; commit en develop, sin push
+
+**Aprobación del propietario (2026-11-24):** los cuatro cambios documentales de `2e13c27`; D1 resuelta a nivel documental; CONF-009 con severidad LOW y estado OPEN.
+**Condición:** CONF-009 debe reevaluarse obligatoriamente antes del cierre formal de FEAT-017 (registrada en `implementation/conflict_register.md`).
+**Estado:** AC-017-10 bloqueado (D3 y D2, D4–D7 PENDIENTES); FEAT-017 IN_PROGRESS; registro de experimentos sin cambios; SNAP-0001 no creada. Archivos de este paso: `implementation/conflict_register.md`, `progress.md`, `session-handoff.md`. Sin pruebas ejecutadas.
+**Siguiente acción autorizada:** ninguna. Esperar indicación del propietario.
+
 ## IMPL-3 (2026-11-24) — D1 RESUELTA a nivel documental (EXP-0001); CONF-009 abierto; sin commit
 
 **Sincronización:** `develop` = `origin/develop` = `ec2e926` (push del propietario; árbol limpio antes de este paso). Las entradas anteriores que dicen «sin push» quedan superadas.
