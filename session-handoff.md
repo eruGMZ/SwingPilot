@@ -1,5 +1,21 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — QA3R2-06 RESUELTO POR COMPLETO (FEAT-017); commit en develop, sin push
+
+**Aprobación del propietario (2026-11-24):** corrección y evidencia aprobadas; riesgos residuales aceptados dentro del alcance. **Requisito conservado:** verificar la coherencia entre el `execution_model` preregistrado y `ExecutionModel` antes del piloto confirmatorio. Sin validación adicional ni topes realistas de costes en esta etapa. Sin pruebas adicionales tras la aprobación.
+**Estado:** FEAT-017 IN_PROGRESS (sin cambios en `feature_list.json`); QA3R2-07 abierto; SNAP-0001 no creada.
+**Siguiente acción autorizada:** ninguna. Esperar indicación del propietario.
+
+### Registro previo a la aprobación — QA3R2-06 corregido (FEAT-017), pendiente de aprobación; sin commit
+
+**Push:** los seis commits aprobados están en `origin/develop` (`c3f526c`, sincronizado).
+**Hecho:** corrección directa autorizada de QA3R2-06, sin CR. `ExecutionModel.__post_init__` (`src/swingpilot/research/backtest.py`) acepta `commission_rate` y `slippage` solo como reales finitos no booleanos con `0.001 ≤ valor < 1.0`; si no, `ValueError`. Límite superior comprobado sin conflicto con el contrato. 65 pruebas nuevas en `tests/unit/test_research.py`: 24 regresiones (fallan con `c3f526c`), 8 normalizaciones de `TypeError` a `ValueError`, 12 rechazos existentes y 21 controles. Detalle en `harness/verification/IMPL-3_QA_ronda2.md` §Corrección de QA3R2-06.
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 636 passed, 5 skipped. Validadores → OK.
+**Sin commit ni push.** Archivos modificados: `src/swingpilot/research/backtest.py`, `tests/unit/test_research.py`, `harness/verification/IMPL-3_QA_ronda2.md`, `progress.md`, `session-handoff.md`.
+**Sin cambios:** contrato, AC, `feature_list.json`, estados de FEAT (FEAT-017 IN_PROGRESS), evaluador, preregistro, lógica de ejecución. QA3R2-07 abierto. SNAP-0001 no creada; OOS/LOCKBOX reales intactos; $0 de IA.
+**Pendiente del propietario (FEAT-017):** aprobación de QA3R2-06; QA3R2-07; decisiones D1–D8 del análisis de AC-017-10/11 (suficiencia de la documentación de EXP-0001, unidad de `trials_count`, cortes y creación de SNAP-0001, orden del piloto en Train, campos del preregistro sin valor contractual, configuración del piloto).
+**Siguiente acción autorizada:** ninguna. Esperar la aprobación expresa del propietario.
+
 ## IMPL-3 (2026-11-24) — FEAT-015 CERRADA como DONE
 
 **Aprobación del propietario (2026-11-24):** AC-015-1..8 definitivos; FEAT-015 READY_FOR_REVIEW → DONE. Riesgos residuales y controles de despliegue diferidos (G6, Laptop B) aceptados. `feature_list.json` v1.16.0.

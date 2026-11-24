@@ -23,6 +23,8 @@ Reglas:
 El motor no contiene ninguna estrategia: recibe la lógica por interfaz (DEC-018: el piloto no
 se preregistra todavía).
 """
+import math
+import numbers
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -45,6 +47,21 @@ class ExecutionModel:
     slippage: float = SLIPPAGE
 
     def __post_init__(self):
+        # QA3R2-06: solo números reales finitos, no booleanos, con 0.001 ≤ valor < 1.0. Una
+        # comparación con NaN es siempre falsa y True vale 1, así que sin esta comprobación
+        # pasarían el mínimo; un valor ≥ 1.0 daría precios de ejecución ≤ 0.
+        for name in ("commission_rate", "slippage"):
+            v = getattr(self, name)
+            if isinstance(v, (bool, np.bool_)) or not isinstance(v, numbers.Real):
+                raise ValueError(f"{name} debe ser un número real no booleano (QA3R2-06)")
+            try:
+                finite = math.isfinite(v)
+            except OverflowError:   # entero demasiado grande para float
+                finite = False
+            if not finite:
+                raise ValueError(f"{name} debe ser finito (QA3R2-06)")
+            if v >= 1.0:
+                raise ValueError(f"{name} debe ser menor que 1.0 (QA3R2-06)")
         if self.commission_rate < MIN_COMMISSION:
             raise ValueError("la comisión no puede ser menor que 0.10% por lado (REQ-G-P03)")
         if self.slippage < SLIPPAGE:

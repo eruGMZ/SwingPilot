@@ -522,6 +522,69 @@ def test_execution_model_floors_and_summary_separates_gross_costs_net():
         run_backtest(b, Script({0: EntrySignal(95.0)})).equity_curve(0.02)
 
 
+# --- QA3R2-06: dominio de comisión y slippage en ExecutionModel ----------------------------
+# Regresiones: valores que c3f526c ACEPTABA (NaN e inf hacen que la comparación con el mínimo
+# sea falsa; True vale 1; ≥ 1.0 da precios de ejecución ≤ 0; Decimal se comparaba pero
+# fallaba después en el cálculo).
+COST_FIELDS = ("commission_rate", "slippage")
+QA3R2_06_REGRESSIONS = [
+    float("nan"), np.float64("nan"), float("inf"), np.float64("inf"), True, np.bool_(True),
+    1.0, 1, 1.5, np.float64(1.0), 10**400, __import__("decimal").Decimal("0.002"),
+]
+# Ya rechazados con ValueError en c3f526c (comportamiento existente; controles).
+QA3R2_06_ALREADY_REJECTED = [float("-inf"), False, 0.0, 0.0005, -1.0, float(np.nextafter(0.001, 0))]
+# En c3f526c fallaban con TypeError; ahora ValueError (normalización del tipo de excepción).
+QA3R2_06_TYPE_NORMALIZED = [None, "0.002", complex(0.002, 0), [0.002]]
+# Límites y entradas válidas: deben seguir aceptándose.
+def _qa3r2_06_id(v):
+    r = repr(v)
+    return r if len(r) <= 24 else f"{type(v).__name__}({r[:8]}…)"
+
+
+QA3R2_06_VALID = [0.001, float(np.nextafter(1.0, 0)), 0.0015, 0.002, 0.005, 0.01, 0.5,
+                  np.float64(0.002), np.float32(0.002), __import__("fractions").Fraction(1, 500)]
+
+
+@pytest.mark.parametrize("field_name", COST_FIELDS)
+@pytest.mark.parametrize("value", QA3R2_06_REGRESSIONS, ids=_qa3r2_06_id)
+def test_qa3r2_06_regression_invalid_cost_rejected(field_name, value):
+    with pytest.raises(ValueError):
+        ExecutionModel(**{field_name: value})
+
+
+@pytest.mark.parametrize("field_name", COST_FIELDS)
+@pytest.mark.parametrize("value", QA3R2_06_ALREADY_REJECTED, ids=_qa3r2_06_id)
+def test_qa3r2_06_existing_rejection_preserved(field_name, value):
+    with pytest.raises(ValueError):
+        ExecutionModel(**{field_name: value})
+
+
+@pytest.mark.parametrize("field_name", COST_FIELDS)
+@pytest.mark.parametrize("value", QA3R2_06_TYPE_NORMALIZED, ids=_qa3r2_06_id)
+def test_qa3r2_06_non_numeric_normalized_to_value_error(field_name, value):
+    with pytest.raises(ValueError):
+        ExecutionModel(**{field_name: value})
+
+
+@pytest.mark.parametrize("field_name", COST_FIELDS)
+@pytest.mark.parametrize("value", QA3R2_06_VALID, ids=_qa3r2_06_id)
+def test_qa3r2_06_valid_and_boundary_costs_accepted(field_name, value):
+    m = ExecutionModel(**{field_name: value})
+    assert getattr(m, field_name) == value
+
+
+def test_qa3r2_06_slippage_robustness_scenarios_preserved():
+    """Escenarios de robustez de slippage (REQ-G-107) por encima del mínimo siguen permitidos
+    y producen resultados finitos y monótonos."""
+    b = bars([(100, 101, 99, 100), (100, 101, 99, 100), (99, 100, 94, 96)])
+    sums = [run_backtest(b, Script({0: EntrySignal(95.0)}), ExecutionModel(commission_rate=c, slippage=s)).summary()
+            for c, s in ((0.001, 0.001), (0.001, 0.002), (0.001, 0.005), (0.002, 0.005))]
+    for s in sums:
+        assert s["trades"] == 1 and all(math.isfinite(s[k]) for k in ("gross_r", "slippage_r", "commission_r", "net_r"))
+    assert sums[0]["slippage_r"] < sums[1]["slippage_r"] < sums[2]["slippage_r"]
+    assert sums[0]["net_r"] > sums[1]["net_r"] > sums[2]["net_r"] > sums[3]["net_r"]
+
+
 # --- Evaluador de aceptación (TC-ML-004..006, QA3-05, QA3-07) -----------------------------
 
 class FakeReg:

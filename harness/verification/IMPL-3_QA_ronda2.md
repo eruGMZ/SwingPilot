@@ -167,3 +167,42 @@ Las rondas de QA permitidas están agotadas (2 de 2). Cualquier corrección post
 **Aprobación final del propietario (2026-11-24):** aprueba la corrección final de QA3R2-08 y su evidencia de verificación (571 passed, 5 skipped; validadores OK). Acepta los riesgos residuales y las restricciones operativas: (1) el CI debe ejecutarse con un usuario sin privilegios; (2) se acepta el comportamiento existente de cuarentena de huérfanos; (3) los privilegios especiales de Linux y el aislamiento efectivo del despliegue quedan sujetos a la verificación de G6; (4) la validación del entorno de Laptop B sigue siendo un requisito previo de despliegue.
 
 **Estado de QA3R2-08 (2026-11-24): RESUELTO POR COMPLETO.** Se cierra la condición registrada al aprobar `c9a054b` (comportamiento ante sellado no efectivo): ahora se bloquea. Sin hallazgos pendientes bajo QA3R2-08.
+
+---
+
+## Corrección de QA3R2-06 (2026-11-24, Orquestador; sin nueva ronda de QA)
+
+**Autorización del propietario (2026-11-24):** corrección directa de QA3R2-06, incluido el límite superior de dominio. Validar `commission_rate` y `slippage` en `ExecutionModel.__post_init__`: solo números reales, finitos y no booleanos; `0.001 ≤ valor < 1.0`; `ValueError` ante entradas inválidas; conservar las configuraciones de costes válidas y los escenarios de robustez de slippage. Base `c3f526c`. Sin cambios en el contrato, los AC, `feature_list.json`, los estados de FEAT, el evaluador, el preregistro ni la lógica de ejecución del backtest.
+
+**Resolución contractual:** corrección directa, **sin CR**. El contrato solo define valores finitos: REQ-G-P03/DEC-004 P03 (max(real, 0.10%) por lado), REQ-G-P04/DEC-004 P04 (0.10%), REQ-G-109 y DEC-013 (slippage adverso de 0.10% en stop y hueco), REQ-G-142 (costes modelados; bruto, costes y neto separados). **Comprobación del límite superior:** ningún requisito, decisión ni política fija o permite un coste ≥ 100% (búsqueda en `implementation/`, `docs/decisions/` y `docs/policies/`). DEC-012 («slippage… no cota dura») se refiere al deslizamiento real de la orden de mercado en vivo, no al parámetro del backtest. Un valor ≥ 1.0 daría precios de ejecución ≤ 0. **Sin conflicto.** El límite es de dominio, no un tope realista (que sí requeriría decisión del propietario).
+
+| Punto | Implementación (`src/swingpilot/research/backtest.py`) |
+|---|---|
+| Tipo | `bool`/`np.bool_` o no `numbers.Real` → `ValueError` (incluye `None`, `str`, `complex`, `list`, `Decimal`). |
+| Finitud | `math.isfinite`; un entero demasiado grande para float (`OverflowError`) cuenta como no finito → `ValueError`. |
+| Dominio | `valor ≥ 1.0` → `ValueError`. El mínimo existente (`< 0.001` → `ValueError`, REQ-G-P03/P04) no cambia. |
+| Sin cambios | `run_backtest`, `Trade`, `BacktestResult`, constantes, evaluador y preregistro. |
+
+**Pruebas (`tests/unit/test_research.py`, 65 casos; cada valor sobre `commission_rate` y `slippage`):**
+
+| Grupo | Valores | Con `c3f526c` | Corregido |
+|---|---|---|---|
+| **Regresiones** (`test_qa3r2_06_regression_invalid_cost_rejected`) | NaN, `np.float64(nan)`, +inf, `np.float64(inf)`, `True`, `np.True_`, 1.0, 1, 1.5, `np.float64(1.0)`, 10**400, `Decimal("0.002")` | **24 fallan** («DID NOT RAISE»: se aceptaban) | 24 pasan |
+| Normalización del tipo de excepción (`…_non_numeric_normalized_to_value_error`) | `None`, `"0.002"`, `0.002+0j`, `[0.002]` | 8 fallan (`TypeError` de la comparación, no `ValueError`) | 8 pasan |
+| Rechazo existente conservado (`…_existing_rejection_preserved`) | −inf, `False`, 0.0, 0.0005, −1.0, el float inmediatamente inferior a 0.001 | 12 pasan (ya `ValueError`) | 12 pasan |
+| Límites y controles válidos (`…_valid_and_boundary_costs_accepted`) | 0.001 y el float inmediatamente inferior a 1.0 (límites); 0.0015, 0.002, 0.005, 0.01, 0.5, `np.float64(0.002)`, `np.float32(0.002)`, `Fraction(1, 500)` | 20 pasan | 20 pasan |
+| Robustez de slippage (`…_slippage_robustness_scenarios_preserved`) | (0.001, 0.001), (0.001, 0.002), (0.001, 0.005), (0.002, 0.005) | pasa | pasa: resultados finitos; slippage_r crece y net_r baja de forma monótona |
+
+`Decimal` cuenta como regresión: `c3f526c` lo aceptaba al construir (la comparación con float funciona), pero `run_backtest` fallaría después con `TypeError` (float × Decimal). Las pruebas existentes no se modificaron ni debilitaron; no se añadió ningún `skip`.
+
+**Método de reproducción:** `git archive c3f526c src` extraído en el directorio temporal de la sesión junto con el archivo de pruebas nuevo; `pytest -k qa3r2_06` → 32 failed, 33 passed (24 «DID NOT RAISE», 8 `TypeError`). Sobre el árbol corregido → 65 passed. El árbol de trabajo no se tocó para la reproducción.
+
+**Suite:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 636 passed, 5 skipped (571 + 65). Validadores (`scripts/validate_{manifest,requirements,gates}.py`) → OK.
+
+**Riesgos residuales y notas:** (1) El límite superior es de dominio: valores finitos en [0.001, 1.0), p. ej. 0.5, siguen aceptándose aunque no sean realistas; un tope realista requiere decisión del propietario. (2) El modelo admite slippage > 0.10% para las pruebas de robustez (REQ-G-107); que el modelo confirmatorio use exactamente 0.10% (REQ-G-109) depende del preregistro, que no contrasta el campo `execution_model` con `ExecutionModel` (fuera de alcance). (3) `np.float32` y `Fraction` se aceptan como reales; `float32` introduce una pérdida de precisión mínima en los costes. (4) La validación cubre la construcción; el dataclass es inmutable, pero `object.__setattr__` puede saltarse la validación (uso no previsto). (5) La comisión real por API (REQ-G-P03) y el sizing en vivo no forman parte de esta corrección. (6) QA3R2-07 sigue abierto y sin tocar.
+
+**Estado de QA3R2-06:** implementado; **pendiente de aprobación del propietario**. Sin commit ni push.
+
+**Aprobación del propietario (2026-11-24):** aprueba la corrección de QA3R2-06 y su evidencia de verificación (65 casos; 24 regresiones que fallan con `c3f526c`; 636 passed, 5 skipped; validadores OK). Acepta los riesgos residuales documentados dentro del alcance de esta corrección. **Se mantiene como requisito** verificar la coherencia entre el modelo de ejecución preregistrado (`execution_model` del preregistro) y `ExecutionModel` antes del piloto confirmatorio (riesgo residual 2). En esta etapa no se añade validación adicional ni topes realistas de costes.
+
+**Estado de QA3R2-06 (2026-11-24): RESUELTO POR COMPLETO.** Commit en develop, sin push. FEAT-017 sigue en IN_PROGRESS; QA3R2-07 sigue abierto.

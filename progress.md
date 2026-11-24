@@ -1429,3 +1429,25 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Sin cambios:** demás estados de FEAT, contrato, código, pruebas, cortes, SNAP-0001, OOS/LOCKBOX reales. Commit en develop, sin push. $0 de IA.
 
 **Siguiente:** ninguna acción autorizada; esperar indicación del propietario.
+
+---
+
+## 2026-11-24 | FASE 2 | IMPL-3: corrección de QA3R2-06 (dominio de comisión y slippage en ExecutionModel; FEAT-017) | IMPLEMENTADO — PENDIENTE DE APROBACIÓN DEL PROPIETARIO
+
+**Contexto:** push de los seis commits aprobados a `origin/develop` (`c3f526c`; local y remoto sincronizados). Análisis de FEAT-017 (AC-017-10/11, dependencia de SNAP-0001, decisiones metodológicas pendientes) y de QA3R2-06, solo lectura.
+
+**Autorización del propietario (2026-11-24):** corrección directa de QA3R2-06 con límite superior de dominio: en `ExecutionModel.__post_init__`, `commission_rate` y `slippage` solo como números reales, finitos y no booleanos, con `0.001 ≤ valor < 1.0` y `ValueError` en otro caso; conservar los costes válidos y los escenarios de robustez de slippage; detenerse si el límite superior chocara con el contrato. Base `c3f526c`.
+
+**Resolución contractual:** sin CR. El contrato solo define valores finitos (REQ-G-P03, REQ-G-P04, REQ-G-109, REQ-G-142; DEC-004 P03/P04; DEC-013). Ningún documento fija ni permite un coste ≥ 100%; DEC-012 trata el deslizamiento real en vivo, no el parámetro del backtest. Sin conflicto.
+
+**Cambios:** `src/swingpilot/research/backtest.py` (validación de tipo, finitud y dominio en `ExecutionModel.__post_init__`); `tests/unit/test_research.py` (65 casos nuevos); `harness/verification/IMPL-3_QA_ronda2.md` (§Corrección de QA3R2-06); `progress.md`; `session-handoff.md`.
+
+**Evidencia:** con `c3f526c` (fuente extraída con `git archive` en el directorio temporal de la sesión): 32 failed, 33 passed. 24 regresiones «DID NOT RAISE» (NaN, +inf, `True`, `np.True_`, valores ≥ 1.0, 10**400, `Decimal`); 8 normalizaciones del tipo de excepción (`TypeError` → `ValueError`: `None`, `str`, `complex`, `list`); 12 rechazos existentes y 21 controles (límites, valores válidos y robustez de slippage) pasan en ambos. Corregido: 65 passed. Suite: `.venv/bin/pytest -q -p no:cacheprovider tests` → 636 passed, 5 skipped. Validadores → OK.
+
+**Riesgos residuales:** límite superior solo de dominio (0.5 sigue aceptándose); el preregistro no contrasta `execution_model` con `ExecutionModel`; `float32`/`Fraction` aceptados; validación solo en la construcción. Detalle en el informe de QA.
+
+**Sin cambios:** contrato, AC, `feature_list.json`, estados de FEAT (FEAT-017 IN_PROGRESS), evaluador, preregistro, lógica de ejecución del backtest. QA3R2-07 sin tocar. SNAP-0001 no creada; sin backtests reales; OOS/LOCKBOX reales intactos. Sin commit ni push. $0 de IA. Sub-agentes: 0.
+
+**Siguiente:** aprobación del propietario de la corrección de QA3R2-06.
+
+**Aprobación del propietario (2026-11-24):** aprueba la corrección de QA3R2-06 y su evidencia; acepta los riesgos residuales dentro del alcance de la corrección. Requisito conservado: verificar la coherencia entre el modelo de ejecución preregistrado y `ExecutionModel` antes del piloto confirmatorio. Sin validación adicional ni topes realistas de costes en esta etapa. **QA3R2-06 RESUELTO POR COMPLETO.** Commit en develop, sin push; sin pruebas adicionales. FEAT-017 sigue IN_PROGRESS; `feature_list.json`, contratos, AC y demás estados sin cambios; QA3R2-07 abierto; SNAP-0001 no creada; $0 de IA.
