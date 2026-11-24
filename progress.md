@@ -1387,3 +1387,45 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Siguiente:** aprobación final del propietario de QA3R2-08.
 
 **Aprobación final del propietario (2026-11-24):** aprueba la corrección final de QA3R2-08 y su evidencia. Acepta los riesgos residuales y las restricciones operativas: CI con usuario sin privilegios; comportamiento existente de cuarentena de huérfanos; privilegios especiales de Linux y aislamiento del despliegue sujetos a G6; validación de Laptop B como requisito previo de despliegue. **QA3R2-08 RESUELTO POR COMPLETO** (deja de estar CONDICIONADO). FEAT-015 sigue en READY_FOR_REVIEW; sin cambios en `feature_list.json`, contratos, criterios de aceptación ni estados de FEAT. Sin pruebas adicionales en este paso. Commit en develop, sin push.
+
+---
+
+## 2026-11-24 | FASE 2 | IMPL-3: consolidación de trazabilidad de FEAT-015 y preparación de la revisión de cierre | COMPLETADO — PENDIENTE DE DECISIÓN DEL PROPIETARIO
+
+**Indicación del propietario:** consolidar la trazabilidad de FEAT-015 y preparar su revisión formal de cierre, conservando READY_FOR_REVIEW. HEAD `4391df5`.
+
+**Cambios (solo registros):** `feature_list.json` v1.15.0, solo en FEAT-015:
+- `evidence.traceability_review`: matriz AC-015-1..8, con veredicto y referencias a pruebas por criterio; resolución de QA3-*/QA3R2-02/03/04/08; riesgos residuales aceptados; controles de despliegue diferidos (G6, Laptop B); SNAP-0001 fuera del alcance técnico; condiciones de reapertura propuestas; recomendación.
+- `test_cases`: se añaden TC-ML-007, TC-ML-012 y TC-ML-019.
+- `qa_reviews`: se añade la entrada de las correcciones posteriores a la ronda 2.
+- `evidence.pending` y `notes` actualizados.
+
+**Evidencia reutilizada (sin pruebas nuevas):** última verificación del código, el 2026-11-24, sobre el árbol congelado en `4391df5`: 571 passed, 5 skipped; validadores OK. Prueba de humo pública real del 2026-11-20 (cliente sin cambios desde `5c17e92`). Validadores ejecutados tras editar `feature_list.json`: OK.
+
+**Resultado:** AC-015-1..8 CUMPLEN; sin hallazgos abiertos ni bloqueos. Pendiente del propietario: aceptación formal de los AC (siguen «DEFINITIVOS PROPUESTOS») y decisión de cierre. Recomendación: DONE con condiciones de reapertura.
+
+**Sin cambios:** estados de FEAT (FEAT-015 READY_FOR_REVIEW), contratos, código, pruebas, SNAP-0001, OOS/LOCKBOX reales. Sin commit ni push. $0 de IA.
+
+**Aprobación formal del propietario (2026-11-24):** «I formally approve AC-015-1 through AC-015-8 as definitive acceptance criteria and authorize closing FEAT-015 as DONE.» Acepta los riesgos residuales y los controles de despliegue diferidos.
+
+---
+
+## 2026-11-24 | FASE 2 | IMPL-3: cierre de FEAT-015 (Snapshot histórica sellada) | COMPLETADO
+
+**Cambios (solo registros):** `feature_list.json` v1.16.0. FEAT-015 pasa de READY_FOR_REVIEW a DONE:
+- AC-015-1..8 marcados como DEFINITIVOS;
+- `owner_approval`;
+- `evidence.closure_verification`: código verificado congelado en `4391df5`, 571 passed / 5 skipped, sin volver a ejecutar la suite;
+- `accepted_residual_risks` y `deferred_deployment_controls` (G6, Laptop B);
+- `reopening_conditions`;
+- `outside_closure_scope`.
+
+**Condiciones de reapertura (aprobadas):** (1) una CR futura aprobada que modifique los cortes, REQ-G-109 o cualquier AC-015-*; (2) un defecto de implementación confirmado durante la construcción o la verificación de SNAP-0001. Cualquiera de ellas reabre FEAT-015 como IN_PROGRESS mediante el procedimiento de gobernanza aplicable. Un entorno de despliegue incompatible, por sí solo, no constituye necesariamente un defecto de implementación.
+
+**Fuera del cierre técnico (requieren autorización separada del propietario):** creación de SNAP-0001; validación metodológica de la independencia histórica de las particiones.
+
+**Verificación:** validadores `validate_{manifest,requirements,gates}.py` → OK. Suite no ejecutada de nuevo, por indicación del propietario.
+
+**Sin cambios:** demás estados de FEAT, contrato, código, pruebas, cortes, SNAP-0001, OOS/LOCKBOX reales. Commit en develop, sin push. $0 de IA.
+
+**Siguiente:** ninguna acción autorizada; esperar indicación del propietario.

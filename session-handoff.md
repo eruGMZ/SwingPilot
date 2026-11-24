@@ -1,5 +1,22 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — FEAT-015 CERRADA como DONE
+
+**Aprobación del propietario (2026-11-24):** AC-015-1..8 definitivos; FEAT-015 READY_FOR_REVIEW → DONE. Riesgos residuales y controles de despliegue diferidos (G6, Laptop B) aceptados. `feature_list.json` v1.16.0.
+**Condiciones de reapertura:** CR aprobada que modifique los cortes, REQ-G-109 o algún AC-015-*; o un defecto de implementación confirmado al construir o verificar SNAP-0001 (→ IN_PROGRESS por gobernanza). Un entorno incompatible, por sí solo, no es necesariamente un defecto.
+**Fuera del cierre (autorización separada):** creación de SNAP-0001; validación metodológica de la independencia histórica de las particiones.
+**Evidencia:** código verificado congelado en `4391df5` (571 passed, 5 skipped); validadores OK al cerrar; la suite no se volvió a ejecutar.
+**Estado de IMPL-3:** FEAT-015 y FEAT-016 DONE; FEAT-017..022 IN_PROGRESS (pendientes AC-017-10/11, AC-018-2/6, AC-020-8, AC-022-6 y SNAP-0001).
+**Siguiente acción autorizada:** ninguna. Esperar indicación del propietario.
+
+## IMPL-3 (2026-11-24) — FEAT-015: trazabilidad consolidada, revisión de cierre preparada
+
+**Hecho:** `feature_list.json` v1.15.0. FEAT-015 → `evidence.traceability_review`: matriz AC-015-1..8 (todos CUMPLEN), hallazgos QA3R2-02/03/04/08 resueltos, riesgos aceptados, controles diferidos (G6, Laptop B), SNAP-0001 fuera del alcance técnico, condiciones de reapertura y recomendación (DONE). Estado sin cambio: READY_FOR_REVIEW.
+**Evidencia:** última verificación del código, sobre el árbol congelado en `4391df5`: 571 passed, 5 skipped; validadores OK. No se ejecutaron pruebas en este paso.
+**Sin commit.** Archivos: `feature_list.json`, `progress.md`, `session-handoff.md`.
+**Pendiente del propietario:** aceptación formal de AC-015-1..8 y decisión de cierre de FEAT-015.
+**Siguiente acción autorizada:** ninguna. Esperar la aprobación expresa del propietario.
+
 ## IMPL-3 (2026-11-24) — QA3R2-08 RESUELTO POR COMPLETO (bloqueo ante sellado no efectivo)
 
 **Hecho:** corrección directa sin CR según las decisiones del propietario. Sonda de sellado antes de descargar o apartar huérfanos; comprobación final antes de confirmar, con rollback; `PartitionLoader` bloqueado (también `train_val`) y nueva comprobación antes de consumir; `verify-snapshot` → ERROR y código 1; sin omisión. 10 regresiones (todas fallan con `f8e7643`).

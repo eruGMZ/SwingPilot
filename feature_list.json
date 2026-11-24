@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "1.14.0",
+    "version": "1.16.0",
     "phase": "FASE 2",
     "status": "IMPL-3_EN_CURSO",
     "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5 y cerrada (2026-11-20). Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md). IMPL-3 (Integración cuantitativa, FEAT-015..022) registrada desde el contrato v1.5 con status PENDING; planificación aprobada (DEC-017); implementación parcial autorizada (DEC-018, 2026-11-20): FEAT-015/016/017/019 IN_PROGRESS, FEAT-018/020/021/022 BLOCKED.",
-    "last_updated": "2026-11-23",
+    "last_updated": "2026-11-24",
     "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-3..IMPL-6 se registran al iniciarlas. READY_FOR_REVIEW = criterios con implementación, prueba y evidencia; pasa a DONE tras revisión independiente (QA o propietario), porque ningún agente aprueba su propio trabajo (AGENTS.md). DONE-PARTIAL = criterios de IMPL-1 cumplidos con dependencias explícitas de fases posteriores (criterio del propietario, 2026-11-19); no bloquea la salida de IMPL-1."
   },
   "features": [
@@ -1218,9 +1218,12 @@
       ],
       "test_cases": [
         "TC-ML-001",
+        "TC-ML-007",
+        "TC-ML-012",
         "TC-ML-015",
         "TC-ML-016",
-        "TC-ML-017"
+        "TC-ML-017",
+        "TC-ML-019"
       ],
       "implementation_paths": [
         "src/swingpilot/research/snapshot.py",
@@ -1233,7 +1236,7 @@
         "tests/security/test_impl3_isolation.py",
         "tests/unit/test_snapshot.py"
       ],
-      "status": "READY_FOR_REVIEW",
+      "status": "DONE",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit/test_snapshot.py; RUN_BINANCE_PUBLIC_LIVE=1 .venv/bin/pytest -q tests/integration/test_binance_public_live.py",
         "executed_at": "2026-11-20T02:39Z",
@@ -1251,14 +1254,141 @@
           "AC-015-8"
         ],
         "pending": [
-          "Snapshot definitiva NO creada: fija las fechas de corte de forma permanente; requiere indicación del propietario (cli build-snapshot --confirm)"
-        ]
+          "Ninguno dentro del alcance técnico. Fuera del alcance: SNAP-0001 y la validación metodológica de la independencia histórica de las particiones (ver outside_closure_scope)."
+        ],
+        "traceability_review": {
+          "date": "2026-11-24",
+          "prepared_by": "Orquestador de Desarrollo (revisión de trazabilidad; no aprueba su propio trabajo)",
+          "purpose": "Consolidar la trazabilidad de FEAT-015 y preparar la revisión formal de cierre por el propietario. Reutiliza la evidencia existente; no se ejecutaron pruebas nuevas.",
+          "latest_tested_code": {
+            "tree": "árbol de trabajo verificado el 2026-11-24 y congelado sin cambios de código en 4391df5 (tras la ejecución solo se añadieron registros documentales)",
+            "command": ".venv/bin/pytest -q -p no:cacheprovider tests (como usuario no root); python3 scripts/validate_{manifest,requirements,gates}.py",
+            "result": "571 passed, 5 skipped; validadores OK",
+            "test_snapshot_py": "95 pruebas recogidas, todas aprobadas en esa ejecución"
+          },
+          "committed_head_at_review": "4391df54cce8263c0ba15407a87cdc4a062b3151 (src/ y tests/ idénticos al código verificado; esta revisión solo modifica feature_list.json, progress.md y session-handoff.md)",
+          "live_public_smoke": "2026-11-20T02:39Z, tests/integration/test_binance_public_live.py::test_rest_klines_pagination_and_closed_candles (2 passed, REST real, limit=1000, sin credenciales). market_data/binance_public.py y candles.py sin cambios desde 5c17e92, por lo que la evidencia sigue aplicando al cliente.",
+          "ac_matrix": {
+            "AC-015-1": {
+              "verdict": "CUMPLE",
+              "evidence": [
+                "tests/unit/test_snapshot.py::test_manifest_records_download_parameters",
+                "tests/unit/test_snapshot.py::test_qa3_02_truncated_download_aborts_without_sealing",
+                "tests/unit/test_snapshot.py::test_qa3_02_missing_last_candle_aborts",
+                "tests/unit/test_snapshot.py::test_qa3_02_interval_starting_after_first_day_aborts",
+                "tests/integration/test_binance_public_live.py::test_rest_klines_pagination_and_closed_candles (real, 2026-11-20)",
+                "tests/security/test_impl3_isolation.py (sin credenciales ni endpoints privados)"
+              ],
+              "note": "La descarga completa real es SNAP-0001 (paso manual opt-in, AC-015-8)."
+            },
+            "AC-015-2": {
+              "verdict": "CUMPLE",
+              "evidence": [
+                "tests/unit/test_snapshot.py::test_only_closed_candles_in_snapshot",
+                "tests/integration/test_binance_public_live.py::test_rest_klines_pagination_and_closed_candles"
+              ]
+            },
+            "AC-015-3": {
+              "verdict": "CUMPLE",
+              "evidence": [
+                "tests/unit/test_snapshot.py::test_tc_ml_015_three_partitions_hashes_identical_cuts_and_50_20_15_15",
+                "tests/unit/test_snapshot.py::test_qa3_10_integer_cuts",
+                "tests/unit/test_snapshot.py::test_train_validation_split_uses_manifest_cut"
+              ]
+            },
+            "AC-015-4": {
+              "verdict": "CUMPLE",
+              "evidence": [
+                "tests/unit/test_snapshot.py::test_tc_ml_017_gaps_are_nan_and_counted_consistently",
+                "tests/unit/test_snapshot.py::test_first_partial_day_is_declared_not_counted_as_gap"
+              ]
+            },
+            "AC-015-5": {
+              "verdict": "CUMPLE",
+              "evidence": [
+                "tests/unit/test_snapshot.py::test_manifest_records_download_parameters",
+                "tests/unit/test_snapshot.py::test_tc_ml_015_three_partitions_hashes_identical_cuts_and_50_20_15_15",
+                ".gitignore:46 (var/)"
+              ],
+              "note": "Manifiesto en research/snapshots/; Parquet en var/snapshots/<id>/, fuera de Git."
+            },
+            "AC-015-6": {
+              "verdict": "CUMPLE",
+              "evidence": [
+                "tests/unit/test_snapshot.py::test_tc_ml_015_tampering_is_detected",
+                "tests/unit/test_snapshot.py::test_snapshot_is_never_rewritten",
+                "tests/unit/test_snapshot.py::test_qa3_06_verify_snapshot_never_reads_sealed_partitions",
+                "tests/unit/test_snapshot.py::test_qa3r2_02_failure_between_rename_and_manifest_rolls_back",
+                "tests/unit/test_snapshot.py::test_qa3r2_02_killed_process_leaves_nothing_consumable_and_retry_quarantines",
+                "tests/unit/test_snapshot.py::test_qa3r2_08_cli_rejects_malformed_snapshot_id",
+                "tests/unit/test_snapshot.py::test_qa3r2_08_cli_verify_fails_with_ineffective_sealing"
+              ]
+            },
+            "AC-015-7": {
+              "verdict": "CUMPLE",
+              "evidence": [
+                "tests/unit/test_snapshot.py::test_tc_ml_016_lockbox_and_oos_denied_without_grant_and_logged",
+                "tests/unit/test_snapshot.py::test_tc_ml_001_grant_conditions",
+                "tests/unit/test_snapshot.py::test_qa3_06_sealed_files_cannot_be_read_directly",
+                "tests/unit/test_snapshot.py::test_qa3_03_antecedent_cannot_open_sealed_partitions",
+                "tests/unit/test_snapshot.py::test_tc_ml_007_019_lockbox_single_use_persisted_in_registry",
+                "tests/unit/test_snapshot.py::test_qa3r2_03_two_concurrent_loaders_consume_lockbox_once",
+                "tests/unit/test_snapshot.py::test_qa3r2_03_failed_read_keeps_partition_consumed_and_is_logged",
+                "tests/unit/test_snapshot.py::test_qa3r2_04_partition_requires_exact_experiment_partition_snapshot",
+                "tests/unit/test_snapshot.py::test_qa3r2_08_loader_blocked_before_any_read_or_consumption",
+                "tests/unit/test_snapshot.py::test_qa3r2_08_final_read_rechecks_sealing_before_consumption",
+                "tests/unit/test_snapshot.py::test_qa3r2_08_kill_during_authorized_read_leaves_partition_sealed",
+                "tests/unit/test_research.py::test_qa3r2_04b_* (estado destino de OOS_EVALUATION)"
+              ]
+            },
+            "AC-015-8": {
+              "verdict": "CUMPLE",
+              "evidence": [
+                "tests/unit/test_snapshot.py (SmallBinance simulado; sin red)",
+                "tests/unit/test_snapshot.py::test_cli_reads_consumed_lockboxes_from_registry (build-snapshot exige --confirm)"
+              ],
+              "note": "La descarga real es manual y opt-in; sin costo de API."
+            }
+          },
+          "findings_resolution": {
+            "QA3-02, QA3-03, QA3-04, QA3-06, QA3-09, QA3-10, QA3-15 (ronda 1)": "Corregidos (IMPL-3_QA_ronda1.md §Correcciones) y verificados en la ronda 2; QA3-15 PARCIAL cerrado vía QA3R2-02.",
+            "QA3R2-02": "RESUELTO y aprobado (2026-11-20), commit 04dc2ea.",
+            "QA3R2-03": "RESUELTO y aprobado (2026-11-20), commit 04dc2ea.",
+            "QA3R2-04": "RESUELTO POR COMPLETO y aprobado (2026-11-24): f04a2d1 (EXP-NNNN y coincidencia exacta) y c314d92 (estado destino; código en FEAT-017), registro en f8e7643.",
+            "QA3R2-08": "RESUELTO POR COMPLETO y aprobado (2026-11-24): c9a054b (detección, re-sellado, ids) y 4391df5 (bloqueo sin CR por decisión del propietario)."
+          },
+          "open_findings": [],
+          "accepted_residual_risks": [
+            "CI con usuario sin privilegios: la suite no puede ejecutarse como root (QA3R2-08).",
+            "Cuarentena existente de directorios huérfanos (.incomplete-…, sin borrado) (QA3R2-02, QA3R2-08).",
+            "flock exige POSIX y sistema de archivos local (QA3R2-03).",
+            "Ventana mínima entre los dos chmod de una lectura autorizada; lectura en memoria de OOS/LOCKBOX (QA3R2-08).",
+            "Control en proceso, no criptográfico: la decisión citada no autentica a una persona (QA3-04, QA3R2-04)."
+          ],
+          "deferred_deployment_controls": [
+            "G6: privilegios especiales de Linux (setuid, CAP_DAC_OVERRIDE) y aislamiento efectivo del despliegue.",
+            "Laptop B: verificar usuario no root, sistema de archivos POSIX y sellado efectivo antes de construir o usar snapshots (requisito previo de despliegue, no confirmado)."
+          ],
+          "outside_technical_scope": [
+            "SNAP-0001: su creación es un paso operativo manual y opt-in (AC-015-8) que fija los cortes de forma permanente; requiere autorización expresa del propietario y la decisión pendiente sobre los cortes frente a los datos de EXP-0001 (DEC-018 decisión 4). No es requisito del cierre técnico."
+          ],
+          "proposed_reopening_conditions": "Sustituidas por reopening_conditions (aprobadas por el propietario el 2026-11-24).",
+          "blockers": [],
+          "pending_owner_items": [],
+          "recommendation": "Apto para cierre como DONE (no DONE-PARTIAL): AC-015-1..8 cumplidos con evidencia; sin hallazgos abiertos; SNAP-0001 fuera del alcance técnico por AC-015-8; con las condiciones de reapertura propuestas. El cambio de estado requiere la aprobación expresa del propietario. → Aprobado por el propietario (2026-11-24): DONE."
+        },
+        "closure_verification": {
+          "code_verified": "árbol congelado en 4391df5 (src/ y tests/ sin cambios desde la verificación)",
+          "suite": "571 passed, 5 skipped (2026-11-24, usuario no root); no se volvió a ejecutar para el cierre, por indicación del propietario",
+          "validators_at_closure": "python3 scripts/validate_{manifest,requirements,gates}.py → OK (2026-11-24)",
+          "ac_matrix_ref": "evidence.traceability_review.ac_matrix (AC-015-1..8 CUMPLEN)"
+        }
       },
       "inherited_from_impl2": [],
       "depends_on_later_phases": [],
-      "notes": "DEC-013/CR-013; DEC-017 Q46 (Parquet fuera de Git; manifiesto y hashes en el repositorio). Snapshot aún no descargada. QA r2: conforme con observaciones; cierre (DONE) no autorizado aún por el propietario.",
+      "notes": "DEC-013/CR-013; DEC-017 Q46. CERRADA como DONE por el propietario (2026-11-24) con AC-015-1..8 definitivos; QA3R2-02/03/04/08 resueltos; riesgos residuales y controles de despliegue diferidos aceptados; condiciones de reapertura en reopening_conditions; SNAP-0001 y la validación metodológica de las particiones fuera del cierre técnico.",
       "blocked_by": [],
-      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "acceptance_criteria_status": "DEFINITIVOS — aprobados formalmente por el propietario (2026-11-24)",
       "authorization": {
         "authorized_by": "DEC-018 (2026-11-20)",
         "scope": "completa"
@@ -1291,7 +1421,81 @@
             "QA3R2-04",
             "QA3R2-08"
           ]
+        },
+        {
+          "round": "correcciones posteriores a la ronda 2 (sin nueva ronda de QA, por indicación del propietario)",
+          "date": "2026-11-20 / 2026-11-24",
+          "report": "harness/verification/IMPL-3_QA_ronda2.md §Correcciones",
+          "verdict": "QA3R2-02, QA3R2-03, QA3R2-04 y QA3R2-08 RESUELTOS y aprobados por el propietario",
+          "open_findings": [],
+          "commits": [
+            "04dc2ea",
+            "f04a2d1",
+            "c9a054b",
+            "c314d92",
+            "f8e7643",
+            "4391df5"
+          ]
         }
+      ],
+      "owner_approval": {
+        "approved_by": "propietario",
+        "approved_at": "2026-11-24",
+        "status_change": "READY_FOR_REVIEW → DONE",
+        "evidence": "«I formally approve AC-015-1 through AC-015-8 as definitive acceptance criteria and authorize closing FEAT-015 as DONE.» «Accept the documented residual risks and deferred deployment controls.»"
+      },
+      "accepted_residual_risks": [
+        {
+          "description": "CI con usuario sin privilegios: la suite no puede ejecutarse como root (QA3R2-08).",
+          "accepted_by": "propietario",
+          "accepted_at": "2026-11-24"
+        },
+        {
+          "description": "Cuarentena existente de directorios huérfanos (.incomplete-…, sin borrado) (QA3R2-02, QA3R2-08).",
+          "accepted_by": "propietario",
+          "accepted_at": "2026-11-24"
+        },
+        {
+          "description": "flock exige POSIX y sistema de archivos local (QA3R2-03).",
+          "accepted_by": "propietario",
+          "accepted_at": "2026-11-24"
+        },
+        {
+          "description": "Ventana mínima entre los dos chmod de una lectura autorizada; lectura en memoria de OOS/LOCKBOX (QA3R2-08).",
+          "accepted_by": "propietario",
+          "accepted_at": "2026-11-24"
+        },
+        {
+          "description": "Control en proceso, no criptográfico: la decisión citada no autentica a una persona (QA3-04, QA3R2-04).",
+          "accepted_by": "propietario",
+          "accepted_at": "2026-11-24"
+        }
+      ],
+      "deferred_deployment_controls": [
+        {
+          "description": "G6: privilegios especiales de Linux (setuid, CAP_DAC_OVERRIDE) y aislamiento efectivo del despliegue.",
+          "accepted_by": "propietario",
+          "accepted_at": "2026-11-24"
+        },
+        {
+          "description": "Laptop B: verificar usuario no root, sistema de archivos POSIX y sellado efectivo antes de construir o usar snapshots (requisito previo de despliegue, no confirmado).",
+          "accepted_by": "propietario",
+          "accepted_at": "2026-11-24"
+        }
+      ],
+      "reopening_conditions": {
+        "conditions": [
+          "Una CR futura aprobada que modifique los cortes de las particiones, REQ-G-109 o cualquier criterio AC-015-*.",
+          "Un defecto de implementación confirmado, descubierto durante la construcción o la verificación de SNAP-0001."
+        ],
+        "effect": "Cualquiera de las dos condiciones exige reabrir FEAT-015 como IN_PROGRESS mediante el procedimiento de gobernanza aplicable.",
+        "clarification": "Un entorno de despliegue incompatible, por sí solo, no constituye necesariamente un defecto de implementación (el bloqueo por sellado no efectivo es el comportamiento aprobado, QA3R2-08).",
+        "approved_by": "propietario",
+        "approved_at": "2026-11-24"
+      },
+      "outside_closure_scope": [
+        "La creación de SNAP-0001 queda fuera de este cierre técnico y requiere autorización separada del propietario.",
+        "La validación metodológica de la independencia histórica de las particiones (cortes frente a los datos ya usados por EXP-0001, DEC-018 decisión 4) queda fuera de este cierre técnico y requiere autorización separada del propietario."
       ]
     },
     {
