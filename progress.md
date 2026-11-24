@@ -1361,3 +1361,13 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Siguiente:** revisión y aprobación del propietario.
 
 **Aprobación del propietario (2026-11-24):** «Apruebo la corrección; autorizo commit en develop, sin push.» La observación adicional de QA3R2-04 queda corregida y aprobada. FEAT-015 sigue en READY_FOR_REVIEW y FEAT-017 en IN_PROGRESS; QA3R2-08 sigue CONDICIONADO.
+
+---
+
+## 2026-11-24 | FASE 2 | IMPL-3: QA3R2-04 resuelto por completo | REGISTRADO
+
+**Aprobación del propietario (2026-11-24):** aprueba la corrección adicional de QA3R2-04 y sus 17 pruebas nuevas, e indica registrar QA3R2-04 como resuelto por completo. Componentes: corrección principal (`f04a2d1`) y observación adicional (`c314d92`). Sin pruebas adicionales ejecutadas en este paso (la última verificación, sobre `c314d92`, dio 563 passed, 5 skipped).
+
+**Sin cambios:** estados de FEAT (FEAT-015 READY_FOR_REVIEW; los demás sin cambio), `feature_list.json`, contratos, SNAP-0001, OOS/LOCKBOX reales. QA3R2-08 sigue CONDICIONADO y sin tocar. Sin push. $0 de IA.
+
+**Siguiente:** ninguna acción autorizada; esperar indicación del propietario.

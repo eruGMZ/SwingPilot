@@ -1,5 +1,13 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — QA3R2-04 RESUELTO POR COMPLETO
+
+**Estado:** QA3R2-04 resuelto por completo y aprobado por el propietario: corrección principal (`f04a2d1`) y observación adicional sobre el estado destino (`c314d92`, 17 pruebas). Registro en `harness/verification/IMPL-3_QA_ronda2.md`.
+**Última verificación (sobre `c314d92`):** 563 passed, 5 skipped; validadores OK. En este paso no se ejecutaron pruebas.
+**Sin cambios:** FEAT-015 en READY_FOR_REVIEW y demás estados de FEAT; contratos; SNAP-0001 no creada; OOS/LOCKBOX reales intactos; sin push.
+**Pendiente:** QA3R2-08 CONDICIONADO (sellado no efectivo: avisar o bloquear).
+**Siguiente acción autorizada:** ninguna. Esperar indicación del propietario.
+
 ## IMPL-3 (2026-11-24) — QA3R2-04 (observación adicional): estado destino en transiciones, APROBADA (commit en develop, sin push)
 
 **Hecho:** corrección directa sin CR, aprobada contractualmente por el propietario. Las transiciones que decide el propietario exigen `AUTORIZA: EXP-NNNN ESTADO_DESTINO` (OOS_EVALUATION, APPROVED, REJECTED, INCONCLUSIVE); la línea sin estado ya no autoriza nada; la gramática de particiones no cambia. Código afectado: registro de experimentos de FEAT-017 (AC-017-1). 17 regresiones (4 reproducen el defecto con `c9a054b`).

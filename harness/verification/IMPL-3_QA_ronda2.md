@@ -135,3 +135,5 @@ Las rondas de QA permitidas están agotadas (2 de 2). Cualquier corrección post
 **Efecto:** cada línea autoriza un único estado destino. Como la máquina solo avanza, en la práctica sirve una vez. Las decisiones futuras del propietario que autoricen una evaluación final necesitarán dos líneas: `AUTORIZA: EXP-NNNN OOS_EVALUATION` y `AUTORIZA: EXP-NNNN <oos|lockbox> <SNAP-…>`. No hay nada que migrar: el registro real solo contiene antecedentes y ninguna decisión real usa aún la gramática.
 
 **Aprobación del propietario (2026-11-24):** «Apruebo la corrección; autorizo commit en develop, sin push.» Observación adicional de QA3R2-04 cerrada.
+
+**Estado de QA3R2-04 (2026-11-24): RESUELTO POR COMPLETO.** Corrección principal (formato `EXP-NNNN` y coincidencia exacta de experimento, partición y snapshot; `f04a2d1`) y observación adicional (estado destino en la autorización de transiciones, 17 pruebas; `c314d92`), ambas aprobadas por el propietario. Sin hallazgos pendientes bajo QA3R2-04.
