@@ -588,6 +588,21 @@ def test_tc_ml_024_unreadable_registry_is_inconclusive(reg):
     assert v.outcome == "INCONCLUSIVE" and _reason(v, "REGISTRY_UNREADABLE")
 
 
+def test_qa_cr020_05_non_object_line_gives_structured_inconclusive_verdict(reg):
+    """QA-CR020-05 (sonda P6; CR-020 §C.4.3): una línea JSON válida que no es un objeto → veredicto
+    estructurado INCONCLUSIVE (no una excepción), sin conteo y sin tocar el registro. Caracterización:
+    el comportamiento ya es conforme como consecuencia de CR-021 (P1)."""
+    fz, inputs = ready(reg)
+    with open(reg.path, "a") as fh:
+        fh.write("[1, 2]\n")                                      # entrada original de P6
+    before = reg.path.read_bytes()
+    v = A.evaluate(evidence(), reg, preregistration=fz, selection_inputs=inputs)
+    assert isinstance(v, A.Verdict)
+    assert v.outcome == "INCONCLUSIVE" and _reason(v, "REGISTRY_UNREADABLE")
+    assert v.metrics["trials_count"] is None
+    assert reg.path.read_bytes() == before                        # byte a byte intacto
+
+
 # --- TC-ML-024 / CR-022 §F (DEC-024; contrato v1.10): cita por par exacto -----------------------
 # Pruebas de caracterización (no regresiones): el comportamiento ya cumplía CR-022 (§E). Origen:
 # QA-CR020-04, sonda P5. Solo registros temporales sintéticos.
