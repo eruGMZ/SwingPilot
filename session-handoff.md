@@ -1,5 +1,26 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE CONTROL (2026-11-24) — QA independiente de CR-020: CONFORME CON OBSERVACIONES; evidencia preservada y aprobada; commit en develop, sin push
+
+**Aprobación del propietario de la preservación (2026-11-24):** aprueba el informe en español, las 11 sondas reproducibles y las actualizaciones de continuidad; acepta la normalización a QA-CR020-O3 y QA-CR020-O4 sin cambios de contenido ni de clasificación. `f2f05a9` se conserva como la base funcional auditada. Commit de los cuatro archivos autorizados en develop, sin push; pruebas y sondas no reejecutadas para el commit. Los ocho elementos siguen sin resolver; D2 pendiente de cierre. **Siguiente acción autorizada:** ninguna; esperar instrucciones del propietario.
+
+**Base verificada:** `f2f05a9` (`develop` = `origin/develop`). **Revisor:** QA independiente en sesión nueva (no es el agente implementador).
+**Aceptación del propietario (2026-11-24):** acepta el informe tal como se entregó, con su veredicto; **no** cierra CR-020, D2, CONF-009, CONF-010 ni FEAT-017; autoriza solo la preservación de la evidencia.
+**Artefactos (sin commit):** `harness/verification/IMPL-3_CR-020_QA_independiente.md` (informe; §9 separa las decisiones del propietario de los hallazgos) y `harness/verification/IMPL-3_CR-020_QA_sondas.py` (sondas P1–P11; reproducción: `.venv/bin/python -I -B harness/verification/IMPL-3_CR-020_QA_sondas.py` sobre `f2f05a9`).
+**Evidencia:** 778 passed, 5 skipped; validadores OK; 4 regresiones reproducidas sobre `d372e28`; registro real G = 8 (4 + 4 de cota), sin cambios. Suite no reejecutada al preservar.
+**Sin resolver (8; decisión del propietario PENDIENTE para cada uno):**
+- QA-CR020-01 (MENOR): DEVIATION de configuración no planificada validada después del `CONFIGURATION_EVALUATED` duradero.
+- QA-CR020-02 (MENOR): `confirmatory_status` no aplica la lectura estricta de REQ-G-103.
+- QA-CR020-03 (MENOR): tras escritura incierta, el cargador entrega datos y el reintento no confirma durabilidad (TC-ML-023).
+- QA-CR020-04 (OBS): relevancia por par frente a «el experimento o el par de T» (ambigüedad contractual).
+- QA-CR020-05 (OBS): línea JSON no objeto → excepción en lugar de INCONCLUSIVE.
+- QA-CR020-06 (MENOR): `feature_list.json` (l. 1720, 1768) y texto de CONF-009 desactualizados.
+- QA-CR020-O3 (OBS): evidencia por construcción (escenarios de costes) o no reproducible (A2 previo).
+- QA-CR020-O4 (OBS): el cargador no considera el estado del experimento.
+**Estado:** CONF-009 y CONF-010 OPEN; D2 sin cerrar; FEAT-015 DONE; FEAT-017 IN_PROGRESS; D3–D7 PENDIENTES; SNAP-0001 no creada; gates sin cambios.
+**Archivos modificados:** los dos artefactos nuevos, `progress.md`, `session-handoff.md`. Sin cambios en código, pruebas funcionales, registro real, `feature_list.json`, contrato ni estados.
+**Siguiente acción autorizada:** ninguna. Esperar la revisión del propietario.
+
 ## PUNTO DE CONTROL (2026-11-24) — CR-020 completa; siguiente sesión: verificación independiente de CR-020
 
 **Rama:** `develop`. **Commits de CR-020:** `d372e28` (aplicación contractual, contrato v1.8, DEC-021), `824fae8` (implementación funcional + corrección A2) y el commit «feat(impl-3): register historical trial provenance under DEC-022» (procedencia real). El push lo decide el propietario.
