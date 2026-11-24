@@ -491,9 +491,12 @@ def _replay(registry, experiment_id) -> list[dict]:
         elif kind == "TRANSITION" and eid == experiment_id and r.get("to") == "PREREGISTERED":
             preregistered = True
         elif kind == "DEVIATION":
+            if isinstance(r.get("deviation_id"), str) and r["deviation_id"] in seen_ids:
+                # CR-021 §D.2 (sustituye la unicidad de ORQ-017-01): el registro ya garantiza al cargar
+                # que es una copia byte a byte idéntica; es la misma desviación lógica y conserva la
+                # cronología de su primera aparición, ya validada.
+                continue
             why = _deviation_shape_error(r)
-            if why is None and r["deviation_id"] in seen_ids:
-                why = "deviation_id duplicado"
             if why is None and "informed_by" in r:
                 ib = registry.informed_by_error(r["informed_by"], records[:i])
                 why = f"informed_by no verificable: {ib}" if ib else None
@@ -516,11 +519,12 @@ def _replay(registry, experiment_id) -> list[dict]:
 
 
 def evaluation_evidence_error(registry, experiment_id: str, config_id: str) -> str | None:
-    """Evidencia obligatoria para entregar datos de un par ya registrado (QA-CR020-01; CR-020 §C.3.2).
-    Configuración planificada en la congelación → None. No planificada → exige su DEVIATION
-    (`field` = trials_count, `config_id` del par) en las desviaciones VALIDADAS del registro
-    (`_replay`: SHA-256 de PREREGISTERED, orden y forma). Ausente, mal formada o registro
-    incoherente → motivo (el cargador deniega). Sin efectos: no escribe nada."""
+    """Evidencia obligatoria para entregar datos de un par ya registrado (QA-CR020-01; CR-020 §C.3.2;
+    CR-021 §D.5, DEC-023). Exige un EVALUATION_PERSISTED válido del par (durabilidad confirmada de
+    la evidencia, no la del marcador: R2). No planificada → además su DEVIATION (`field` =
+    trials_count, `config_id` del par) entre las desviaciones VALIDADAS (`_replay`), certificada
+    por ese marcador. Ausente, mal formada o registro corrupto o incoherente → motivo (el cargador
+    deniega). Sin efectos: no escribe nada."""
     try:
         _, experiments = _read(registry)
         exp = experiments.get(experiment_id)
@@ -530,14 +534,22 @@ def evaluation_evidence_error(registry, experiment_id: str, config_id: str) -> s
         acc = (pre[0].get("evidence") or {}).get("trials_accounting") if len(pre) == 1 else None
         if len(pre) != 1 or accounting_shape_error(acc):
             return f"{experiment_id}: sin congelación válida con «trials_accounting»"
-        if config_id in acc["planned_config_ids"]:
-            return None
-        devs = _replay(registry, experiment_id)
+        markers = registry.certified(experiment_id, config_id)          # validados y vinculados (CR-021)
+        devs = [] if config_id in acc["planned_config_ids"] else _replay(registry, experiment_id)
     except Exception as exc:
-        return f"evidencia de desviaciones ilegible o incoherente: {exc}"
-    if not any(d.get("config_id") == config_id and d["field"] == "trials_count" for d in devs):
+        return f"registro o evidencia de desviaciones ilegible, corrupto o incoherente: {exc}"
+    if config_id in acc["planned_config_ids"]:
+        if not markers:
+            return (f"sin EVALUATION_PERSISTED para {experiment_id}/{config_id}: la durabilidad de la evidencia no "
+                    "está confirmada; datos denegados (CR-021 §D.5)")
+        return None
+    ids = {d["deviation_id"] for d in devs if d.get("config_id") == config_id and d["field"] == "trials_count"}
+    if not ids:
         return (f"{config_id} no está planificada y falta su DEVIATION obligatoria; datos denegados hasta "
                 "conciliar la evidencia (QA-CR020-01)")
+    if not any(c["kind"] == "DEVIATION" and c["deviation_id"] in ids for m in markers for c in m["certifies"]):
+        return (f"sin EVALUATION_PERSISTED que certifique la evaluación y la DEVIATION obligatoria de "
+                f"{experiment_id}/{config_id}; datos denegados (CR-021 §D.5)")
     return None
 
 

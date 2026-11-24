@@ -1,5 +1,32 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: QA-CR020-02
+
+**Base:** commit «fix(impl-3): implement CR-021 durable evaluation authorization» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push). Árbol limpio. Contrato **v1.9** congelado (DEC-023).
+**Última evidencia:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 811 passed, 5 skipped; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK. Registro real sin cambios (SHA-256 `07efad20…`; H_doc 4, H_bound 4, E 0, G 8).
+
+**Cerrado en diseño y aprobado — NO reabrir:** CR-021 revisión 2 (DEC-023): `EVALUATION_PERSISTED`, I2a/I2b, R2, copias idénticas, duplicados conflictivos Fail-Closed, P1–P5. Implementación aceptada por el propietario (`harness/verification/IMPL-3_CR-021_implementacion.md` §10). Cualquier cambio de ese diseño exige una CR nueva.
+
+**Estado de los hallazgos de la QA independiente de CR-020** (`harness/verification/IMPL-3_CR-020_QA_independiente.md`, sin modificar):
+
+| Hallazgo | Estado |
+|---|---|
+| QA-CR020-01 | CORREGIDO y aceptado; pendiente de reverificación independiente (`IMPL-3_QA-CR020-01_correccion.md`) |
+| **QA-CR020-02** | **SIN RESOLVER — siguiente trabajo, requiere autorización expresa** |
+| QA-CR020-03 | CORREGIDO y aceptado; pendiente de reverificación independiente (CR-021; `IMPL-3_CR-021_implementacion.md`) |
+| QA-CR020-04 | Sin resolver (ambigüedad contractual: relevancia por par o por experimento) |
+| QA-CR020-05 | Sin resolver; solapamiento: P1 de CR-021 ya hace que una línea que no es objeto dé INCONCLUSIVE (no cerrar sin decisión) |
+| QA-CR020-06 | Sin resolver; `feature_list.json` desactualizado (incluido el bloque `cr021`, «implemented: NO») |
+| QA-CR020-O3, O4 | Sin resolver (observaciones) |
+
+**QA-CR020-02 (para la sesión siguiente):** `preregistration.confirmatory_status()` (`src/swingpilot/research/preregistration.py:556`) solo considera las desviaciones de campos de diseño posteriores a la exposición OOS. No aplica la lectura estricta de REQ-G-103 v1.8/v1.9 que mantuvo el propietario (configuración no planificada o selección fuera de la regla → no confirmatorio). El evaluador sí la aplica (`src/swingpilot/research/trials.py:79-86` y `:113`). Reproducción: sondas P2 y P3 de `harness/verification/IMPL-3_CR-020_QA_sondas.py` (`confirmatory = True` con INCONCLUSIVE del evaluador). Riesgo: es la consulta prevista para HUMAN_REVIEW (ORQ-017-01, O2). Antes de corregir: confirmar con el propietario el alcance (solo `confirmatory_status` o también sus consumidores) y si hace falta aclaración contractual; no ampliar a otros hallazgos.
+
+**Obligaciones de reverificación independiente pendientes** (QA-CR020-01 y QA-CR020-03; para una QA posterior, no para la corrección de QA-CR020-02): relación escritura/`fsync` de la evidencia sobre el mismo descriptor nuevo; orden de emisión del marcador; acceso real a datos entre procesos, no solo predicados de conteo.
+
+**Estado general:** CONF-009 y CONF-010 OPEN (CONF-009 con reevaluación obligatoria antes del cierre de FEAT-017); D2 pendiente de cierre; FEAT-015 DONE; FEAT-017 IN_PROGRESS; D3–D7 PENDIENTES; SNAP-0001 no creada; gates sin cambios.
+**Restricciones vigentes:** sin particiones reales, experimentos, SNAP-0001 ni IA; registro real solo lectura; commit y push solo con indicación del propietario.
+**Siguiente acción autorizada:** ninguna. Esperar la autorización expresa del propietario para QA-CR020-02.
+
 ## PUNTO DE CONTROL (2026-11-24) — CR-021 APROBADA (DEC-023); contrato v1.9 congelado en develop (sin implementar), sin push
 
 **Aceptación del propietario (2026-11-24):** aplicación documental aceptada y contrato v1.9 congelado. Comprobación semántica de REQ-G-104: aclaración mínima («…de la evidencia certificada (no del marcador; …)») para no contradecir R2; validadores OK; registrado en DEC-023. Commit de los 13 archivos, sin push. **Siguiente acción autorizada:** ninguna; esperar instrucciones del propietario.

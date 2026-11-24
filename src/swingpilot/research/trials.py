@@ -115,8 +115,12 @@ def reconcile(registry, frozen, selection_inputs: bytes | None) -> dict:
 
     # 4. Pruebas posteriores a la congelación (C.4.2)
     points = [(sel_idx, "SELECTION", ib)]
+    seen_devs = set()
     for i, r in enumerate(records):
         if r.get("kind") == "DEVIATION" and r.get("experiment_id") == eid:
+            if r.get("deviation_id") in seen_devs:
+                continue          # copia idéntica: misma decisión, cronología de la primera aparición (CR-021 §D.2)
+            seen_devs.add(r.get("deviation_id"))
             points.append((i, "DEVIATION", r.get("informed_by") if "informed_by" in r else None))
     relevant = set()
     for (e, c), t_idx in sorted(full["pairs"].items(), key=lambda kv: kv[1]):

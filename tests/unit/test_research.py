@@ -254,7 +254,7 @@ def test_tc_ml_010_rejected_experiments_are_kept_and_counted(reg):
         reg.create("EXP-0101", "otra vez", actor="orquestador")
     with pytest.raises(ExperimentError, match="antecedente"):
         reg.transition("EXP-0001", "DESIGN", actor="propietario")
-    assert len(reg.path.read_text().splitlines()) == 11   # append-only (+1: CONFIGURATION_EVALUATED, CR-020)
+    assert len(reg.path.read_text().splitlines()) == 12   # append-only (+1: CONFIGURATION_EVALUATED, CR-020; +1: EVALUATION_PERSISTED, CR-021)
 
 
 def test_repository_registry_contains_declared_antecedents():
@@ -669,13 +669,20 @@ def test_orq_017_01_chronology_and_duplicate_inconsistencies_fail_closed(reg, tm
     reg._append(_valid_deviation(field="wf_design"))
     with pytest.raises(PreregistrationError, match="cronología"):
         confirmatory_status(_fresh_reg(reg), "EXP-0101")
-    # deviation_id duplicado
-    r2 = ExperimentRegistry(tmp_path / "r2.jsonl", reg.decisions_dir)
+    # deviation_id duplicado. CR-021 §D.2 (DEC-023; sustituye la unicidad de ORQ-017-01): una copia byte a
+    # byte idéntica es la misma desviación lógica; un contenido distinto con el mismo id es incoherente.
+    fixed = lambda: "2026-11-24T00:00:00Z"                                    # noqa: E731 (bytes idénticos)
+    r2 = ExperimentRegistry(tmp_path / "r2.jsonl", reg.decisions_dir, now=fixed)
     _preregister(r2)
     r2._append(_valid_deviation())
     r2._append(_valid_deviation())
+    assert [d["deviation_id"] for d in confirmatory_status(r2, "EXP-0101")["deviations"]] == ["e" * 32]
+    r2b = ExperimentRegistry(tmp_path / "r2b.jsonl", reg.decisions_dir, now=fixed)
+    _preregister(r2b)
+    r2b._append(_valid_deviation())
+    r2b._append(_valid_deviation(justification="otra"))
     with pytest.raises(PreregistrationError, match="duplicado"):
-        confirmatory_status(r2, "EXP-0101")
+        confirmatory_status(r2b, "EXP-0101")
     # DEVIATION anterior a PREREGISTERED
     r3 = ExperimentRegistry(tmp_path / "r3.jsonl", reg.decisions_dir)
     r3.create("EXP-0101", "x", actor="orquestador")

@@ -431,22 +431,28 @@ def test_tc_ml_023_uncertain_write_blocks_start_record_present_counts(reg, monke
         reg.begin_configuration_evaluation("EXP-0101", "A", actor="orquestador")
     monkeypatch.undo()
     assert reg.evaluation_recorded("EXP-0101", "A") and reg.trials_count() == 1     # cuenta aunque no se ejecutó
-    reg.begin_configuration_evaluation("EXP-0101", "A", actor="orquestador")         # reintento idempotente
-    assert sum(r["kind"] == "CONFIGURATION_EVALUATED" for r in reg.records()) == 1
+    # CR-021 §D.4 (DEC-023; sustituye la idempotencia sin escritura de CR-020 §C.3.2 paso 1): sin marcador,
+    # el reintento escribe una copia byte a byte idéntica y el marcador; la evaluación lógica sigue siendo una.
+    reg.begin_configuration_evaluation("EXP-0101", "A", actor="orquestador")
+    ce = [ln for ln, r in zip(reg.path.read_bytes().splitlines(), reg.records())
+          if r["kind"] == "CONFIGURATION_EVALUATED"]
+    assert len(ce) == 2 and ce[0] == ce[1] and reg.trials_count() == 1
+    assert len(reg.certified("EXP-0101", "A")) == 1
 
 
 def test_tc_ml_023_failed_write_before_bytes_is_uncertain_and_does_not_count(reg, monkeypatch):
     fz = frozen_experiment(reg)
 
-    def failing(self, rec):
+    def failing(self, lines):          # CR-021: primitiva de escritura con fsync del inicio de evaluación
         raise OSError("disco lleno simulado")
-    monkeypatch.setattr(ExperimentRegistry, "_write", failing)
+    monkeypatch.setattr(ExperimentRegistry, "_write_lines", failing)
     with pytest.raises(EvaluationPersistenceUncertain):
         fz.begin_evaluation("A", registry=reg)
     monkeypatch.undo()
     assert not reg.evaluation_recorded("EXP-0101", "A") and reg.trials_count() == 0
     fz.begin_evaluation("A", registry=reg)
     assert reg.trials_count() == 1
+    assert len(reg.certified("EXP-0101", "A")) == 1                                   # CR-021 §D.3: marcador
 
 
 def test_tc_ml_023_unplanned_configuration_counts_with_deviation_and_is_inconclusive(reg):

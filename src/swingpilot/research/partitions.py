@@ -199,8 +199,11 @@ class PartitionLoader:
         why = self.registry.decision_ok(grant.decision_ref, grant.experiment_id, partition, grant.snapshot_id)
         if why:
             return why
-        if self.registry.eligible_state(grant.experiment_id) != "OOS_EVALUATION":
-            return "el experimento no está en OOS_EVALUATION en el registro (los antecedentes no son elegibles)"
-        if self._consumed(partition, grant.experiment_id):
-            return f"{partition} ya consumido (evaluación única)"
+        try:                                  # CR-021 §F.2 P1: registro corrupto → denegado y anotado
+            if self.registry.eligible_state(grant.experiment_id) != "OOS_EVALUATION":
+                return "el experimento no está en OOS_EVALUATION en el registro (los antecedentes no son elegibles)"
+            if self._consumed(partition, grant.experiment_id):
+                return f"{partition} ya consumido (evaluación única)"
+        except Exception as exc:
+            return f"registro de experimentos ilegible, corrupto o incoherente: {exc!r}"
         return None

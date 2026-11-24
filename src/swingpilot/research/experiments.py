@@ -53,9 +53,22 @@
     exige `trials_accounting`, recalculado dentro del bloqueo; la selección de candidata
     (OOS_EVALUATION) exige `selected_config_id`, `selection_inputs_sha256` e `informed_by`.
   - Estados y transiciones de REQ-G-104 sin cambios.
+- Durabilidad confirmada (CR-021, DEC-023; contrato v1.9; REQ-G-104, REQ-G-P17):
+  - Contabilidad y acceso son garantías separadas. Una línea `CONFIGURATION_EVALUATED` legible
+    cuenta (por par lógico) mientras conste (I2b); el acceso a Train+Val exige un
+    `EVALUATION_PERSISTED` válido, escrito solo tras el `fsync` correcto, en un descriptor nuevo,
+    de la evidencia exacta que certifica por SHA-256 (evaluación y, si no está planificada, su
+    DEVIATION obligatoria). La autorización depende de la durabilidad de esa evidencia, no de la
+    del marcador (R2). Toda evaluación autorizada tiene evidencia duradera (I2a).
+  - Recuperación: copias byte a byte idénticas de la primera aparición (mismo `deviation_id`);
+    cronología de la primera aparición; duplicado con contenido distinto → corrupto.
+  - Corrupción (P1–P5): línea no válida, vacía o que no es un objeto, cola sin salto de línea,
+    duplicado conflictivo o marcador no vinculable → `RegistryCorruptError` en toda lectura y
+    antes de toda escritura; ninguna línea se ignora; el archivo nunca se reescribe ni se repara.
 """
 import contextlib
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -189,6 +202,112 @@ class EvaluationRequestRejected(ExperimentError):
     evaluación no empieza (CR-020 §C.3.2, B.4.1)."""
 
 
+class RegistryCorruptError(ExperimentError):
+    """Registro corrupto (CR-021 §F.2, P1–P5): línea no válida, vacía o que no es un objeto, cola
+    sin salto de línea final, duplicado conflictivo o marcador no vinculable. Bloquea toda lectura
+    con efecto: ninguna línea se ignora, el archivo no se modifica y no hay reparación automática."""
+
+
+# --- CR-021 (DEC-023): durabilidad confirmada ---------------------------------------------------
+_MARKER_KEYS = {"kind", "marker_id", "experiment_id", "config_id", "certifies", "actor", "at_utc"}
+
+
+def _line_sha(line: bytes) -> str:
+    return hashlib.sha256(line).hexdigest()
+
+
+def _serialize(rec: dict) -> bytes:
+    """Misma serialización de siempre (JSON con claves ordenadas, UTF-8), sin salto de línea."""
+    return json.dumps(rec, ensure_ascii=False, sort_keys=True).encode("utf-8")
+
+
+def _parse_registry(raw: bytes) -> tuple[list[bytes], list[dict]]:
+    """Líneas exactas y registros. Cualquier corrupción → RegistryCorruptError (P1, P2): no se
+    omite ninguna línea, tampoco la última ni las vacías."""
+    if not raw:
+        return [], []
+    if not raw.endswith(b"\n"):
+        raise RegistryCorruptError("registro corrupto: la cola no termina en salto de línea (escritura "
+                                   "incompleta; CR-021 §F.2 P1)")
+    lines = raw[:-1].split(b"\n")
+    records = []
+    for i, line in enumerate(lines, 1):
+        try:
+            rec = json.loads(line.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError) as exc:
+            raise RegistryCorruptError(f"registro corrupto: línea {i} no válida ({exc!r}; CR-021 §F.2 P1)") from exc
+        if not isinstance(rec, dict):
+            raise RegistryCorruptError(f"registro corrupto: la línea {i} no es un objeto (CR-021 §F.2 P1)")
+        records.append(rec)
+    why = _integrity_error(lines, records)
+    if why:
+        raise RegistryCorruptError(f"registro corrupto: {why} (CR-021 §F.3, P1)")
+    return lines, records
+
+
+def _integrity_error(lines: list[bytes], records: list[dict]) -> str | None:
+    """Duplicados y marcadores (CR-021 §D.2, §D.3): copias byte a byte idénticas = una entidad
+    lógica; contenido distinto con la misma identidad, `marker_id` repetido o marcador no
+    vinculable → incoherente."""
+    first_ce: dict = {}
+    first_dev: dict = {}
+    seen_sha: dict = {}
+    marker_ids: set = set()
+    for i, (line, r) in enumerate(zip(lines, records), 1):
+        kind = r.get("kind")
+        if kind == "CONFIGURATION_EVALUATED":
+            key = (r.get("experiment_id"), r.get("config_id"))
+            if first_ce.setdefault(key, line) != line:
+                return f"línea {i}: CONFIGURATION_EVALUATED duplicado con contenido distinto para {key}"
+        elif kind == "DEVIATION" and isinstance(r.get("deviation_id"), str):
+            if first_dev.setdefault(r["deviation_id"], line) != line:
+                return f"línea {i}: DEVIATION {r['deviation_id']} duplicado con contenido distinto"
+        elif kind == "EVALUATION_PERSISTED":
+            why = _marker_error(r, seen_sha, records, marker_ids)
+            if why:
+                return f"línea {i}: EVALUATION_PERSISTED no válido ({why})"
+            marker_ids.add(r["marker_id"])
+        seen_sha.setdefault(_line_sha(line), i - 1)
+    return None
+
+
+def _marker_error(r: dict, seen_sha: dict, records: list[dict], marker_ids: set) -> str | None:
+    """Forma del marcador y vinculación con líneas ANTERIORES por SHA-256 exacto (CR-021 §D.3)."""
+    if set(r) != _MARKER_KEYS:
+        return "campos no válidos"
+    if not isinstance(r["marker_id"], str) or not _HEX32.fullmatch(r["marker_id"]):
+        return "marker_id no válido"
+    if r["marker_id"] in marker_ids:
+        return "marker_id repetido"
+    eid, cfg = r["experiment_id"], r["config_id"]
+    if not valid_experiment_id(eid) or not valid_config_id(cfg):
+        return "experimento o configuración no válidos"
+    if not isinstance(r["actor"], str) or not r["actor"].strip() or not isinstance(r["at_utc"], str):
+        return "actor o at_utc no válidos"
+    cert = r["certifies"]
+    if not isinstance(cert, list) or not cert:
+        return "certifies vacío"
+    kinds = [c.get("kind") if isinstance(c, dict) else None for c in cert]
+    if kinds.count("CONFIGURATION_EVALUATED") != 1 or kinds.count("DEVIATION") > 1 or len(kinds) > 2:
+        return "certifies debe contener una evaluación y, como mucho, una DEVIATION"
+    for c in cert:
+        if c["kind"] == "CONFIGURATION_EVALUATED":
+            if set(c) != {"kind", "line_sha256"}:
+                return "entrada de evaluación mal formada"
+        elif set(c) != {"kind", "deviation_id", "line_sha256"}:
+            return "entrada de DEVIATION mal formada"
+        sha = c["line_sha256"]
+        if not isinstance(sha, str) or not _HEX64.fullmatch(sha) or sha not in seen_sha:
+            return "certifica una línea inexistente o posterior"
+        target = records[seen_sha[sha]]
+        if target.get("kind") != c["kind"] or target.get("experiment_id") != eid or target.get("config_id") != cfg:
+            return "la línea certificada no corresponde a este par"
+        if c["kind"] == "DEVIATION" and (target.get("deviation_id") != c["deviation_id"]
+                                         or target.get("field") != "trials_count"):
+            return "la DEVIATION certificada no corresponde"
+    return None
+
+
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -200,10 +319,22 @@ class ExperimentRegistry:
         self._now = now
 
     # --- lectura ---------------------------------------------------------------------------
-    def records(self) -> list[dict]:
+    def _load(self) -> tuple[list[bytes], list[dict]]:
+        """Líneas exactas (bytes, sin el salto final) y registros, con la política P1–P5 de CR-021."""
         if not self.path.exists():
-            return []
-        return [json.loads(line) for line in self.path.read_text().splitlines() if line.strip()]
+            return [], []
+        return _parse_registry(self.path.read_bytes())
+
+    def records(self) -> list[dict]:
+        """Registros en orden del archivo. Corrupción → RegistryCorruptError (CR-021 §F.2): nunca
+        se omite una línea ni se devuelve una lectura parcial."""
+        return self._load()[1]
+
+    def certified(self, experiment_id: str, config_id: str, records: list[dict] | None = None) -> list[dict]:
+        """Marcadores EVALUATION_PERSISTED (ya validados y vinculados) del par (CR-021 §D.3)."""
+        recs = self.records() if records is None else records
+        return [r for r in recs if r.get("kind") == "EVALUATION_PERSISTED"
+                and r.get("experiment_id") == experiment_id and r.get("config_id") == config_id]
 
     def experiments(self) -> dict[str, dict]:
         return self._experiments_from(self.records())
@@ -456,13 +587,21 @@ class ExperimentRegistry:
                 fcntl.flock(lk, fcntl.LOCK_UN)
 
     def _write(self, rec: dict) -> dict:
-        """Escribe un registro; el llamador debe tener el bloqueo (`_locked`)."""
+        """Escribe un registro; el llamador debe tener el bloqueo (`_locked`). Nunca añade a un
+        registro corrupto (CR-021 §F.2 P1, P3)."""
         rec = {"at_utc": self._now(), **rec}
-        with open(self.path, "a") as fh:
-            fh.write(json.dumps(rec, ensure_ascii=False, sort_keys=True) + "\n")
+        self._load()                                       # RegistryCorruptError → nada escrito
+        self._write_lines([_serialize(rec)])
+        return rec
+
+    def _write_lines(self, lines: list[bytes]) -> None:
+        """Añade líneas exactas con un descriptor NUEVO y hace `fsync` de ese descriptor (CR-021,
+        supuesto S1): solo un `fsync` correcto aquí prueba la durabilidad de ESTOS bytes. El
+        llamador debe tener el bloqueo y haber validado el registro."""
+        with open(self.path, "ab") as fh:
+            fh.write(b"".join(line + b"\n" for line in lines))
             fh.flush()
             os.fsync(fh.fileno())
-        return rec
 
     def _append(self, rec: dict) -> dict:
         with self._locked():
@@ -478,6 +617,7 @@ class ExperimentRegistry:
             rec = build()
             if not isinstance(rec, dict) or rec.get("kind") != "DEVIATION":
                 raise ExperimentError("append_deviation solo escribe registros DEVIATION")
+            self._load()                    # registro corrupto → RegistryCorruptError, no «incierto» (P1)
             try:
                 return self._write(rec)
             except BaseException as exc:
@@ -638,15 +778,22 @@ class ExperimentRegistry:
     # --- inicio de evaluación de una configuración (CR-020 §C.3.2) ------------------------------
     def begin_configuration_evaluation(self, experiment_id: str, config_id: str, *, actor: str,
                                        deviation_builder=None) -> dict:
-        """Registra de forma duradera el inicio autorizado de la evaluación de un par ANTES de
-        evaluar. Validaciones previas fallidas → EvaluationRequestRejected (nada escrito, no
-        cuenta). Escritura fallida o incierta → PersistenceUncertainError: la evaluación no
-        empieza. Idempotente. Una configuración no planificada exige `deviation_builder`, que
-        construye el registro DEVIATION (preregistration.begin_evaluation). QA-CR020-01: la
-        DEVIATION se construye y valida ANTES de escribir nada (si no es válida → rechazo sin
-        escritura); se escribe en el mismo bloqueo, después del registro de evaluación. Si solo
-        consta la evaluación (persistencia parcial), el par cuenta (conservador), el cargador
-        deniega los datos hasta que conste la DEVIATION y el reintento solo añade la DEVIATION."""
+        """Inicio autorizado de la evaluación de un par (CR-020 §C.3.2; CR-021 §D.4, DEC-023).
+
+        - Validaciones previas fallidas → EvaluationRequestRejected: nada escrito, no cuenta.
+          Una configuración no planificada exige `deviation_builder`; su DEVIATION obligatoria se
+          construye y valida ANTES de escribir nada (QA-CR020-01).
+        - Si ya consta un EVALUATION_PERSISTED válido que certifica toda la evidencia exigida
+          (evaluación y, si no está planificada, su DEVIATION) → éxito sin escribir (idempotente).
+        - Si no: se escriben, con un descriptor nuevo, la evaluación (nueva o copia byte a byte de
+          su primera aparición) y, si aplica, la DEVIATION (nueva o copia idéntica, mismo
+          `deviation_id`), y se hace `fsync`. Solo tras un `fsync` correcto se escribe el marcador
+          que certifica esos bytes exactos (SHA-256) y se hace su `fsync`.
+        - Cualquier fallo de escritura o de `fsync` → PersistenceUncertainError (nunca éxito). Si
+          falló solo el `fsync` del marcador, la evidencia ya es duradera y el marcador legible
+          autoriza el acceso (R2); esta llamada sigue informando incertidumbre.
+        - Solo se informa éxito tras releer y encontrar un marcador válido.
+        Las copias no suman: el conteo es por par lógico, con la cronología de la primera aparición."""
         if not valid_experiment_id(experiment_id):
             raise EvaluationRequestRejected(f"experimento no válido: {experiment_id!r} (formato EXP-NNNN)")
         if not valid_config_id(config_id):
@@ -655,9 +802,9 @@ class ExperimentRegistry:
             raise EvaluationRequestRejected("la solicitud exige un actor")
         with self._locked():
             try:
-                records = self.records()
+                lines, records = self._load()
                 exps = self._experiments_from(records)
-                acc = self.accounting(records=records)
+                self.accounting(records=records)
             except Exception as exc:
                 raise EvaluationRequestRejected(f"registro ilegible, corrupto o incoherente: {exc!r}") from exc
             e = exps.get(experiment_id)
@@ -677,59 +824,84 @@ class ExperimentRegistry:
                 raise EvaluationRequestRejected(
                     f"{config_id} no está planificada: solo puede evaluarse registrando la desviación "
                     "(preregistration.begin_evaluation)")
-            existing = next((r for r in records if r.get("kind") == "CONFIGURATION_EVALUATED"
-                             and r.get("experiment_id") == experiment_id and r.get("config_id") == config_id), None)
-            dev = None
-            if not planned and not any(r.get("kind") == "DEVIATION" and r.get("experiment_id") == experiment_id
-                                       and r.get("config_id") == config_id for r in records):
-                # QA-CR020-01: la DEVIATION obligatoria se construye y valida ANTES de escribir nada
-                # (B.4.1, R2). Si no es válida, la solicitud se rechaza: nada escrito, nada contado.
+            ce_idx = _first_index(records, "CONFIGURATION_EVALUATED", experiment_id, config_id)
+            dev_idx = None if planned else _first_index(records, "DEVIATION", experiment_id, config_id)
+            new_dev = None
+            if not planned and dev_idx is None:
+                # QA-CR020-01: la DEVIATION obligatoria se construye y valida ANTES de escribir nada.
                 try:
-                    dev = deviation_builder()
+                    new_dev = deviation_builder()
                 except Exception as exc:
                     raise EvaluationRequestRejected(
                         f"DEVIATION obligatoria de {experiment_id}/{config_id} no válida: {exc}; "
                         "solicitud rechazada, nada escrito") from exc
-                if not isinstance(dev, dict) or dev.get("kind") != "DEVIATION" or dev.get("config_id") != config_id:
+                if not isinstance(new_dev, dict) or new_dev.get("kind") != "DEVIATION" \
+                        or new_dev.get("config_id") != config_id:
                     raise EvaluationRequestRejected("el constructor no devolvió la DEVIATION de esta configuración; "
                                                     "solicitud rechazada, nada escrito")
-            rec = existing
-            if existing is None:
-                try:
-                    rec = self._write({"kind": "CONFIGURATION_EVALUATED", "experiment_id": experiment_id,
-                                       "config_id": config_id, "preregistration_sha256": sha,
-                                       "partition": "train_val", "actor": actor})
-                except BaseException as exc:
-                    raise PersistenceUncertainError(
-                        f"escritura de CONFIGURATION_EVALUATED {experiment_id}/{config_id} incierta: {exc!r}; "
-                        "la evaluación no empieza") from exc
-            if dev is not None:
-                try:
-                    self._write(dev)
-                except BaseException as exc:
-                    raise PersistenceUncertainError(
-                        f"escritura de DEVIATION {dev.get('deviation_id')} incierta: {exc!r}; "
-                        "la evaluación no empieza") from exc
+            if ce_idx is not None and (planned or dev_idx is not None) and \
+                    self._certifies_all(records, experiment_id, config_id, records[dev_idx] if dev_idx is not None
+                                        else None):
+                return records[ce_idx]                              # certificado: éxito sin escribir
+            # Evidencia: nueva o copia byte a byte de la primera aparición (CR-021 §D.2, §D.4)
+            ce_line = lines[ce_idx] if ce_idx is not None else _serialize(
+                {"at_utc": self._now(), "kind": "CONFIGURATION_EVALUATED", "experiment_id": experiment_id,
+                 "config_id": config_id, "preregistration_sha256": sha, "partition": "train_val", "actor": actor})
+            evidence = [ce_line]
+            certifies = [{"kind": "CONFIGURATION_EVALUATED", "line_sha256": _line_sha(ce_line)}]
+            if not planned:
+                dev_line = lines[dev_idx] if dev_idx is not None else _serialize({"at_utc": self._now(), **new_dev})
+                dev_rec = records[dev_idx] if dev_idx is not None else new_dev
+                evidence.append(dev_line)
+                certifies.append({"kind": "DEVIATION", "deviation_id": dev_rec.get("deviation_id"),
+                                  "line_sha256": _line_sha(dev_line)})
+            try:
+                self._write_lines(evidence)
+            except BaseException as exc:
+                raise PersistenceUncertainError(
+                    f"escritura o fsync de la evidencia de {experiment_id}/{config_id} incierta: {exc!r}; "
+                    "la evaluación no empieza y no hay acceso a datos (CR-021)") from exc
+            marker = {"at_utc": self._now(), "kind": "EVALUATION_PERSISTED", "marker_id": uuid.uuid4().hex,
+                      "experiment_id": experiment_id, "config_id": config_id, "certifies": certifies, "actor": actor}
+            try:
+                self._write_lines([_serialize(marker)])
+            except BaseException as exc:
+                raise PersistenceUncertainError(
+                    f"escritura o fsync del marcador de {experiment_id}/{config_id} incierta: {exc!r}; la evidencia es "
+                    "duradera, pero esta llamada no informa éxito (CR-021 §F.4)") from exc
             try:                                                   # relectura: solo así se confirma
-                again = self.records()
+                _, again = self._load()
             except Exception as exc:
                 raise PersistenceUncertainError(f"relectura fallida tras escribir: {exc!r}; "
                                                 "la evaluación no empieza") from exc
-            if not any(r.get("kind") == "CONFIGURATION_EVALUATED" and r.get("experiment_id") == experiment_id
-                       and r.get("config_id") == config_id for r in again):
-                raise PersistenceUncertainError(f"{experiment_id}/{config_id} no consta tras escribir; "
+            ce2 = _first_index(again, "CONFIGURATION_EVALUATED", experiment_id, config_id)
+            dev2 = None if planned else _first_index(again, "DEVIATION", experiment_id, config_id)
+            if ce2 is None or (not planned and dev2 is None) or not self._certifies_all(
+                    again, experiment_id, config_id, again[dev2] if dev2 is not None else None):
+                raise PersistenceUncertainError(f"{experiment_id}/{config_id}: sin marcador válido tras escribir; "
                                                 "la evaluación no empieza")
-            if not planned and not any(r.get("kind") == "DEVIATION" and r.get("experiment_id") == experiment_id
-                                       and r.get("config_id") == config_id for r in again):
-                raise PersistenceUncertainError(f"DEVIATION de {experiment_id}/{config_id} no consta tras escribir; "
-                                                "la evaluación no empieza")
-            return rec
+            return again[ce2]
+
+    def _certifies_all(self, records: list[dict], experiment_id: str, config_id: str, dev: dict | None) -> bool:
+        """¿Hay un marcador válido del par que certifique la evaluación y, si `dev`, esa DEVIATION?
+        Los marcadores ya están validados y vinculados al cargar (CR-021 §D.3)."""
+        for m in self.certified(experiment_id, config_id, records):
+            if dev is None or any(c["kind"] == "DEVIATION" and c["deviation_id"] == dev.get("deviation_id")
+                                  for c in m["certifies"]):
+                return True
+        return False
 
     def evaluation_recorded(self, experiment_id: str, config_id: str) -> bool:
         """Relectura sin validar: ¿hay una línea de inicio de evaluación del par? Solo diagnóstico;
         no autoriza nada. El acceso a datos exige `accounting()["pairs"]` (A2)."""
         return any(r.get("kind") == "CONFIGURATION_EVALUATED" and r.get("experiment_id") == experiment_id
                    and r.get("config_id") == config_id for r in self.records())
+
+
+def _first_index(records: list[dict], kind: str, experiment_id: str, config_id: str) -> int | None:
+    """Posición de la primera aparición (cronología de la entidad lógica, CR-021 §D.2)."""
+    return next((i for i, r in enumerate(records) if r.get("kind") == kind and r.get("experiment_id") == experiment_id
+                 and r.get("config_id") == config_id), None)
 
 
 def _evaluation_record_error(r: dict, natives: set) -> str | None:

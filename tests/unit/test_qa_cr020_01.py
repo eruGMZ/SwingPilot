@@ -107,7 +107,8 @@ def test_builder_returning_a_wrong_record_is_rejected_before_writing(reg):
 def test_valid_unplanned_configuration_is_recorded_with_its_deviation_and_unlocks_data(reg, tmp_path):
     fz = frozen(reg)
     fz.begin_evaluation("Z", registry=reg, justification="exploración", informed_by=[])
-    assert kinds(reg) == ["CONFIGURATION_EVALUATED", "DEVIATION"] and reg.trials_count() == 1
+    # CR-021 §D.3: el marcador certifica la evaluación y la DEVIATION obligatoria
+    assert kinds(reg) == ["CONFIGURATION_EVALUATED", "DEVIATION", "EVALUATION_PERSISTED"] and reg.trials_count() == 1
     dev = [r for r in reg.records() if r["kind"] == "DEVIATION"][0]
     assert dev["field"] == "trials_count" and dev["preregistration_sha256"] == fz.sha256
     loader = loader_for(reg, tmp_path)
@@ -125,13 +126,18 @@ def test_retry_after_success_duplicates_neither_count_nor_deviation(reg):
 # --- persistencia parcial -------------------------------------------------------------------------
 
 def _fail_deviation_writes(monkeypatch):
-    real = ExperimentRegistry._write
+    """Persistencia parcial: la evaluación llega al archivo y la escritura de la DEVIATION falla.
+    CR-021 §D.4 escribe la evidencia con `_write_lines` (antes, `_write` por registro): se simula
+    que solo llega la primera línea y la operación falla."""
+    real = ExperimentRegistry._write_lines
 
-    def write(self, rec):
-        if rec.get("kind") == "DEVIATION":
+    def write(self, lines):
+        is_dev = [json.loads(ln)["kind"] == "DEVIATION" for ln in lines]
+        if any(is_dev):
+            real(self, [ln for ln, d in zip(lines, is_dev) if not d])
             raise OSError("fallo simulado al escribir la DEVIATION")
-        return real(self, rec)
-    monkeypatch.setattr(ExperimentRegistry, "_write", write)
+        return real(self, lines)
+    monkeypatch.setattr(ExperimentRegistry, "_write_lines", write)
 
 
 def test_partial_persistence_counts_conservatively_and_denies_data_until_reconciled(reg, tmp_path, monkeypatch):
@@ -153,9 +159,11 @@ def test_partial_persistence_counts_conservatively_and_denies_data_until_reconci
     assert reg.path.read_bytes() == before
     with pytest.raises(PartitionAccessError):
         loader.load_train_val_for_configuration(EID, "Z")
-    # reintento válido: completa la DEVIATION sin duplicar la evaluación; el acceso se concede
+    # reintento válido: completa la DEVIATION sin duplicar la evaluación lógica; el acceso se concede.
+    # CR-021 §D.4: la evaluación se reescribe como copia byte a byte idéntica y se añade el marcador.
     fz.begin_evaluation("Z", registry=reg, justification="conciliación", informed_by=[])
-    assert kinds(reg) == ["CONFIGURATION_EVALUATED", "DEVIATION"] and reg.trials_count() == 1
+    assert kinds(reg) == ["CONFIGURATION_EVALUATED", "CONFIGURATION_EVALUATED", "DEVIATION",
+                          "EVALUATION_PERSISTED"] and reg.trials_count() == 1
     assert len(loader.load_train_val_for_configuration(EID, "Z")) == 1
 
 
@@ -178,7 +186,7 @@ def test_malformed_deviation_does_not_unlock_unplanned_pair(reg, tmp_path, monke
 def test_planned_configuration_behavior_is_unchanged(reg, tmp_path):
     fz = frozen(reg, planned=("A", "B"))
     fz.begin_evaluation("A", registry=reg)
-    assert kinds(reg, "A") == ["CONFIGURATION_EVALUATED"] and reg.trials_count() == 1
+    assert kinds(reg, "A") == ["CONFIGURATION_EVALUATED", "EVALUATION_PERSISTED"] and reg.trials_count() == 1  # CR-021
     assert not any(r["kind"] == "DEVIATION" for r in reg.records())
     loader = loader_for(reg, tmp_path)
     assert len(loader.load_train_val_for_configuration(EID, "A")) == 1
