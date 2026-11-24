@@ -1,6 +1,43 @@
 # session-handoff.md — SwingPilot Harness
 
-## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: pruebas de caracterización de CR-022 §F (requieren autorización expresa)
+## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: QA-CR020-05 (ninguna implementación autorizada)
+
+**Base:** commit «test(impl-3): characterize CR-022 exact-pair relevance and resolve CONF-011» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push; comprobar con `git status -sb`). Contrato **v1.10** sin cambios.
+**Última evidencia:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 826 passed, 5 skipped; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK. Registro real sin cambios (SHA-256 `07efad20…`). Pruebas no reejecutadas para el commit.
+
+**Estado de los hallazgos de la QA independiente de CR-020** (`harness/verification/IMPL-3_CR-020_QA_independiente.md`, sin modificar):
+
+| Hallazgo | Estado |
+|---|---|
+| QA-CR020-01 | CORREGIDO y aceptado; pendiente de reverificación independiente (`IMPL-3_QA-CR020-01_correccion.md`) |
+| QA-CR020-02 | CORREGIDO y aceptado; pendiente de reverificación independiente (`IMPL-3_QA-CR020-02_correccion.md` §9) |
+| QA-CR020-03 | CORREGIDO y aceptado; pendiente de reverificación independiente (CR-021; `IMPL-3_CR-021_implementacion.md` §10) |
+| QA-CR020-04 | VERIFICADO por el implementador y aceptado; pendiente de reverificación independiente (CR-022, DEC-024; `IMPL-3_CR-022_caracterizacion.md` §6) |
+| **QA-CR020-05** | **SIN RESOLVER — siguiente trabajo; ninguna implementación autorizada** |
+| QA-CR020-06 | Sin resolver; `feature_list.json` desactualizado (incluido el bloque `cr021`) |
+| QA-CR020-O3, O4 | Sin resolver (observaciones) |
+
+**QA-CR020-05 (para la sesión siguiente; OBS, robustez):** con una línea JSON válida que no es un objeto (p. ej. `[1, 2]`), `evaluate()` lanzaba `AttributeError` en lugar de devolver INCONCLUSIVE (CR-020 §C.4.3). El informe cita `trials.py:49-50`, `:89-90` y `:118-119` (usos de `r.get` sin comprobar el tipo); hoy están en `trials.py:49`, `:92` y `:123`. Reproducción: sonda P6 de `harness/verification/IMPL-3_CR-020_QA_sondas.py`. **Solapamiento conocido:** desde CR-021 (P1), la lectura validada del registro trata esa línea como corrupción, y la sonda P6 da ahora INCONCLUSIVE (`IMPL-3_CR-021_implementacion.md`). Antes de cualquier cambio: evaluación de solo lectura y decisión del propietario sobre si el hallazgo queda cubierto por P1 o exige algo más; no cerrarlo sin decisión ni ampliar a otros hallazgos.
+
+**Obligaciones de reverificación independiente pendientes** (para una QA posterior):
+- QA-CR020-01 y QA-CR020-03: relación escritura/`fsync` de la evidencia sobre el mismo descriptor nuevo; orden de emisión del marcador; acceso real a datos entre procesos, no solo predicados de conteo.
+- QA-CR020-02: coherencia entre la consulta (`confirmatory_status` / `confirmatory_findings`) y el evaluador; vinculación del preregistro congelado; validación del hash del archivo de resultados de la selección; ausencia de certificación confirmatoria falsa.
+- QA-CR020-04: coincidencia por par exacto; precedencia del caso 3; separación de `provenance_id`; deduplicación por par.
+
+**Estado general:** CONF-009 y CONF-010 OPEN (CONF-009 con reevaluación obligatoria antes del cierre de FEAT-017); CONF-011 RESOLVED; D2 pendiente de cierre; FEAT-015 DONE; FEAT-017 IN_PROGRESS; D3–D7 PENDIENTES; SNAP-0001 no creada; gates sin cambios; `feature_list.json` sin cambios.
+**Restricciones vigentes:** sin particiones reales, experimentos, SNAP-0001 ni IA; registro real solo lectura; commit y push solo con indicación del propietario.
+**Siguiente acción autorizada:** ninguna. Esperar instrucciones del propietario (ninguna implementación autorizada para QA-CR020-05).
+
+## PUNTO DE CONTROL (2026-11-24) — pruebas de caracterización de CR-022 §F ejecutadas, aceptadas y en commit; CONF-011 RESOLVED (sustituido por el punto de reanudación superior)
+
+**Base:** `4fbeecb` en `develop` (= `origin/develop`, sincronización confirmada por el propietario). Cambios sin commit. Contrato **v1.10** sin cambios.
+**Hecho:** cuatro pruebas de caracterización de TC-ML-024 / CR-022 §F en `tests/unit/test_trials_accounting.py` (F.1 P5; F.2 variante con DEVIATION; F.3 `provenance_id`; F.4 par citado dos veces) → 4 passed, sin discrepancias. Mutantes temporales: cada prueba falla ante la violación de su propiedad. Detalle: `harness/verification/IMPL-3_CR-022_caracterizacion.md`.
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 826 passed, 5 skipped; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK; `.venv/bin/pytest -q -p no:cacheprovider tests/unit/test_trials_accounting.py -k cr022` → 4 passed. Registro real sin cambios (`07efad20…`).
+**Archivos (sin commit):** `tests/unit/test_trials_accounting.py` (solo adiciones), `harness/verification/IMPL-3_CR-022_caracterizacion.md` (nuevo), `progress.md`, `session-handoff.md`.
+**Estado:** CONF-011 OPEN y QA-CR020-04 pendiente hasta la revisión de esta evidencia por el propietario. QA-CR020-01, 02 y 03 pendientes de reverificación independiente; 05, 06, O3 y O4 sin resolver. CONF-009 y CONF-010 OPEN; FEAT-015 DONE; FEAT-017 IN_PROGRESS; `feature_list.json` sin cambios.
+**Siguiente acción autorizada:** ninguna. Esperar la revisión del propietario.
+
+## PUNTO DE CONTROL (2026-11-24) — pruebas de caracterización de CR-022 §F autorizadas en alcance (sustituido por el punto de reanudación superior)
 
 **Base:** commit «docs(impl-3): approve CR-022 exact-pair relevance under DEC-024» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push; comprobar con `git status -sb`). Contrato **v1.10** congelado (CR-022, DEC-024).
 **Última evidencia funcional:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 822 passed, 5 skipped (en `d84535a`; CR-022 no cambió código ni pruebas). Validadores OK antes del commit. Registro real sin cambios (SHA-256 `07efad20…`).

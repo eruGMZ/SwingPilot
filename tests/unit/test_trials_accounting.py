@@ -588,6 +588,81 @@ def test_tc_ml_024_unreadable_registry_is_inconclusive(reg):
     assert v.outcome == "INCONCLUSIVE" and _reason(v, "REGISTRY_UNREADABLE")
 
 
+# --- TC-ML-024 / CR-022 §F (DEC-024; contrato v1.10): cita por par exacto -----------------------
+# Pruebas de caracterización (no regresiones): el comportamiento ya cumplía CR-022 (§E). Origen:
+# QA-CR020-04, sonda P5. Solo registros temporales sintéticos.
+
+YA = {"experiment_id": "EXP-0102", "config_id": "YA"}
+YB = {"experiment_id": "EXP-0102", "config_id": "YB"}
+
+
+def _x_and_two_later_y_configs(reg):
+    """X = EXP-0101 congelado y evaluado; después Y = EXP-0102 evalúa YA y YB (dos pruebas posteriores)."""
+    fx = frozen_experiment(reg, "EXP-0101", planned=("A",))
+    fx.begin_evaluation("A", registry=reg)
+    fy = frozen_experiment(reg, "EXP-0102", planned=("YA", "YB"), rule="PRIMARY YA")
+    fy.begin_evaluation("YA", registry=reg)
+    fy.begin_evaluation("YB", registry=reg)
+    return fx
+
+
+def test_cr022_f1_exact_reference_to_sibling_does_not_make_pair_relevant(reg):
+    """§F.1 (P5): la selección cita solo YB; YA, del mismo experimento, se clasifica por separado."""
+    fx = _x_and_two_later_y_configs(reg)
+    inputs = inputs_for("EXP-0101", {"A": {"sharpe": 1.0}})
+    select(reg, "EXP-0101", "A", inputs, informed_by=[YB])
+    v = A.evaluate(evidence(), reg, preregistration=fx, selection_inputs=inputs)
+    acc = v.metrics["trials_accounting"]
+    assert v.outcome == "ELIGIBLE_FOR_HUMAN_REVIEW", v.reasons
+    assert acc["trials_after_freeze"] == [YA, YB]
+    assert acc["relevant"] == [YB]                                # YB: RELEVANTE (cita exacta)
+    assert YA not in acc["relevant"] and acc["undetermined"] == []   # YA: NO RELEVANTE
+    assert acc["N_eval"] == acc["N_pre"] + 1 and v.metrics["trials_count"] == acc["N_eval"]   # el DSR usa N_eval
+
+
+def test_cr022_f2_later_deviation_not_citing_sibling_leaves_it_undetermined(reg):
+    """§F.2 (variante): una DEVIATION posterior a YA y YB cita solo YB → YA INDETERMINADA (caso 3
+    prevalece) → INCONCLUSIVE, aunque YB sea citado."""
+    fx = _x_and_two_later_y_configs(reg)
+    fx.record_deviation("limitations", "nota", "consultó YB", registry=reg, informed_by=[YB])
+    inputs = inputs_for("EXP-0101", {"A": {"sharpe": 1.0}})
+    select(reg, "EXP-0101", "A", inputs, informed_by=[YB])
+    v = A.evaluate(evidence(), reg, preregistration=fx, selection_inputs=inputs)
+    acc = v.metrics["trials_accounting"]
+    assert v.outcome == "INCONCLUSIVE" and _reason(v, "SUBSEQUENT_TRIAL_INFLUENCE_UNDETERMINED")
+    assert acc["undetermined"] == [YA] and YB not in acc["undetermined"]
+    assert acc["N_eval"] is None and v.metrics["trials_count"] is None    # sin conteo de evaluación
+
+
+def test_cr022_f3_provenance_reference_does_not_cite_any_later_native_pair(reg):
+    """§F.3: una referencia `provenance_id` válida en la selección no hace relevante ninguna prueba posterior."""
+    mr, _ = historical(reg)
+    fx = _x_and_two_later_y_configs(reg)
+    inputs = inputs_for("EXP-0101", {"A": {"sharpe": 1.0}})
+    select(reg, "EXP-0101", "A", inputs, informed_by=[{"provenance_id": mr["provenance_id"]}])
+    sel = [r for r in reg.records() if r["kind"] == "TRANSITION" and r.get("to") == "OOS_EVALUATION"][0]
+    assert sel["evidence"]["informed_by"] == [{"provenance_id": mr["provenance_id"]}]   # aceptada y registrada
+    v = A.evaluate(evidence(), reg, preregistration=fx, selection_inputs=inputs)
+    acc = v.metrics["trials_accounting"]
+    assert v.outcome == "ELIGIBLE_FOR_HUMAN_REVIEW", v.reasons
+    assert acc["trials_after_freeze"] == [YA, YB]
+    assert acc["relevant"] == [] and acc["undetermined"] == []
+    assert acc["N_eval"] == acc["N_pre"] and v.metrics["trials_count"] == acc["N_pre"]
+
+
+def test_cr022_f4_pair_cited_by_two_decision_points_counts_once(reg):
+    """§F.4: YB citado por una DEVIATION y por la selección suma una sola vez (deduplicación por par)."""
+    fx = _x_and_two_later_y_configs(reg)
+    fx.record_deviation("limitations", "nota", "consultó YA y YB", registry=reg, informed_by=[YA, YB])
+    inputs = inputs_for("EXP-0101", {"A": {"sharpe": 1.0}})
+    select(reg, "EXP-0101", "A", inputs, informed_by=[YB])
+    v = A.evaluate(evidence(), reg, preregistration=fx, selection_inputs=inputs)
+    acc = v.metrics["trials_accounting"]
+    assert v.outcome == "ELIGIBLE_FOR_HUMAN_REVIEW", v.reasons
+    assert acc["relevant"] == [YA, YB] and acc["undetermined"] == []
+    assert acc["N_eval"] == acc["N_pre"] + 2 and v.metrics["trials_count"] == acc["N_eval"]   # YB una vez, no 3
+
+
 # --- TC-ML-006 (actualizada): corrección por configuraciones con el conteo congelado ------------
 
 def test_tc_ml_006_full_evaluation_uses_reconciled_configuration_count(reg):
