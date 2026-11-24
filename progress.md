@@ -1491,3 +1491,30 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Siguiente:** aprobación del propietario de la corrección de ORQ-017-01.
 
 **Aprobación del propietario (2026-11-24):** aprueba la implementación de ORQ-017-01 y su evidencia; acepta los riesgos residuales dentro del alcance. **ORQ-017-01 RESUELTO** con la condición operativa: tras un fallo de persistencia incierto, el experimento afectado no continúa ni pasa por HUMAN_REVIEW hasta conciliar el intento con el registro (comprobar el `deviation_id`; volver a registrar si falta; revisar manualmente si el registro quedó ilegible). Es una condición operativa, no un mecanismo implementado entre procesos. Solo un registro DEVIATION escrito con éxito cuenta como duradero. Siguen pendientes: recuperabilidad del contenido del preregistro antes del piloto confirmatorio (O4) y la observación TC-ML-012 (aclaración contractual, sin cambios). **D8 RESUELTA** dentro de su alcance original (QA3R2-06 y QA3R2-07 cerrados). Commit en develop, sin push; sin pruebas adicionales. FEAT-017 sigue IN_PROGRESS; `feature_list.json`, contratos, AC, demás estados y D1–D7 sin cambios; SNAP-0001 no creada; $0 de IA.
+
+## 2026-11-24 | FASE 2 | IMPL-3: resolución D1 (suficiencia documental de EXP-0001; FEAT-017) y CONF-009 | DOCUMENTADO — PENDIENTE DE APROBACIÓN DEL PROPIETARIO
+
+**Sincronización:** `develop` y `origin/develop` sincronizados en `ec2e9260265bbddc406d064782850150bb1604d0` tras el push del propietario (comprobado con `git rev-list --left-right --count develop...origin/develop` → 0 0; árbol limpio). Los commits `daa78d0`, `4ad42ed` y `ec2e926`, registrados antes como «sin push», están publicados.
+
+**Identificadores de revisión de FEAT-017 (no son decisiones formales DEC-XXX):**
+
+| ID | Tema | Estado |
+|---|---|---|
+| D1 | Suficiencia documental de EXP-0001 | RESUELTA (2026-11-24, nivel documental) |
+| D2 | Unidad de conteo de `trials_count` | PENDIENTE |
+| D3 | Integridad metodológica de las particiones | PENDIENTE |
+| D4 | Autorización y cortes de SNAP-0001 | PENDIENTE |
+| D5 | Secuencia de exploración y preregistro | PENDIENTE |
+| D6 | Parámetros y umbrales estadísticos | PENDIENTE |
+| D7 | Configuración del piloto | PENDIENTE |
+| D8 | Resolución de QA3R2-06 y QA3R2-07 | RESUELTA (2026-11-24) |
+
+**Decisión del propietario (2026-11-24), D1:** la documentación recuperada de `trading-bot@21c5f25` (preregistro v4 congelado, D-024, configuraciones A–D, hash del manifiesto de datos) basta para reconocer EXP-0001 como antecedente histórico documentado. Su ejecución, sus resultados de Train y su rendimiento estadístico siguen siendo desconocidos. EXP-0001 no se clasifica como aprobado, validado, exitoso, rechazado, inconcluso ni ejecutado con éxito. Se conserva el rechazo documentado de Mean Reversion H1 sin afirmar que se recuperaron sus resultados originales. D1 resuelve solo la dependencia documental de AC-017-10; **AC-017-10 no queda satisfecho** (la integridad de las particiones sigue sin resolver).
+
+**CONF-009 (OPEN):** la semántica vigente del registro de experimentos no puede representar D1 (`ANTECEDENT_STATES`, `register_antecedent` y `transition` en `experiments.py`). Opción A aprobada por el propietario: el registro no se modifica; EXP-0001 conserva `PENDING_DOCUMENTATION` solo por esa limitación, y ese estado no expresa la valoración actual del propietario sobre la suficiencia documental. Opción B (tipo de registro de procedencia separado) anotada como solución candidata diferida, no aprobada ni convertida en CR. Registro en `implementation/conflict_register.md`.
+
+**Cambios:** `implementation/conflict_register.md` (CONF-009); `harness/verification/IMPL-3_EXP-0001_procedencia.md` (ruta de `trading-bot` corregida a `/home/erick/Descargas/Projects/trading-bot`, con nota y commit de origen `21c5f25` conservado; nueva §6 con la resolución D1); `progress.md`; `session-handoff.md`.
+
+**Sin cambios:** `research/experiments/registry.jsonl` (EXP-0001 y `ANT-MR-H1` intactos), código fuente, contratos, AC, `feature_list.json`, estados de FEAT (FEAT-017 IN_PROGRESS), cortes de particiones. SNAP-0001 no creada; sin pruebas, backtests ni experimentos; OOS/LOCKBOX reales intactos. Sin commit ni push. $0 de IA. Sub-agentes: 0.
+
+**Siguiente:** aprobación del propietario de estos registros documentales.

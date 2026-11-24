@@ -14,7 +14,9 @@
 | Repositorio SwingPilot: árbol actual, todas las ramas, reflog, stash y objetos inalcanzables | Sin documentación de EXP-0001. Las únicas menciones son las de DEC-017/DEC-018 y del trabajo de IMPL-3. «Mean Reversion» solo aparece como familia de investigación en los documentos de política. |
 | Memoria del asistente | Sin menciones. |
 | Disco del propietario bajo `/home/erick` (nombres de archivo) | Sin archivos con EXP-0001, Mean Reversion o Trend Following en el nombre fuera de SwingPilot. |
-| **Proyecto hermano `/home/erick/Documentos/Projects/trading-bot` (historia de git)** | **Encontrada la documentación original** (§2). El directorio `backtest/` ya no está en disco ni versionado (commit `3efea65`, «chore: stop tracking backtest directory», 2026-11-09), pero su contenido sigue en la historia. |
+| **Proyecto hermano `/home/erick/Descargas/Projects/trading-bot` (historia de git)** ¹ | **Encontrada la documentación original** (§2). El directorio `backtest/` ya no está en disco ni versionado (commit `3efea65`, «chore: stop tracking backtest directory», 2026-11-09), pero su contenido sigue en la historia. |
+
+¹ Ruta corregida el 2026-11-24. La versión original de este informe indicaba `/home/erick/Documentos/Projects/trading-bot`, que ya no existe. El repositorio está en `/home/erick/Descargas/Projects/trading-bot`; el commit de origen `21c5f25` y los archivos de §2 se comprobaron presentes allí (solo lectura, `git cat-file`/`git ls-tree`). Las referencias de commit de este informe no cambian.
 
 **Método:** solo lectura con `git show` y `git log` sobre la historia de `trading-bot`. No se hizo checkout, no se modificó nada y **no se abrió ningún CSV de precios**. Ese proyecto protegía sus datos con controles que impedían a los agentes leerlos, incluido el historial de git. Solo se leyeron documentos, manifiestos y metadatos.
 
@@ -86,3 +88,15 @@ Datos ya usados en decisiones de investigación de `trading-bot` sobre BTC/USDT:
 3. **Relación con el preregistro de `trading-bot`.** El piloto de SwingPilot no es EXP-0001: el contrato impone otro Walk-Forward (24/2/6), otro capital y otra partición. Reutilizar EXP-0001 como «antecedente» no significa heredar su preregistro.
 
 Hasta la decisión del propietario: el piloto no se preregistra (DEC-018) y SNAP-0001 no se crea.
+
+## 6. Resolución D1 del propietario (2026-11-24)
+
+**D1 — suficiencia documental de EXP-0001: RESUELTA a nivel de decisión documental.** D1 es un identificador de revisión de FEAT-017, no una decisión formal DEC-XXX.
+
+- El preregistro v4 congelado, la decisión D-024 de `trading-bot`, las configuraciones A–D y el hash del manifiesto de datos (§2) establecen la procedencia documental de EXP-0001.
+- La ejecución de EXP-0001, sus resultados de Train y su rendimiento estadístico siguen siendo **desconocidos** (§3).
+- EXP-0001 no se clasifica como aprobado, validado, exitoso, rechazado ni inconcluso, ni como ejecutado con éxito, por falta de resultados.
+- Se conserva el rechazo documentado de Mean Reversion H1 sin afirmar que se hayan recuperado sus resultados originales (el CSV previo de Fase 0 no se conservó).
+- **Alcance:** D1 resuelve solo la dependencia documental de AC-017-10. **AC-017-10 no queda satisfecho:** la integridad metodológica de las particiones (D3) y las demás decisiones (D2, D4–D7) siguen pendientes.
+- **Registro de experimentos sin cambios (CONF-009, abierto):** EXP-0001 conserva `PENDING_DOCUMENTATION` porque la semántica actual del registro no puede representar esta resolución. Ese estado no expresa la valoración actual del propietario sobre la suficiencia documental. La opción B de CONF-009 (tipo de registro de procedencia separado) es solo una solución candidata diferida, no aprobada.
+- En §5.1, la actualización del estado de EXP-0001 queda sustituida por esta resolución y por CONF-009; la cuestión de la unidad de `trials_count` sigue abierta (D2). Las opciones de §5.2 (cortes de SNAP-0001) siguen abiertas (D3/D4).

@@ -1,5 +1,16 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — D1 RESUELTA a nivel documental (EXP-0001); CONF-009 abierto; sin commit
+
+**Sincronización:** `develop` = `origin/develop` = `ec2e926` (push del propietario; árbol limpio antes de este paso). Las entradas anteriores que dicen «sin push» quedan superadas.
+**Identificadores de revisión de FEAT-017 (no son DEC-XXX):** D1 suficiencia documental de EXP-0001 — **RESUELTA**; D2 unidad de `trials_count`; D3 integridad metodológica de las particiones; D4 autorización y cortes de SNAP-0001; D5 secuencia de exploración y preregistro; D6 parámetros y umbrales estadísticos; D7 configuración del piloto — **PENDIENTES**; D8 resolución de QA3R2-06/07 — **RESUELTA**.
+**D1:** la evidencia de `trading-bot@21c5f25` (preregistro v4 congelado, D-024, configuraciones A–D, hash del manifiesto) establece la procedencia documental; ejecución, resultados de Train y rendimiento siguen desconocidos; sin clasificación por resultados. Mean Reversion H1 conserva su rechazo documentado. Resuelve solo la dependencia documental de AC-017-10; **AC-017-10 no está satisfecho**.
+**CONF-009 (OPEN):** el registro de experimentos no puede representar D1; no se modifica (opción A). `PENDING_DOCUMENTATION` de EXP-0001 se conserva solo por esa limitación y no es la valoración actual del propietario. Opción B (tipo de registro de procedencia) diferida, no aprobada.
+**Archivos modificados:** `implementation/conflict_register.md`, `harness/verification/IMPL-3_EXP-0001_procedencia.md` (ruta corregida a `/home/erick/Descargas/Projects/trading-bot`; §6), `progress.md`, `session-handoff.md`. Sin pruebas ejecutadas.
+**Sin cambios:** registro de experimentos, código, contratos, AC, `feature_list.json`, estados de FEAT, cortes; SNAP-0001 no creada; $0 de IA.
+**Bloqueos:** AC-017-10 (D3 y D2, D4–D7); AC-017-11 (AC-017-10 y SNAP-0001); antes del piloto confirmatorio: coherencia `execution_model`/`ExecutionModel` y recuperabilidad del preregistro (O4); TC-ML-012 (aclaración contractual); CONF-009.
+**Siguiente acción autorizada:** ninguna. Esperar la aprobación expresa del propietario.
+
 ## IMPL-3 (2026-11-24) — ORQ-017-01 RESUELTO (FEAT-017); commit en develop, sin push
 
 **Aprobación del propietario (2026-11-24):** implementación y evidencia aprobadas; riesgos residuales aceptados dentro del alcance. Sin pruebas adicionales tras la aprobación.
