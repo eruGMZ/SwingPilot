@@ -262,12 +262,21 @@ def test_repository_registry_contains_declared_antecedents():
     r = ExperimentRegistry(repo / "research" / "experiments" / "registry.jsonl")
     ex = r.experiments()
     assert ex["EXP-0001"]["state"] == "PENDING_DOCUMENTATION" and ex["ANT-MR-H1"]["state"] == "REJECTED"
-    assert r.eligible_state("EXP-0001") is None
-    # CR-020: sin registros ANTECEDENT_PROVENANCE (pendientes de autorización del propietario) el
-    # conteo del registro real es indeterminado; nunca se sustituye por el número de experimentos.
-    assert not any(x["kind"] == "ANTECEDENT_PROVENANCE" for x in r.records())
-    with pytest.raises(TrialsAccountingError, match="sin procedencia"):
-        r.trials_count()
+    assert r.eligible_state("EXP-0001") is None and r.eligible_state("ANT-MR-H1") is None
+    # CR-020 / DEC-022: procedencia real autorizada por el propietario. Conteo histórico
+    # conservador = 4 evaluadas documentadas (ANT-MR-H1) + 4 de cota (EXP-0001), no 8 ejecuciones.
+    # El caso «sin procedencia → indeterminado» se cubre con registros sintéticos
+    # (test_tc_ml_010_…, tests/unit/test_trials_accounting.py, test_cr020_regressions.py).
+    acc = r.accounting()
+    assert (acc["H_doc"], acc["H_bound"], acc["E"]) == (4, 4, 0)
+    assert acc["H_doc"] + acc["H_bound"] + acc["E"] == 8 and r.trials_count() == 8
+    prov = [x for x in r.records() if x["kind"] == "ANTECEDENT_PROVENANCE"]
+    assert sorted(p["experiment_id"] for p in prov) == ["ANT-MR-H1", "EXP-0001"]
+    assert all(p["decision_ref"] == "DEC-022_procedencia-antecedentes-ant-mr-h1-exp-0001.md" for p in prov)
+    view = r.antecedents()
+    assert view["EXP-0001"]["original_state"] == "PENDING_DOCUMENTATION"
+    assert view["ANT-MR-H1"]["original_state"] == "REJECTED"
+    assert view["EXP-0001"]["execution_status"] == "UNKNOWN"                  # cota, no ejecución verificada
 
 
 # --- Preregistro (REQ-G-103, TC-ML-013, TC-ML-014) ------------------------------------------

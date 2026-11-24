@@ -160,6 +160,7 @@
 - **Seguimiento (2026-11-24):** la opción B se evalúa dentro de CR-020 (PROPUESTA, no aprobada; `harness/change_requests/CR-020_contabilidad-pruebas-trials-count.md`), junto con CONF-010. A diferencia de la descripción anterior, en CR-020 el registro de procedencia **sí** alimenta el conteo de pruebas (por configuraciones), porque D2 cambia la unidad de `trials_count`. CONF-009 sigue OPEN.
 - **Solución propuesta aprobada (propietario, 2026-11-24):** `ANTECEDENT_PROVENANCE` (CR-020 C.3.1), siempre que las consultas consolidadas distingan el estado original inmutable del registro `ANTECEDENT` de la procedencia documental vigente. Aprobación de la solución, no de su aplicación: CONF-009 sigue OPEN hasta su implementación y verificación, y se mantiene la reevaluación obligatoria antes del cierre formal de FEAT-017.
 - **CR-020 aprobada (2026-11-24, DEC-021) y aplicada solo contractualmente (contrato v1.8).** `ANTECEDENT_PROVENANCE` queda en el contrato (REQ-G-104). CONF-009 sigue OPEN hasta que se acepten la evidencia de implementación y la de verificación; la reevaluación obligatoria antes del cierre formal de FEAT-017 sigue vigente.
+- **Procedencia real registrada (2026-11-24, DEC-022):** dos registros `ANTECEDENT_PROVENANCE` (ANT-MR-H1 y EXP-0001) escritos con la API validada; la consulta consolidada separa el estado original (PENDING_DOCUMENTATION de EXP-0001) de la procedencia vigente (DOCUMENTED, ejecución UNKNOWN). CONF-009 sigue OPEN hasta la verificación independiente.
 
 ---
 

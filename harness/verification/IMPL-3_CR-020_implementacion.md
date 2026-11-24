@@ -110,3 +110,27 @@ Con la implementación: las 4 regresiones pasan.
 - **Distinción:** es la aceptación de la evidencia de implementación por el propietario, **no** una aprobación de QA independiente, que sigue pendiente.
 - **D2:** resuelta metodológicamente, aplicada contractualmente e implementada funcionalmente. Pendientes: registro real de la procedencia de los antecedentes (requiere autorización expresa y una decisión con líneas `AUTORIZA: PROCEDENCIA`) y verificación independiente.
 - **Sin cambios:** CONF-009 y CONF-010 OPEN; FEAT-015 DONE; FEAT-017 IN_PROGRESS; contrato, AC, gates y registro real.
+
+## 10. Registro real de la procedencia de los antecedentes (2026-11-24; DEC-022)
+
+**Autorización del propietario (2026-11-24):** acepta `824fae8` como implementación funcional congelada de CR-020 y autoriza el registro de la procedencia real de ANT-MR-H1 y EXP-0001, y solo de ellos. Decisión: `docs/decisions/DEC-022_procedencia-antecedentes-ant-mr-h1-exp-0001.md`, con las líneas `AUTORIZA: PROCEDENCIA ANT-MR-H1 DOCUMENTADAS=4 COTA=0` y `AUTORIZA: PROCEDENCIA EXP-0001 DOCUMENTADAS=0 COTA=4`.
+
+**Comprobaciones previas (solo lectura):** registro con 2 líneas (SHA-256 `7d0ae308…fb86d1`): `ANTECEDENT` EXP-0001 (PENDING_DOCUMENTATION) y `ANTECEDENT` ANT-MR-H1 (REJECTED); 0 registros `ANTECEDENT_PROVENANCE` y 0 `CONFIGURATION_EVALUATED`. Evidencia presente en `trading-bot` (`git cat-file -e`): `21c5f25:backtest/docs/REGISTRO_EXPERIMENTOS.md` (A, B, E1, E2 evaluadas sobre Train; A–D de EXP-0001 preregistradas «aún sin ejecutar»), `25f0e3f:backtest/REPORTE_FASE0.md` (las cuatro configuraciones de Fase 0 rechazadas), `21c5f25:backtest/experiments/EXP-0001/preregistration.md` (v4 congelado, D-024; §6, configuraciones A–D).
+
+**Escritura:** mediante `ExperimentRegistry.register_provenance` (validación completa dentro del bloqueo); sin escritura manual. Sin fallos ni incertidumbre.
+- `f0c4e2bf583b4880a34029fd3fab6888`: ANT-MR-H1, DOCUMENTED, DOCUMENTED_EXECUTED, A/B/E1/E2 `DOCUMENTED_EVALUATED`.
+- `7b5a82454ba842d1b80b71ee5d3b2dc9`: EXP-0001, DOCUMENTED, UNKNOWN, A/B/C/D `CONSERVATIVE_BOUND`.
+
+**Estado resultante (objeto de registro nuevo, solo lectura):** 4 líneas; las 2 originales sin cambios (`git diff`: 2 inserciones, 0 eliminaciones). H_doc = 4, H_bound = 4, E = 0, G = 8, `trials_count()` = 8. Vista consolidada: EXP-0001 `original_state` PENDING_DOCUMENTATION, `documentary_status` DOCUMENTED, `execution_status` UNKNOWN (cota, no ejecuciones verificadas); ANT-MR-H1 `original_state` REJECTED, DOCUMENTED, DOCUMENTED_EXECUTED. Ambos siguen sin ser elegibles (`eligible_state` = None). Validadores → OK.
+
+**Consecuencia en las pruebas (no ejecutadas en este paso):** `tests/unit/test_research.py::test_repository_registry_contains_declared_antecedents` afirmaba el estado previo del registro real (sin procedencia y conteo indeterminado) y ahora fallará por diseño. Debe actualizarse para afirmar el estado nuevo (G = 8 con su desglose); requiere la indicación del propietario.
+
+**Limitaciones:** la cota de EXP-0001 sigue siendo una cota; los resultados originales de Fase 0 no se recuperaron; la evidencia en `trading-bot` se comprueba por referencia, no se copia al Harness; CONF-009 y CONF-010 siguen OPEN hasta la verificación independiente.
+
+**Aceptación del propietario (2026-11-24):** aprueba el registro de procedencia de DEC-022 y la evidencia contable (H_doc 4, H_bound 4, E 0, G 8). Autoriza actualizar `test_repository_registry_contains_declared_antecedents` al estado autorizado del registro real.
+
+**Prueba actualizada (`tests/unit/test_research.py`):** sustituye las aserciones del estado anterior (sin procedencia, conteo indeterminado) por: H_doc = 4, H_bound = 4, E = 0, G = 8, `trials_count()` = 8; estados originales sin cambios (PENDING_DOCUMENTATION y REJECTED, también en `original_state`); ambos antecedentes no elegibles (`eligible_state` = None); los dos registros de procedencia citan DEC-022; ejecución de EXP-0001 UNKNOWN (cota). Las pruebas sintéticas de procedencia ausente y Fail-Closed no cambian.
+
+**Verificación:** `.venv/bin/pytest -q -p no:cacheprovider tests` → **778 passed, 5 skipped**; validadores → OK. Sin cambios en `src/`, en el registro real (además de las 2 líneas de DEC-022) ni en DEC-022.
+
+**Aprobación final del propietario (2026-11-24):** aprueba el registro de DEC-022, la actualización de `test_repository_registry_contains_declared_antecedents` y la evidencia resultante. Acepta expresamente: H_doc = 4, H_bound = 4, E = 0, G = 8; `trials_count()` = 8; estados originales conservados; ambos antecedentes no elegibles para abrir particiones; cobertura sintética de procedencia ausente y Fail-Closed conservada; 778 passed, 5 skipped y validadores OK tras DEC-022. Pruebas no reejecutadas para el commit. Es aceptación del propietario, **no** QA independiente, que sigue pendiente. CONF-009 y CONF-010 OPEN.

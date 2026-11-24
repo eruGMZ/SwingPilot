@@ -1,5 +1,27 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE CONTROL (2026-11-24) — CR-020 completa; siguiente sesión: verificación independiente de CR-020
+
+**Rama:** `develop`. **Commits de CR-020:** `d372e28` (aplicación contractual, contrato v1.8, DEC-021), `824fae8` (implementación funcional + corrección A2) y el commit «feat(impl-3): register historical trial provenance under DEC-022» (procedencia real). El push lo decide el propietario.
+**D2:** resuelta metodológicamente, aplicada contractualmente, implementada funcionalmente y poblada con la procedencia real autorizada. **Pendiente: QA independiente.**
+**Estado:** CONF-009 y CONF-010 OPEN (se cierran solo con la verificación independiente aceptada; CONF-009 exige además su reevaluación antes del cierre formal de FEAT-017). FEAT-015 DONE; FEAT-017 IN_PROGRESS; D3–D7 PENDIENTES; SNAP-0001 no creada; gates sin cambios.
+**Última evidencia:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 778 passed, 5 skipped; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK. Registro real: 4 líneas (2 `ANTECEDENT` + 2 `ANTECEDENT_PROVENANCE` de DEC-022); H_doc 4, H_bound 4 (cota), E 0, G 8.
+**Alcance de la verificación independiente (solo con autorización expresa del propietario):**
+- Contrato: `implementation/requirements.md` v1.8 (REQ-G-P17, REQ-G-103, REQ-G-104), `test_plan.md` (TC-ML-006, TC-ML-020..024), `docs/decisions/DEC-021…md`, `DEC-022…md`, `harness/change_requests/CR-020_…md` (rev. 3, §H).
+- Código: `src/swingpilot/research/{experiments,preregistration,trials,acceptance,partitions}.py`.
+- Pruebas: `tests/unit/test_trials_accounting.py`, `test_cr020_regressions.py`, `test_snapshot.py` (A2 y TC-ML-023), `test_research.py`.
+- Evidencia y limitaciones aceptadas: `harness/verification/IMPL-3_CR-020_implementacion.md` §1–§10.
+- Restricciones: solo lectura salvo autorización; registros temporales y datos sintéticos; sin particiones reales, SNAP-0001, experimentos ni IA; la QA no aprueba su propio trabajo (AGENTS.md).
+**Siguiente acción autorizada:** ninguna. Esperar instrucciones del propietario.
+
+## IMPL-3 (2026-11-24) — Procedencia real de ANT-MR-H1 y EXP-0001 registrada y aceptada (DEC-022)
+
+**Base:** `824fae8` (implementación congelada de CR-020; develop = `origin/develop`).
+**Hecho:** DEC-022 con las dos líneas `AUTORIZA: PROCEDENCIA`; dos registros `ANTECEDENT_PROVENANCE` escritos con la API (`f0c4e2bf…`, `7b5a8245…`). Registro real: 4 líneas, las 2 originales intactas.
+**Resultado:** H_doc 4, H_bound 4 (cota), E 0, G 8, `trials_count()` 8; estados originales REJECTED y PENDING_DOCUMENTATION conservados. Validadores → OK.
+**Aceptación del propietario:** DEC-022 y evidencia contable aprobadas; `test_repository_registry_contains_declared_antecedents` actualizada al estado autorizado (G = 8, DEC-022). Suite 778 passed, 5 skipped; validadores OK.
+**Aprobación final del propietario (2026-11-24):** registro de DEC-022, actualización de la prueba y evidencia aceptados; commit en develop, sin push.
+
 ## IMPL-3 (2026-11-24) — Implementación de CR-020 APROBADA por el propietario (con A2); commit en develop, sin push
 
 **Aprobación del propietario:** implementación funcional de CR-020 (v1.8, DEC-021) con la corrección A2; evidencia aceptada (778 passed, 5 skipped; validadores OK) y limitaciones residuales aceptadas. No es aprobación de QA independiente.
