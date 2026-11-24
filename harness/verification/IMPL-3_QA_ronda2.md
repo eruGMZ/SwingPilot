@@ -267,3 +267,68 @@ Las rondas de QA permitidas están agotadas (2 de 2). Cualquier corrección post
 **Estado de QA3R2-07 (2026-11-24): RESUELTO POR COMPLETO.** Commit en develop, sin push; sin pruebas adicionales tras la aprobación.
 
 **ORQ-017-01: ABIERTO.** Revisión contractual separada antes del cierre de FEAT-017. Sin persistencia, sin nuevos tipos de registro y sin cambios en el evaluador hasta esa revisión. FEAT-017 sigue en IN_PROGRESS.
+
+---
+
+## Corrección de ORQ-017-01 — persistencia de las desviaciones (2026-11-24, Orquestador; sin nueva ronda de QA)
+
+**Autorización del propietario (2026-11-24):** corrección directa de ORQ-017-01, sin CR. Decisiones: **O1** reutilizar el registro append-only de experimentos y su bloqueo exclusivo; **O2** carácter confirmatorio reconstruible y consultable para HUMAN_REVIEW, sin cambiar reglas de aprobación, transiciones ni el evaluador; **O3** registrar una desviación la documenta, no autoriza el cambio, no modifica el preregistro congelado ni da autoridad de decisión a la IA; **O4** diferir el almacenamiento del contenido congelado, conservando la vinculación por SHA-256 y documentando el requisito de recuperabilidad para el futuro preregistro confirmatorio. Base `4ad42ed`.
+
+**Conciliación previa de las tres condiciones (sin conflicto con la arquitectura ni con el contrato):**
+1. *Registro de accesos.* Se conserva el comportamiento aprobado de QA3R2-07: el registro de accesos solo añade exposición. Para que siga siendo verificable al reconstruir, las entradas que aportan exposición se copian en el registro DEVIATION (`access_log_evidence`). Al reconstruir, `after_oos` debe ser igual a «consumo anterior en el archivo» o «evidencia válida incluida»; si no, el registro es incoherente. El archivo de accesos original no puede volver a comprobarse (lo aporta quien llama): riesgo residual.
+2. *Hash.* Las desviaciones válidas de otros experimentos se ignoran (solo se valida su forma); una desviación del mismo experimento con un SHA-256 distinto del de su PREREGISTERED se rechaza. Para poder comprobarlo, registrar una desviación exige que el experimento tenga su transición a PREREGISTERED con ese hash. Esto obligó a adaptar la **preparación** de pruebas existentes (PREREGISTERED con el hash real del preregistro de prueba, antes `"f"*64`); sus aserciones no cambian.
+3. *Escrituras fallidas.* Un fallo después de empezar a escribir se trata como incierto: no se informa éxito, el objeto deja de certificar el carácter confirmatorio y de registrar más desviaciones, y el error cita el `deviation_id` para comprobar su presencia al reconstruir. No se supone que el registro esté ausente.
+
+**Resolución contractual:** corrección directa. REQ-G-103 («Las desviaciones se documentan y justifican»), REQ-G-100 (3) y (4), TC-ML-013 y AC-017-3 exigen ya, implícitamente, la persistencia. El formato del registro no forma parte del contrato (`api_contracts.md`, `data_flow.md` y `architecture.md` no lo definen); `ANTECEDENT` y `PARTITION_CONSUMED` se añadieron del mismo modo. El contrato no asigna al evaluador el carácter confirmatorio (AC-017-8, TC-ML-004..006).
+
+**Defecto reproducido con `4ad42ed`** (fuente extraída con `git archive` en el directorio temporal de la sesión; script sintético): tras consumir OOS y registrar una desviación de `wf_design`, el mismo objeto da `confirmatory=False`, pero un objeto reconstruido con el mismo contenido y otro proceso dan **`True`**; el registro contiene **0** registros DEVIATION. Las pruebas nuevas no pueden ejecutarse sobre la base (falla la importación de `DeviationPersistenceUncertain`/`confirmatory_status`), de ahí la reproducción separada. Con el código corregido, el objeto reconstruido sin registro ya no certifica nada (error «falta el registro»).
+
+| Punto | Implementación |
+|---|---|
+| `experiments.py` | `PersistenceUncertainError`. `append_deviation(build)`: ejecuta `build()` y escribe el registro dentro del bloqueo exclusivo de `claim_partition`; solo admite `kind == "DEVIATION"`; un fallo de `build()` no escribe nada; un fallo de la escritura → `PersistenceUncertainError`. Sin cambios en estados, transiciones, `experiments()` ni `trials_count()` (ignoran DEVIATION). |
+| `preregistration.py` — escritura | `record_deviation(..., registry, access_history=None, actor="orquestador")`: comprueba el registro, el contenido congelado (`verify`), el campo y la justificación; dentro del bloqueo: exposición del registro (QA3R2-07), evidencia del registro de accesos, validación completa del registro existente y SHA-256 igual al de PREREGISTERED; escribe `DEVIATION` con `authorizes_change: false`. Valores no serializables → error sin escribir. |
+| `preregistration.py` — lectura | `confirmatory_status(registry, experiment_id)` (consulta para HUMAN_REVIEW) y `FrozenPreregistration.confirmatory_status(registry)` (además exige que el hash del objeto coincida). `confirmatory` se deriva del registro usado al registrar; sin registro o con persistencia incierta → error. `deviations` queda como vista local de lo escrito por el objeto. |
+| Validación al reconstruir | Para todos los DEVIATION: campos, `deviation_id` (32 hex, sin duplicados), SHA-256 (64 hex), campo del preregistro, justificación, `after_oos` booleano, actor, `authorizes_change: false`, evidencia de accesos válida. Para el mismo experimento: hash igual al de PREREGISTERED, posterior a PREREGISTERED en el archivo y `after_oos` igual al derivado. Cualquier fallo → error. |
+| Documentación | `research/README.md` (tipos de registro y reglas de DEVIATION); docstring de `experiments.py`. |
+| Sin cambios | Evaluador, cargador de particiones, contrato, AC, `feature_list.json`, estados de FEAT, D1–D7. |
+
+**Pruebas (`tests/unit/test_research.py`, 24 nuevas):**
+
+| Grupo | Pruebas |
+|---|---|
+| **Regresiones de persistencia** | reconstrucción con objetos nuevos tras la exposición → no confirmatorio (y consulta `confirmatory_status`); otro proceso escribe y el padre reconstruye → no confirmatorio |
+| Concurrencia determinista | con el bloqueo tomado por otro titular, `record_deviation` espera; el consumo escrito antes de liberar queda antes en el archivo y la desviación sale `after_oos=True` (15/15 ejecuciones repetidas pasan) |
+| Cronología | desviación de diseño antes de la exposición y no de diseño después → confirmatorio tras reconstruir; de diseño después → no confirmatorio |
+| Registro de accesos | la evidencia se guarda y basta al reconstruir sin volver a pasar el log |
+| Hash | preregistro con otro hash → rechazo sin escribir; DEVIATION válida de otro experimento con otro hash → se ignora; DEVIATION del mismo experimento con hash distinto → error; sin PREREGISTERED → error |
+| Evidencia mal formada (10 casos) | falta un campo; `deviation_id`, SHA-256 o campo no válidos; justificación vacía; `after_oos` no booleano; `authorizes_change: true`; evidencia de accesos no válida; `after_oos=True` sin evidencia; DEVIATION mal formada de otro experimento. En todos, error al consultar y al registrar otra |
+| Incoherencias | `after_oos=False` con consumo anterior; `deviation_id` duplicado; DEVIATION anterior a PREREGISTERED; JSON corrupto |
+| Escrituras fallidas | fallo de `fsync` (registro presente: el objeto no certifica ni registra más; la reconstrucción lo ve); fallo antes de escribir bytes (sigue siendo incierto); escritura a medias (registro ilegible para todos); fallo de `build()` (no escribe, no es incierto, el objeto sigue utilizable) |
+| Garantías | sin registro no se certifica; justificación obligatoria; contenido congelado alterado → error; `append_deviation` rechaza otros tipos |
+| Sin efectos laterales | `trials_count`, estado e historial iguales tras registrar desviaciones; las transiciones AUDIT → HUMAN_REVIEW siguen funcionando |
+
+**Pruebas existentes:** las 30 de QA3R2-07 y TC-ML-013 pasan con sus aserciones sin cambios; solo cambia la preparación (`_preregister`/`_to_validation` citan el hash real del preregistro de prueba; TC-ML-013 y `test_qa3r2_07_other_experiment_consumption_does_not_count` preregistran EXP-0101 en lugar de solo crearlo).
+
+**Suite:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 689 passed, 5 skipped (665 + 24). Validadores (`scripts/validate_{manifest,requirements,gates}.py`) → OK.
+
+**Riesgos residuales y notas:** (1) Las entradas del registro de accesos copiadas no pueden volver a contrastarse con el archivo original (lo aporta quien llama); solo se valida su forma y que correspondan al experimento. (2) Una desviación que nunca se registró (código que no usa la API) no es detectable; el control es en proceso y la autenticidad depende del control de versiones, no de una firma. (3) La incertidumbre tras un fallo de escritura vive en el objeto que falló: si no se escribió ningún byte, otro proceso no ve la desviación y puede dar «confirmatorio»; hay que reconstruir y volver a registrar. Un reintento tras una escritura que sí llegó a disco produce un segundo registro (otro `deviation_id`); no altera el resultado. (4) Una línea a medias deja el registro ilegible para todos hasta su revisión manual (Fail-Closed). (5) Una lectura simultánea a una escritura podría ver una línea incompleta y fallar (cerrado); basta repetir. (6) O4: solo se guarda el SHA-256 del preregistro; el contenido del preregistro confirmatorio deberá poder recuperarse antes del piloto (documentado en `research/README.md`). (7) El evaluador no consulta el carácter confirmatorio (O2).
+
+**Observación TC-ML-012 (solo para aclaración contractual posterior; sin cambios):** `implementation/test_plan.md:286-288` pide que una segunda evaluación sobre OOS o LOCKBOX quede «bloqueada y registrada como desviación». Hoy se bloquea y se anota como acceso denegado en el registro de accesos, no como desviación en el registro de experimentos. No se implementa nada; queda para aclaración del propietario.
+
+**Estado de ORQ-017-01:** implementado; **pendiente de aprobación del propietario**. Sin commit ni push.
+
+### Aprobación de ORQ-017-01 (2026-11-24)
+
+**Aprobación del propietario:** aprueba la implementación de ORQ-017-01 y su evidencia de verificación (defecto reproducido aparte con `4ad42ed`; 24 pruebas nuevas; QA3R2-07 y TC-ML-013 con las mismas aserciones; 689 passed, 5 skipped; validadores OK), sujeta a la condición operativa siguiente. Acepta los riesgos residuales documentados dentro del alcance de esta corrección.
+
+**Condición operativa (persistencia incierta):** si un intento de registrar una desviación termina en `DeviationPersistenceUncertain` (o en cualquier fallo de escritura incierto), **el experimento afectado no puede continuar ni pasar por HUMAN_REVIEW hasta conciliar ese intento con el registro**: reconstruir el estado desde `research/experiments/registry.jsonl` con objetos nuevos, comprobar si existe el `deviation_id` citado en el error y, si no existe, volver a registrar la desviación; si el registro quedó ilegible (línea a medias), revisarlo manualmente antes de seguir. **Es una condición operativa, no un mecanismo implementado entre procesos:** el código solo bloquea al objeto que sufrió el fallo; otros procesos no conocen la incertidumbre.
+
+**Distinción conservada:** solo un registro DEVIATION escrito con éxito (sin excepción) cuenta como registro duradero. Un intento incierto o fallido no se da por registrado ni por ausente.
+
+**Pendiente antes del piloto confirmatorio:** el contenido del preregistro confirmatorio debe poder recuperarse (guardado y versionado) para comprobar su SHA-256 contra el de PREREGISTERED (O4).
+
+**Observación TC-ML-012:** sigue documentada para aclaración contractual posterior; sin cambios.
+
+**Estado de ORQ-017-01 (2026-11-24): RESUELTO**, con los riesgos residuales aceptados y la condición operativa anterior. Commit en develop, sin push; sin pruebas adicionales tras la aprobación. FEAT-017 sigue en IN_PROGRESS.
+
+**D8 (análisis de FEAT-017, 2026-11-24): RESUELTA dentro de su alcance original**, al estar cerrados QA3R2-06 y QA3R2-07.

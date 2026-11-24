@@ -1471,3 +1471,23 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Siguiente:** aprobación del propietario de la corrección de QA3R2-07.
 
 **Aprobación del propietario (2026-11-24):** aprueba la corrección de QA3R2-07 y su evidencia; acepta los riesgos residuales dentro de su alcance, excepto la falta de persistencia de las desviaciones. **QA3R2-07 RESUELTO POR COMPLETO.** **ORQ-017-01 sigue ABIERTO** (revisión contractual separada antes del cierre de FEAT-017). Commit en develop, sin push; sin pruebas adicionales. FEAT-017 sigue IN_PROGRESS; `feature_list.json`, contratos, AC, demás estados y D1–D7 sin cambios; SNAP-0001 no creada; $0 de IA.
+
+---
+
+## 2026-11-24 | FASE 2 | IMPL-3: corrección de ORQ-017-01 (persistencia de las desviaciones del preregistro; FEAT-017) | IMPLEMENTADO — PENDIENTE DE APROBACIÓN DEL PROPIETARIO
+
+**Autorización del propietario (2026-11-24):** corrección directa, sin CR, sobre `4ad42ed`, con las decisiones O1 (registro append-only y su bloqueo), O2 (carácter confirmatorio reconstruible y consultable para HUMAN_REVIEW; sin cambios de aprobación, transiciones ni evaluador), O3 (registrar documenta, no autoriza) y O4 (contenido congelado diferido; vinculación por SHA-256; requisito de recuperabilidad documentado). Tres condiciones conciliadas antes de implementar, sin conflicto (registro de accesos verificable al reconstruir; hash del mismo experimento; escrituras inciertas).
+
+**Cambios:** `src/swingpilot/research/experiments.py` (`PersistenceUncertainError`, `append_deviation`); `src/swingpilot/research/preregistration.py` (registro DEVIATION, reconstrucción y validación, `confirmatory_status`, `DeviationPersistenceUncertain`); `tests/unit/test_research.py` (24 pruebas nuevas; preparación de pruebas existentes con el hash real); `research/README.md`; `harness/verification/IMPL-3_QA_ronda2.md` (§Corrección de ORQ-017-01 y observación TC-ML-012); `progress.md`; `session-handoff.md`.
+
+**Evidencia:** defecto reproducido con `4ad42ed` (script sintético): objeto reconstruido y otro proceso → confirmatorio pese a la desviación de diseño tras OOS; 0 registros DEVIATION. Las pruebas nuevas no importan sobre la base. Corregido: 54 pruebas de ORQ-017-01/QA3R2-07/TC-ML-013 pasan; concurrencia y proceso separado 15/15 en ejecuciones repetidas. Suite: `.venv/bin/pytest -q -p no:cacheprovider tests` → 689 passed, 5 skipped. Validadores → OK.
+
+**Observación TC-ML-012:** la segunda evaluación se bloquea y se anota como acceso denegado, no como desviación; registrada para aclaración contractual posterior, sin cambios.
+
+**Riesgos residuales:** evidencia de accesos copiada no contrastable con el archivo original; desviaciones no registradas no detectables; incertidumbre de escritura local al objeto que falló; línea a medias deja el registro ilegible (Fail-Closed); O4 diferido. Detalle en el informe de QA.
+
+**Sin cambios:** evaluador, cargador de particiones, contrato, AC, `feature_list.json`, estados de FEAT (FEAT-017 IN_PROGRESS), D1–D7. SNAP-0001 no creada; sin backtests reales; OOS/LOCKBOX reales intactos. Sin commit ni push. $0 de IA. Sub-agentes: 0.
+
+**Siguiente:** aprobación del propietario de la corrección de ORQ-017-01.
+
+**Aprobación del propietario (2026-11-24):** aprueba la implementación de ORQ-017-01 y su evidencia; acepta los riesgos residuales dentro del alcance. **ORQ-017-01 RESUELTO** con la condición operativa: tras un fallo de persistencia incierto, el experimento afectado no continúa ni pasa por HUMAN_REVIEW hasta conciliar el intento con el registro (comprobar el `deviation_id`; volver a registrar si falta; revisar manualmente si el registro quedó ilegible). Es una condición operativa, no un mecanismo implementado entre procesos. Solo un registro DEVIATION escrito con éxito cuenta como duradero. Siguen pendientes: recuperabilidad del contenido del preregistro antes del piloto confirmatorio (O4) y la observación TC-ML-012 (aclaración contractual, sin cambios). **D8 RESUELTA** dentro de su alcance original (QA3R2-06 y QA3R2-07 cerrados). Commit en develop, sin push; sin pruebas adicionales. FEAT-017 sigue IN_PROGRESS; `feature_list.json`, contratos, AC, demás estados y D1–D7 sin cambios; SNAP-0001 no creada; $0 de IA.

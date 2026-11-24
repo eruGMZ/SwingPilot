@@ -31,6 +31,11 @@
   persona; deja la autorización trazable a un documento versionado.
 - Consumo de OOS/LOCKBOX (QA3-06): se registra aquí (archivo versionado), no solo en el
   registro de accesos.
+- Desviaciones del preregistro (ORQ-017-01): registros DEVIATION append-only, escritos con
+  `append_deviation` bajo el mismo bloqueo exclusivo que el consumo de particiones. Documentan
+  una desviación; no la autorizan, no cambian el preregistro congelado ni dan autoridad de
+  decisión a la IA. La validación y el carácter confirmatorio se derivan en
+  `preregistration.py`. `experiments()` y `trials_count()` ignoran este tipo de registro.
 - Concurrencia (QA3R2-03): toda escritura toma un `flock` exclusivo sobre `<registro>.lock`;
   `claim_partition` comprueba y anota el consumo dentro del mismo bloqueo, de modo que dos
   procesos no pueden consumir a la vez la misma partición. Requiere un sistema POSIX (Linux,
@@ -97,6 +102,11 @@ ANTECEDENT_STATES = ("PENDING_DOCUMENTATION", "REJECTED", "INCONCLUSIVE")
 
 class ExperimentError(RuntimeError):
     pass
+
+
+class PersistenceUncertainError(ExperimentError):
+    """La escritura falló después de empezar: el registro puede estar presente, ausente o a medias
+    (ORQ-017-01). Nunca debe interpretarse como «no se escribió»."""
 
 
 def _now() -> str:
@@ -201,6 +211,22 @@ class ExperimentRegistry:
     def _append(self, rec: dict) -> dict:
         with self._locked():
             return self._write(rec)
+
+    def append_deviation(self, build) -> dict:
+        """Registro DEVIATION (ORQ-017-01). `build()` se ejecuta DENTRO del bloqueo exclusivo,
+        el mismo de `claim_partition`: la exposición y la validación que calcula se basan en el
+        estado del registro que precede inmediatamente a la escritura (cronología por orden del
+        archivo). Si `build()` falla, no se escribe nada. Si la escritura falla una vez iniciada,
+        lanza PersistenceUncertainError: el registro puede haber quedado escrito."""
+        with self._locked():
+            rec = build()
+            if not isinstance(rec, dict) or rec.get("kind") != "DEVIATION":
+                raise ExperimentError("append_deviation solo escribe registros DEVIATION")
+            try:
+                return self._write(rec)
+            except BaseException as exc:
+                raise PersistenceUncertainError(
+                    f"escritura de DEVIATION {rec.get('deviation_id')} incierta: {exc!r}") from exc
 
     def create(self, experiment_id: str, title: str, actor: str) -> dict:
         if not valid_experiment_id(experiment_id):

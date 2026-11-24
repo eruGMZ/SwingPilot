@@ -1,5 +1,24 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — ORQ-017-01 RESUELTO (FEAT-017); commit en develop, sin push
+
+**Aprobación del propietario (2026-11-24):** implementación y evidencia aprobadas; riesgos residuales aceptados dentro del alcance. Sin pruebas adicionales tras la aprobación.
+**Condición operativa:** tras un fallo de persistencia incierto (`DeviationPersistenceUncertain`), el experimento afectado **no continúa ni pasa por HUMAN_REVIEW** hasta conciliar el intento con el registro (reconstruir con objetos nuevos, comprobar el `deviation_id`, volver a registrar si falta, revisión manual si el registro quedó ilegible). Condición operativa, **no** un mecanismo implementado entre procesos. Solo un DEVIATION escrito con éxito cuenta como duradero.
+**Pendientes de FEAT-017:** AC-017-10/11; decisiones D1–D7; SNAP-0001; recuperabilidad del contenido del preregistro antes del piloto confirmatorio (O4); observación TC-ML-012 (aclaración contractual). **D8 RESUELTA** (QA3R2-06 y QA3R2-07 cerrados).
+**Estado:** FEAT-017 IN_PROGRESS (sin cambios en `feature_list.json`).
+**Siguiente acción autorizada:** ninguna. Esperar indicación del propietario.
+
+### Registro previo a la aprobación — ORQ-017-01 corregido, pendiente de aprobación; sin commit
+
+**Base:** `4ad42ed` (develop, 2 commits por delante de `origin/develop`).
+**Hecho:** corrección directa autorizada (O1–O4), sin CR. Las desviaciones se escriben como registros `DEVIATION` append-only en `research/experiments/registry.jsonl`, bajo el mismo bloqueo exclusivo que `PARTITION_CONSUMED` (cronología = orden del archivo). El carácter confirmatorio se reconstruye desde el registro (`preregistration.confirmatory_status`) para HUMAN_REVIEW; vinculado al SHA-256 de PREREGISTERED; Fail-Closed ante evidencia ausente, corrupta o incoherente; escrituras fallidas tratadas como inciertas. Defecto reproducido aparte con `4ad42ed`. 24 pruebas nuevas; QA3R2-07 y TC-ML-013 con las mismas aserciones (solo cambia la preparación). Detalle en `harness/verification/IMPL-3_QA_ronda2.md` §Corrección de ORQ-017-01.
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 689 passed, 5 skipped. Validadores → OK.
+**Observación registrada (sin cambios):** TC-ML-012 («registrada como desviación») frente al comportamiento actual (acceso denegado en el registro de accesos); aclaración contractual posterior.
+**Requisito diferido (O4):** el contenido del preregistro confirmatorio deberá poder recuperarse para comprobar su SHA-256 antes del piloto.
+**Sin commit ni push.** Archivos modificados: `src/swingpilot/research/{experiments,preregistration}.py`, `tests/unit/test_research.py`, `research/README.md`, `harness/verification/IMPL-3_QA_ronda2.md`, `progress.md`, `session-handoff.md`.
+**Sin cambios:** evaluador, cargador de particiones, contrato, AC, `feature_list.json`, estados de FEAT (FEAT-017 IN_PROGRESS), D1–D7. SNAP-0001 no creada; OOS/LOCKBOX reales intactos; $0 de IA.
+**Siguiente acción autorizada:** ninguna. Esperar la aprobación expresa del propietario.
+
 ## IMPL-3 (2026-11-24) — QA3R2-07 RESUELTO POR COMPLETO (FEAT-017); commit en develop, sin push
 
 **Aprobación del propietario (2026-11-24):** corrección y evidencia aprobadas; riesgos residuales aceptados dentro del alcance de QA3R2-07, excepto la persistencia de las desviaciones. Sin pruebas adicionales tras la aprobación.
