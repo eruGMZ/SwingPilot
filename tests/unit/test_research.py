@@ -34,11 +34,11 @@ WF = {"train_months": 24, "embargo_months": 2, "test_months": 6, "step_months": 
 def reg(tmp_path):
     dec = tmp_path / "decisions"
     dec.mkdir()
-    (dec / "DEC-900_ok.md").write_text("Decisión de prueba sobre EXP-A")
+    (dec / "DEC-900_ok.md").write_text("Decisión de prueba\nAUTORIZA: EXP-0101\n")
     return ExperimentRegistry(tmp_path / "registry.jsonl", dec)
 
 
-def _to_validation(reg, eid="EXP-A"):
+def _to_validation(reg, eid="EXP-0101"):
     reg.create(eid, "x", actor="orquestador")
     reg.transition(eid, "DESIGN", actor="orquestador")
     reg.transition(eid, "PREREGISTERED", actor="orquestador",
@@ -51,48 +51,94 @@ def _to_validation(reg, eid="EXP-A"):
 def test_twelve_states_and_forward_only(reg):
     from swingpilot.research.experiments import STATES
     assert len(STATES) == 12
-    reg.create("EXP-A", "x", actor="orquestador")
+    reg.create("EXP-0101", "x", actor="orquestador")
     with pytest.raises(ExperimentError, match="no permitida"):
-        reg.transition("EXP-A", "DEVELOPMENT", actor="orquestador")
-    reg.transition("EXP-A", "DESIGN", actor="orquestador")
+        reg.transition("EXP-0101", "DEVELOPMENT", actor="orquestador")
+    reg.transition("EXP-0101", "DESIGN", actor="orquestador")
     with pytest.raises(ExperimentError, match="preregistration_sha256"):
-        reg.transition("EXP-A", "PREREGISTERED", actor="orquestador")
+        reg.transition("EXP-0101", "PREREGISTERED", actor="orquestador")
 
 
 def test_tc_ml_014_insufficient_history_stays_in_design(reg):
-    reg.create("EXP-A", "x", actor="orquestador")
-    reg.transition("EXP-A", "DESIGN", actor="orquestador")
+    reg.create("EXP-0101", "x", actor="orquestador")
+    reg.transition("EXP-0101", "DESIGN", actor="orquestador")
     with pytest.raises(ExperimentError, match="DESIGN"):
-        reg.transition("EXP-A", "PREREGISTERED", actor="orquestador",
+        reg.transition("EXP-0101", "PREREGISTERED", actor="orquestador",
                        evidence={"preregistration_sha256": "f" * 64, "min_history_ok": False})
-    assert reg.state("EXP-A") == "DESIGN"
+    assert reg.state("EXP-0101") == "DESIGN"
 
 
 def test_req_g_107_ai_cannot_approve_or_open_oos(reg):
     _to_validation(reg)
     with pytest.raises(ExperimentError, match="propietario"):
-        reg.transition("EXP-A", "OOS_EVALUATION", actor="orquestador", evidence={"decision_ref": "DEC-900_ok.md"})
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="orquestador", evidence={"decision_ref": "DEC-900_ok.md"})
     with pytest.raises(ExperimentError, match="no existe"):
-        reg.transition("EXP-A", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-404_x.md"})
-    reg.transition("EXP-A", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-900_ok.md"})
-    reg.transition("EXP-A", "AUDIT", actor="orquestador")
-    reg.transition("EXP-A", "HUMAN_REVIEW", actor="orquestador")
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-404_x.md"})
+    reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-900_ok.md"})
+    reg.transition("EXP-0101", "AUDIT", actor="orquestador")
+    reg.transition("EXP-0101", "HUMAN_REVIEW", actor="orquestador")
     with pytest.raises(ExperimentError, match="propietario"):
-        reg.transition("EXP-A", "APPROVED", actor="orquestador", evidence={"decision_ref": "DEC-900_ok.md"})
-    reg.transition("EXP-A", "APPROVED", actor="propietario", evidence={"decision_ref": "DEC-900_ok.md"})
-    assert reg.state("EXP-A") == "APPROVED" and reg.eligible_state("EXP-A") == "APPROVED"
+        reg.transition("EXP-0101", "APPROVED", actor="orquestador", evidence={"decision_ref": "DEC-900_ok.md"})
+    reg.transition("EXP-0101", "APPROVED", actor="propietario", evidence={"decision_ref": "DEC-900_ok.md"})
+    assert reg.state("EXP-0101") == "APPROVED" and reg.eligible_state("EXP-0101") == "APPROVED"
     with pytest.raises(ExperimentError, match="terminal"):
-        reg.transition("EXP-A", "REJECTED", actor="propietario")
+        reg.transition("EXP-0101", "REJECTED", actor="propietario")
 
 
 def test_qa3_04_decision_must_cite_the_experiment(reg, tmp_path):
-    (tmp_path / "decisions" / "DEC-901_other.md").write_text("habla de EXP-Z")
+    (tmp_path / "decisions" / "DEC-901_other.md").write_text("AUTORIZA: EXP-0199\n")      # autoriza otro experimento
     _to_validation(reg)
     with pytest.raises(ExperimentError, match="no cita"):
-        reg.transition("EXP-A", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-901_other.md"})
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-901_other.md"})
     with pytest.raises(ExperimentError, match="sin ruta"):
-        reg.transition("EXP-A", "OOS_EVALUATION", actor="propietario",
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario",
                        evidence={"decision_ref": str(tmp_path / "decisions" / "DEC-900_ok.md")})
+
+
+@pytest.mark.parametrize("bad", ["EXP-1", "EXP-00001", "exp-0001", "EXP-000A", "EXP-0001 ", " EXP-0001",
+                                 "EXP-0001\n", "EXP-0001/x", "EXP-٠٠٠١", "EXP-A", "", None, 1])
+def test_qa3r2_04_create_rejects_malformed_experiment_id(reg, bad):
+    with pytest.raises(ExperimentError, match="EXP-NNNN"):
+        reg.create(bad, "x", actor="orquestador")
+    assert reg.records() == []                                     # Fail-Closed: nada escrito
+    reg.create("EXP-0002", "control", actor="orquestador")
+    assert reg.state("EXP-0002") == "IDEA"
+
+
+@pytest.mark.parametrize("text", [
+    "Se autoriza EXP-0101.",                         # mención en prosa, sin línea estructurada
+    "Se RECHAZA EXP-0101 y no se autoriza nada.",    # la cita por subcadena lo aceptaba
+    "AUTORIZA: EXP-01010",                           # otro experimento que contiene el id
+    "AUTORIZA: EXP-0101X",
+    "NO AUTORIZA: EXP-0101",                         # la línea no empieza en «AUTORIZA:»
+    "> AUTORIZA: EXP-0101",
+    "autoriza: EXP-0101",
+    "AUTORIZA: exp-0101",
+    "AUTORIZA:  EXP-0101",
+    "AUTORIZA: EXP-0101 sin más",                    # tokens de más: no sigue la gramática
+    "AUTORIZA: EXP-0101 lockbox SNAP-TEST",          # autoriza una partición, no la transición
+])
+def test_qa3r2_04_transition_requires_exact_authorization_line(reg, tmp_path, text):
+    (tmp_path / "decisions" / "DEC-902_sub.md").write_text(text + "\n")
+    _to_validation(reg)
+    with pytest.raises(ExperimentError, match="no cita exactamente"):
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-902_sub.md"})
+    assert reg.state("EXP-0101") == "VALIDATION"
+
+
+def test_qa3r2_04_exact_line_still_authorizes(reg, tmp_path):
+    (tmp_path / "decisions" / "DEC-903_ok.md").write_text("# Decisión\n\nTexto libre sobre EXP-0101.\n\nAUTORIZA: EXP-0101   \n")
+    _to_validation(reg)
+    reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-903_ok.md"})
+    assert reg.state("EXP-0101") == "OOS_EVALUATION"
+
+
+def test_qa3r2_04_unreadable_decision_fails_closed(reg, tmp_path):
+    (tmp_path / "decisions" / "DEC-904_bin.md").write_bytes(b"AUTORIZA: EXP-0101\n\xff\xfe")
+    _to_validation(reg)
+    with pytest.raises(ExperimentError, match="no se puede leer"):
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-904_bin.md"})
+    assert reg.state("EXP-0101") == "VALIDATION"
 
 
 def test_qa3_03_antecedents_restricted_and_not_eligible(reg):
@@ -104,17 +150,17 @@ def test_qa3_03_antecedents_restricted_and_not_eligible(reg):
 
 
 def test_tc_ml_010_rejected_experiments_are_kept_and_counted(reg):
-    _to_validation(reg, "EXP-A")
-    reg.transition("EXP-A", "REJECTED", actor="orquestador", reason="umbrales no cumplidos")
-    reg.create("EXP-B", "y", actor="orquestador")
+    _to_validation(reg, "EXP-0101")
+    reg.transition("EXP-0101", "REJECTED", actor="orquestador", reason="umbrales no cumplidos")
+    reg.create("EXP-0102", "y", actor="orquestador")
     reg.register_antecedent("EXP-0001", "Trend Following H4 (antecedente)", "PENDING_DOCUMENTATION",
                             source="DEC-017", note="sin documentación")
     reg.register_antecedent("ANT-MR-H1", "Mean Reversion H1", "REJECTED", source="DEC-017", note="rechazada")
     exps = reg.experiments()
-    assert exps["EXP-A"]["state"] == "REJECTED" and len(exps["EXP-A"]["history"]) == 7
+    assert exps["EXP-0101"]["state"] == "REJECTED" and len(exps["EXP-0101"]["history"]) == 7
     assert reg.trials_count() == 4
     with pytest.raises(ExperimentError, match="reutilizan"):
-        reg.create("EXP-A", "otra vez", actor="orquestador")
+        reg.create("EXP-0101", "otra vez", actor="orquestador")
     with pytest.raises(ExperimentError, match="antecedente"):
         reg.transition("EXP-0001", "DESIGN", actor="propietario")
     assert len(reg.path.read_text().splitlines()) == 10   # append-only
@@ -136,7 +182,7 @@ def prereg():
                                "exit_rules", "model_config", "data_split", "metrics", "costs",
                                "acceptance_criteria", "rejection_criteria", "limitations",
                                "execution_model", "regime_declaration", "sharpe_definition")}
-    p.update(experiment_id="EXP-A", timeframes=["H4"], wf_design=dict(WF), label_horizon_months=1,
+    p.update(experiment_id="EXP-0101", timeframes=["H4"], wf_design=dict(WF), label_horizon_months=1,
              snapshot={"id": "SNAP-X"}, observed_trade_rate_per_month=3.0, trade_rate_source="train_only",
              antecedents=["EXP-0001"], trials_count=3, min_history={"ok": True},
              statistical_tests={"dsr_min_probability": "<pre>"})
@@ -150,11 +196,11 @@ def test_tc_ml_013_deviation_after_oos_derived_from_access_log():
     fz.record_deviation("limitations", "otra", "aclaración antes de ver OOS", access_history=log)
     assert fz.confirmatory
     # un acceso denegado o de otro experimento no cuenta
-    log += [{"allowed": False, "partition": "oos", "experiment_id": "EXP-A"},
-            {"allowed": True, "partition": "oos", "experiment_id": "EXP-Z"}]
+    log += [{"allowed": False, "partition": "oos", "experiment_id": "EXP-0101"},
+            {"allowed": True, "partition": "oos", "experiment_id": "EXP-0199"}]
     fz.record_deviation("limitations", "otra2", "sigue antes de OOS", access_history=log)
     assert fz.confirmatory
-    log.append({"allowed": True, "partition": "oos", "experiment_id": "EXP-A"})
+    log.append({"allowed": True, "partition": "oos", "experiment_id": "EXP-0101"})
     fz.record_deviation("wf_design", {**WF, "n_windows": 3}, "cambio tras ver OOS", access_history=log)
     assert not fz.confirmatory
     assert fz.content["wf_design"]["n_windows"] == 2

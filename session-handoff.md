@@ -1,5 +1,14 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — QA3R2-04 corregido y aprobado (commit en develop, sin push)
+
+**Hecho:** corrección autorizada de QA3R2-04 (FEAT-015). `create()`/`claim_partition()` validan `EXP-NNNN`; las decisiones se comprueban con una línea exacta `AUTORIZA: EXP-NNNN [<oos|lockbox> <SNAP-…>]` en lugar de por subcadena; decisión ilegible → denegada. 48 regresiones (45 fallan con `e375a18`).
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 518 passed, 5 skipped. Validadores → OK.
+**Aprobado por el propietario (2026-11-24)** y congelado en un commit en develop, sin push. Archivos: `src/swingpilot/research/{experiments,partitions}.py`, `tests/unit/test_{research,snapshot,ml_registry,engines}.py`, `harness/verification/IMPL-3_QA_ronda2.md`, `progress.md`, `session-handoff.md`.
+**Sin cambios:** FEAT-015 sigue en READY_FOR_REVIEW; cortes, SNAP-0001, OOS/LOCKBOX y registro real intactos.
+**Observaciones sin implementar (por indicación del propietario):** estado destino en la línea de transición; ids de antecedentes; `SNAPSHOT_ID.match` con salto final (QA3R2-08); formato `AUTORIZA:` en decisiones reales.
+**Siguiente acción autorizada:** ninguna. Esperar indicación del propietario.
+
 ## IMPL-3 (2026-11-23) — FEAT-016 cerrada como DONE
 
 **Aprobación del propietario (2026-11-23):** FEAT-016 pasa de READY_FOR_REVIEW a DONE. No es DONE-PARTIAL porque AC-016-9 excluye la operación continua de IMPL-3. `feature_list.json` v1.14.0 incluye la aprobación, `closure_verification` sobre `c384386` (470 passed, 5 skipped) y la evidencia pública del 2026-11-20 conservada.

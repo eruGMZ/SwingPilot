@@ -24,7 +24,7 @@ D, C = "d" * 64, "c" * 64
 def env(tmp_path):
     dec = tmp_path / "decisions"
     dec.mkdir()
-    (dec / "DEC-901_ok.md").write_text("Decisiones de prueba: EXP-OK, EXP-OK2")
+    (dec / "DEC-901_ok.md").write_text("Decisiones de prueba\nAUTORIZA: EXP-0201\nAUTORIZA: EXP-0202\n")
     exps = ExperimentRegistry(tmp_path / "registry.jsonl", dec)
     reg = ModelRegistry(tmp_path / "models.db", exps)
     yield reg, exps
@@ -42,25 +42,25 @@ def approve(exps, eid):
     exps.transition(eid, "APPROVED", actor="propietario", evidence={"decision_ref": "DEC-901_ok.md"})
 
 
-def reg_model(reg, mid="M1", ver="1.0.0", eid="EXP-M", data=D, code=C):
+def reg_model(reg, mid="M1", ver="1.0.0", eid="EXP-0203", data=D, code=C):
     return reg.register(mid, ver, data_hash=data, code_hash=code, params={"depth": 3}, experiment_id=eid)
 
 
 def active(reg, exps):
-    approve(exps, "EXP-OK")
-    reg_model(reg, "M2", "1.0.0", "EXP-OK")
+    approve(exps, "EXP-0201")
+    reg_model(reg, "M2", "1.0.0", "EXP-0201")
     reg.promote("M2", "1.0.0", requested_by="orquestador")
 
 
 def test_identity_and_hash_of_data_code_params(env):
     reg, exps = env
-    exps.create("EXP-M", "x", actor="orquestador")
+    exps.create("EXP-0203", "x", actor="orquestador")
     h = reg_model(reg)
     assert h == model_hash(D, C, {"depth": 3}) != model_hash(D, C, {"depth": 4})
     with pytest.raises(ModelRegistryError, match="no se reutiliza"):
         reg_model(reg)
     with pytest.raises(ModelRegistryError, match="no registrado"):
-        reg_model(reg, ver="2.0.0", eid="EXP-NO")
+        reg_model(reg, ver="2.0.0", eid="EXP-0404")
     with pytest.raises(sqlite3.DatabaseError):
         reg._db.execute("UPDATE models SET params_json='{}'")
     with pytest.raises(sqlite3.DatabaseError):
@@ -70,14 +70,14 @@ def test_identity_and_hash_of_data_code_params(env):
 @pytest.mark.parametrize("data,code", [("abc", C), (D, "C" * 64), (D, ""), (D, "g" * 64)])
 def test_qa3_18_hashes_must_be_sha256(env, data, code):
     reg, exps = env
-    exps.create("EXP-M", "x", actor="orquestador")
+    exps.create("EXP-0203", "x", actor="orquestador")
     with pytest.raises(ModelRegistryError, match="SHA-256"):
         reg_model(reg, data=data, code=code)
 
 
 def test_tc_ml_009_promotion_only_after_human_review_approved(env):
     reg, exps = env
-    exps.create("EXP-M", "x", actor="orquestador")
+    exps.create("EXP-0203", "x", actor="orquestador")
     reg_model(reg)
     with pytest.raises(ModelRegistryError, match="APPROVED"):
         reg.promote("M1", "1.0.0", requested_by="orquestador")
@@ -86,8 +86,8 @@ def test_tc_ml_009_promotion_only_after_human_review_approved(env):
     active(reg, exps)
     am = reg.active_model()
     assert am["model_id"] == "M2" and am["model_hash"] == model_hash(D, C, {"depth": 3})
-    approve(exps, "EXP-OK2")
-    reg_model(reg, "M3", "1.0.0", "EXP-OK2")
+    approve(exps, "EXP-0202")
+    reg_model(reg, "M3", "1.0.0", "EXP-0202")
     with pytest.raises(ModelRegistryError, match="ACTIVE"):
         reg.promote("M3", "1.0.0", requested_by="orquestador")
 

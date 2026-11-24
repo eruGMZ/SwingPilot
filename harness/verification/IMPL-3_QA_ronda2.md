@@ -67,3 +67,25 @@ Las rondas de QA permitidas están agotadas (2 de 2). Cualquier corrección post
 **Suite:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 450 passed, 5 skipped (431 + 19 nuevas). Validadores → OK.
 
 **Riesgos residuales:** (1) `flock` exige POSIX y un sistema de archivos local: con el registro en un recurso de red (NFS/SMB) la exclusión no está garantizada. (2) Un `n_resamples` válido pero muy grande (p. ej. 10^9) no se acota: tardaría mucho, pero no da un veredicto inválido. Fijar un máximo sería un parámetro del preregistro, que no corresponde al Orquestador. (3) Si dos procesos construyen la misma snapshot a la vez, uno podría apartar el directorio del otro durante su ventana de confirmación. El resultado no es consumible como completo (faltarían archivos), pero fallaría. La construcción de snapshots es manual y única (SNAP-0001 no creada).
+
+---
+
+## Corrección de QA3R2-04 (2026-11-24, Orquestador; sin nueva ronda de QA)
+
+**Autorización del propietario:** «Autorizo exclusivamente corregir QA3R2-04 de FEAT-015: validar el formato EXP-NNNN; sustituir las comprobaciones por subcadena por coincidencias exactas de experimento, snapshot y partición; añadir pruebas deterministas de regresión y verificar el comportamiento Fail-Closed.» Base `e375a18`. Sin cambios de cortes, sin SNAP-0001, sin OOS/LOCKBOX reales, sin cambio de estado de FEAT-015.
+
+| Aspecto | Corrección |
+|---|---|
+| Formato del id | `create()` y `claim_partition()` exigen `EXP-NNNN` (cuatro dígitos ASCII, `fullmatch`: sin espacios ni salto de línea final). `claim_partition()` exige además partición en `{oos, lockbox}` y snapshot válida (`SNAPSHOT_ID` con `fullmatch`). Si algo es inválido, no escribe nada. Los antecedentes declarados (`ANT-MR-H1`) no cambian. |
+| Cita en la decisión | `decision_ok(ref, experiment_id, partition=None, snapshot_id=None)` ya no busca subcadenas. Exige una línea completa (`fullmatch` tras quitar el espacio final), con igualdad exacta de cada campo: `AUTORIZA: EXP-NNNN` para las transiciones del propietario y `AUTORIZA: EXP-NNNN <oos|lockbox> <SNAP-…>` para una partición. Una línea de partición no autoriza la transición, ni al revés. |
+| Fail-Closed | Petición mal formada (id, partición, snapshot, `decision_ref` con salto de línea) → motivo de denegación. Documento ilegible o no UTF-8 → denegado (antes se leía con `errors="replace"`). |
+
+**Pruebas de regresión (48 nuevas):** en `test_research.py`, `test_qa3r2_04_create_rejects_malformed_experiment_id` (13), `…_transition_requires_exact_authorization_line` (11), `…_exact_line_still_authorizes` (control) y `…_unreadable_decision_fails_closed`. En `test_snapshot.py`, `test_qa3r2_04_partition_requires_exact_experiment_partition_snapshot` (10; comprueba además que no hay consumo, que el acceso denegado queda anotado y que la partición sigue sellada), `…_exact_partition_line_still_grants` (2 controles), `…_claim_rejects_malformed_ids_without_writing` (9) y `…_decision_ok_rejects_malformed_request`.
+
+**Con `e375a18`:** 45 fallan y 3 (los controles) pasan. 43 fallos se deben a que el control concedía de más. 9 casos **abren OOS/LOCKBOX sintéticos** con una decisión que no los autoriza, entre ellos «oos» dentro de «choose», `EXP-09001`, `SNAP-TEST-2`, «NO AUTORIZA:» y «No se autoriza el lockbox». 10 casos autorizan la transición a OOS_EVALUATION, entre ellos «Se RECHAZA EXP-0101». 1 caso acepta un documento no UTF-8, 13 crean ids mal formados y 9 registran consumos con ids inválidos. Los otros 2 fallos (`AUTORIZA: exp-0101`, `LOCKBOX`) ya se denegaban en la base, y solo cambia el mensaje. **Corregido:** 48/48.
+
+**Ajuste de pruebas existentes (no desactivadas):** los ids de prueba pasan a `EXP-NNNN` (`EXP-A`→`EXP-0101`, `EXP-T`→`EXP-0900`, `EXP-ML`→`EXP-0301`, etc.), y los documentos de decisión simulados usan la línea `AUTORIZA:`. Las aserciones no cambian.
+
+**Suite:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 518 passed, 5 skipped (470 + 48). Validadores → OK.
+
+**Riesgos residuales / para decisión del propietario:** (1) La línea de transición no incluye el estado destino: un mismo `AUTORIZA: EXP-NNNN` vale para OOS_EVALUATION, APPROVED y los terminales que decide el propietario desde HUMAN_REVIEW. Exigir `AUTORIZA: EXP-NNNN <ESTADO>` cerraría esa ambigüedad, pero queda fuera de lo autorizado. (2) Los ids de antecedentes no se validan; no abren particiones ni respaldan modelos. (3) `SNAPSHOT_ID.match` en `snapshot.py`/CLI admite un salto de línea final (parte de QA3R2-08, sin tocar). (4) Las decisiones reales de `docs/decisions` no usan aún la gramática; DEC-018 prohíbe evaluar OOS/LOCKBOX en IMPL-3, así que hoy no hay ninguna autorización real afectada.

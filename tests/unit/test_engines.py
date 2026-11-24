@@ -62,7 +62,7 @@ def e1(mk=None):
 def regs(tmp_path):
     dec = tmp_path / "dec"
     dec.mkdir()
-    (dec / "DEC-900_x.md").write_text("EXP-ML")
+    (dec / "DEC-900_x.md").write_text("AUTORIZA: EXP-0301\n")
     exps = ExperimentRegistry(tmp_path / "r.jsonl", dec)
     mr = ModelRegistry(tmp_path / "m.db", exps)
     yield exps, mr
@@ -164,7 +164,7 @@ def test_ml_no_active_model(regs):
     assert p["model_id"] is None
 
 
-def _approve(exps, eid="EXP-ML"):
+def _approve(exps, eid="EXP-0301"):
     exps.create(eid, "x", actor="orquestador")
     for to, ev in [("DESIGN", {}), ("PREREGISTERED", {"preregistration_sha256": "a" * 64, "min_history_ok": True}),
                    ("DATA_VALIDATION", {}), ("DEVELOPMENT", {"snapshot_verified": True}), ("VALIDATION", {})]:
@@ -185,11 +185,11 @@ class FakePredictor:
 def test_ml_active_suspended_and_missing_predictor(regs):
     exps, mr = regs
     _approve(exps)
-    mr.register("M1", "1.0.0", data_hash="d" * 64, code_hash="c" * 64, params={}, experiment_id="EXP-ML")
+    mr.register("M1", "1.0.0", data_hash="d" * 64, code_hash="c" * 64, params={}, experiment_id="EXP-0301")
     mr.promote("M1", "1.0.0", requested_by="orquestador")
     assert MLEngine(mr).run(e1(), market())["payload"]["error"]["code"] == "SPEC_NOT_FOUND"
     p = MLEngine(mr, FakePredictor()).run(e1(), market())["payload"]
-    assert p["inference_status"] == "INFERENCE_AVAILABLE" and p["approval_ref"] == "EXP-ML" and p["prediction"]["value"] == 0.01
+    assert p["inference_status"] == "INFERENCE_AVAILABLE" and p["approval_ref"] == "EXP-0301" and p["prediction"]["value"] == 0.01
     mr.check_degradation("M1", "1.0.0", last_trades_net_r=[-1.0] * 20, ic_lower_bound_oos=0.1, psi_by_feature={})
     p = MLEngine(mr, FakePredictor()).run(e1(), market())["payload"]
     assert p["inference_status"] == "MODEL_SUSPENDED" and p["prediction"] is None and p["drift"]["suspended_reason"]
@@ -340,7 +340,7 @@ def test_qa3e_03_strategy_and_ml_inconsistent_candles(regs, case, mk):
     assert p["error"]["code"] == "DATA_INCONSISTENT" and p["error"]["stage"] == "INPUT_VALIDATION"
     exps, mr = regs
     _approve(exps)
-    mr.register("M1", "1.0.0", data_hash="d" * 64, code_hash="c" * 64, params={}, experiment_id="EXP-ML")
+    mr.register("M1", "1.0.0", data_hash="d" * 64, code_hash="c" * 64, params={}, experiment_id="EXP-0301")
     mr.promote("M1", "1.0.0", requested_by="orquestador")
     pm = MLEngine(mr, FakePredictor()).run(e1(), mk())["payload"]
     assert pm["result_status"] == "ERROR" and pm["error"]["code"] == "DATA_INCONSISTENT", (case, pm)

@@ -66,7 +66,7 @@ def snap(tmp_path):
     return build(tmp_path), tmp_path
 
 
-def _decisions(tmp, text="EXP-T lockbox oos SNAP-TEST"):
+def _decisions(tmp, text="AUTORIZA: EXP-0900\nAUTORIZA: EXP-0900 lockbox SNAP-TEST\nAUTORIZA: EXP-0900 oos SNAP-TEST\n"):
     dec = tmp / "decisions"
     dec.mkdir(exist_ok=True)
     (dec / "DEC-999_eval.md").write_text(text)
@@ -313,7 +313,7 @@ def test_tc_ml_016_lockbox_and_oos_denied_without_grant_and_logged(snap, monkeyp
         [("train_val", True), ("lockbox", False), ("oos", False)]
 
 
-def _advance_to_oos(reg, eid="EXP-T"):
+def _advance_to_oos(reg, eid="EXP-0900"):
     reg.create(eid, "prueba", actor="orquestador")
     reg.transition(eid, "DESIGN", actor="orquestador")
     reg.transition(eid, "PREREGISTERED", actor="orquestador",
@@ -324,7 +324,7 @@ def _advance_to_oos(reg, eid="EXP-T"):
     reg.transition(eid, "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-999_eval.md"})
 
 
-def grant(part="lockbox", eid="EXP-T", by="propietario", ref="DEC-999_eval.md"):
+def grant(part="lockbox", eid="EXP-0900", by="propietario", ref="DEC-999_eval.md"):
     return FinalEvaluationGrant(eid, part, "SNAP-TEST", by, ref)
 
 
@@ -332,7 +332,7 @@ def test_tc_ml_001_grant_conditions(snap):
     res, tmp = snap
     reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
     loader = _loader(res, tmp, reg)
-    reg.create("EXP-T", "prueba", actor="orquestador")
+    reg.create("EXP-0900", "prueba", actor="orquestador")
     with pytest.raises(PartitionAccessError, match="OOS_EVALUATION"):
         loader.load_final(grant(), "lockbox")
     with pytest.raises(PartitionAccessError, match="propietario"):
@@ -343,7 +343,7 @@ def test_tc_ml_001_grant_conditions(snap):
 
 def test_qa3_04_decision_must_be_plain_name_in_decisions_dir_and_cite_ids(snap):
     res, tmp = snap
-    dec = _decisions(tmp, text="autoriza EXP-T sin más")     # no cita partición ni snapshot
+    dec = _decisions(tmp, text="AUTORIZA: EXP-0900\n")     # autoriza la transición, no la partición
     reg = ExperimentRegistry(tmp / "registry.jsonl", dec)
     _advance_to_oos(reg)
     loader = _loader(res, tmp, reg)
@@ -351,7 +351,7 @@ def test_qa3_04_decision_must_be_plain_name_in_decisions_dir_and_cite_ids(snap):
         loader.load_final(grant(), "lockbox")
     other = tmp / "elsewhere"
     other.mkdir()
-    (other / "DEC-005_x.md").write_text("EXP-T lockbox SNAP-TEST")
+    (other / "DEC-005_x.md").write_text("AUTORIZA: EXP-0900 lockbox SNAP-TEST\n")
     for ref in (str(other / "DEC-005_x.md"), "../elsewhere/DEC-005_x.md", "/etc/../tmp/DEC-005_x.md"):
         with pytest.raises(PartitionAccessError, match="sin ruta"):
             loader.load_final(grant(ref=ref), "lockbox")
@@ -373,8 +373,8 @@ def test_qa3_03_antecedent_cannot_open_sealed_partitions(snap):
     reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
     for st in ("OOS_EVALUATION", "APPROVED", "HUMAN_REVIEW"):
         with pytest.raises(ExperimentError, match="no permitido"):
-            reg.register_antecedent("EXP-T", "x", st, source="s", note="n")
-    reg.register_antecedent("EXP-T", "x", "REJECTED", source="s", note="n")
+            reg.register_antecedent("EXP-0900", "x", st, source="s", note="n")
+    reg.register_antecedent("EXP-0900", "x", "REJECTED", source="s", note="n")
     with pytest.raises(PartitionAccessError, match="antecedentes"):
         _loader(res, tmp, reg).load_final(grant(), "lockbox")
 
@@ -457,10 +457,77 @@ def test_qa3r2_03_failed_read_keeps_partition_consumed_and_is_logged(snap):
     loader.manifest["files"]["lockbox"]["sha256"] = "0" * 64      # fuerza el fallo de lectura
     with pytest.raises(PartitionAccessError, match="SHA-256"):
         loader.load_final(grant(), "lockbox")
-    assert reg.is_consumed("SNAP-TEST", "lockbox", "EXP-T")       # consumo conservador, documentado
+    assert reg.is_consumed("SNAP-TEST", "lockbox", "EXP-0900")       # consumo conservador, documentado
     assert any("lectura fallida" in r["reason"] for r in loader.access_history())
     with pytest.raises(PartitionAccessError, match="consumido"):
         _loader(res, tmp, reg).load_final(grant(), "lockbox")
+
+
+_SUBSTRING_DECISIONS = [
+    # (partición pedida, texto de la decisión): todos pasaban la comprobación por subcadena
+    ("oos", "AUTORIZA: EXP-0900 lockbox SNAP-TEST\nchoose"),            # «oos» dentro de «choose» (QA3R2-04)
+    ("lockbox", "AUTORIZA: EXP-0900 oos SNAP-TEST\nNo se autoriza el lockbox."),
+    ("lockbox", "AUTORIZA: EXP-09001 lockbox SNAP-TEST"),               # otro experimento que contiene el id
+    ("lockbox", "AUTORIZA: EXP-0900 lockbox SNAP-TEST-2"),              # otra snapshot que contiene el id
+    ("lockbox", "AUTORIZA: EXP-0900 LOCKBOX SNAP-TEST"),
+    ("lockbox", "NO AUTORIZA: EXP-0900 lockbox SNAP-TEST"),
+    ("lockbox", "> AUTORIZA: EXP-0900 lockbox SNAP-TEST"),
+    ("lockbox", "AUTORIZA: EXP-0900 lockbox SNAP-TEST oos"),
+    ("lockbox", "AUTORIZA: EXP-0900\nlockbox SNAP-TEST"),                # campos repartidos en líneas
+    ("lockbox", "EXP-0900 lockbox SNAP-TEST"),
+]
+
+
+@pytest.mark.parametrize("part,text", _SUBSTRING_DECISIONS)
+def test_qa3r2_04_partition_requires_exact_experiment_partition_snapshot(snap, part, text):
+    res, tmp = snap
+    dec = _decisions(tmp, text="AUTORIZA: EXP-0900\n")             # solo la transición a OOS_EVALUATION
+    (dec / "DEC-970_grant.md").write_text(text + "\n")
+    reg = ExperimentRegistry(tmp / "registry.jsonl", dec)
+    _advance_to_oos(reg)
+    loader = _loader(res, tmp, reg)
+    with pytest.raises(PartitionAccessError, match="no cita exactamente"):
+        loader.load_final(grant(part=part, ref="DEC-970_grant.md"), part)
+    assert reg.consumed_partitions() == []                         # Fail-Closed: nada consumido
+    assert [(r["partition"], r["allowed"]) for r in loader.access_history()] == [(part, False)]
+    if not ROOT:
+        with pytest.raises(PermissionError):
+            open(res.data_dir / f"{part}.parquet", "rb")           # sigue sellada
+
+
+@pytest.mark.parametrize("part", ["oos", "lockbox"])
+def test_qa3r2_04_exact_partition_line_still_grants(snap, part):
+    res, tmp = snap
+    dec = _decisions(tmp, text="AUTORIZA: EXP-0900\n")
+    (dec / "DEC-971_grant.md").write_text(f"# Decisión\n\nAUTORIZA: EXP-0900 {part} SNAP-TEST\n")
+    reg = ExperimentRegistry(tmp / "registry.jsonl", dec)
+    _advance_to_oos(reg)
+    assert len(_loader(res, tmp, reg).load_final(grant(part=part, ref="DEC-971_grant.md"), part)) > 0
+    assert [r["partition"] for r in reg.consumed_partitions()] == [part]
+
+
+@pytest.mark.parametrize("kw", [
+    {"experiment_id": "EXP-X"}, {"experiment_id": "EXP-0900\n"}, {"experiment_id": None},
+    {"partition": "LOCKBOX"}, {"partition": "train_val"}, {"partition": "lockbox "},
+    {"snapshot_id": "SNAP-TEST/../x"}, {"snapshot_id": "SNAP-0001\n"}, {"snapshot_id": ""},
+])
+def test_qa3r2_04_claim_rejects_malformed_ids_without_writing(tmp_path, kw):
+    reg = ExperimentRegistry(tmp_path / "reg.jsonl", _decisions(tmp_path))
+    args = {"snapshot_id": "SNAP-TEST", "partition": "lockbox", "experiment_id": "EXP-0900",
+            "snapshot_last_open_time": 1, "decision_ref": "DEC-999_eval.md", **kw}
+    with pytest.raises(ExperimentError, match="no válid"):
+        reg.claim_partition(**args)
+    assert reg.records() == []
+
+
+def test_qa3r2_04_decision_ok_rejects_malformed_request(tmp_path):
+    reg = ExperimentRegistry(tmp_path / "reg.jsonl", _decisions(tmp_path))
+    assert reg.decision_ok("DEC-999_eval.md", "EXP-0900", "lockbox", "SNAP-TEST") is None
+    assert reg.decision_ok("DEC-999_eval.md", "EXP-0900") is None
+    for args in [("EXP-900", "lockbox", "SNAP-TEST"), ("EXP-0900", "LOCKBOX", "SNAP-TEST"),
+                 ("EXP-0900", "lockbox", "SNAP-TEST\n"), ("EXP-0900", "lockbox", None), ("EXP-0900", None, "SNAP-TEST")]:
+        assert reg.decision_ok("DEC-999_eval.md", *args) is not None, args
+    assert reg.decision_ok("DEC-999_eval.md\n", "EXP-0900") is not None
 
 
 def test_tc_ml_019_new_lockbox_only_after_consumed_snapshot_end(tmp_path):
@@ -479,7 +546,7 @@ def test_cli_reads_consumed_lockboxes_from_registry(monkeypatch, tmp_path):
     monkeypatch.setattr(cli, "REGISTRY", tmp_path / "reg.jsonl")
     monkeypatch.setattr(cli, "build_snapshot", lambda *a, **k: seen.update(k) or (_ for _ in ()).throw(SystemExit(0)))
     reg = ExperimentRegistry(tmp_path / "reg.jsonl", _decisions(tmp_path))
-    reg.record_partition_consumed(snapshot_id="SNAP-0000", partition="lockbox", experiment_id="EXP-X",
+    reg.record_partition_consumed(snapshot_id="SNAP-0000", partition="lockbox", experiment_id="EXP-0999",
                                   snapshot_last_open_time=123, decision_ref="DEC-999_eval.md")
     with pytest.raises(SystemExit):
         cli.main(["build-snapshot", "--id", "SNAP-0009", "--confirm"])

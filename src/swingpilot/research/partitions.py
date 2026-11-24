@@ -4,8 +4,9 @@ TC-ML-001, TC-ML-007, TC-ML-012, TC-ML-016, TC-ML-019).
 - `train_val` se carga libremente en desarrollo (tras verificar su SHA-256).
 - `oos` y `lockbox` (archivos sin permisos, 0o000) solo con una `FinalEvaluationGrant`:
   experimento del propio registro (no un antecedente, QA3-03) en OOS_EVALUATION; autorización
-  del propietario citando una decisión de docs/decisions que nombre el experimento, la
-  partición y la snapshot (QA3-04); partición no consumida. El consumo se registra en el
+  del propietario citando una decisión de docs/decisions con la línea exacta
+  `AUTORIZA: <EXP-NNNN> <partición> <snapshot>` (QA3-04, QA3R2-04; sin búsqueda por
+  subcadena); partición no consumida. El consumo se registra en el
   registro de experimentos (versionado) ANTES de leer, y también en el registro de accesos
   (QA3-06).
 - La comprobación de «no consumida» y su registro son atómicos entre procesos
@@ -135,7 +136,7 @@ class PartitionLoader:
             return "la autorización no es del propietario"
         if self.registry is None:
             return "sin registro de experimentos"
-        why = self.registry.decision_ok(grant.decision_ref, [grant.experiment_id, partition, grant.snapshot_id])
+        why = self.registry.decision_ok(grant.decision_ref, grant.experiment_id, partition, grant.snapshot_id)
         if why:
             return why
         if self.registry.eligible_state(grant.experiment_id) != "OOS_EVALUATION":

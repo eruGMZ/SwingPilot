@@ -11,11 +11,20 @@
   su origen y cuentan para la corrección por número de experimentos (REQ-G-P17). Solo pueden
   registrarse en PENDING_DOCUMENTATION, REJECTED o INCONCLUSIVE, y no son elegibles para abrir
   particiones ni promover modelos (QA3-03): los consumidores usan `eligible_state()`.
-- Decisiones (QA3-04): `decision_ref` es un nombre de archivo `DEC-NNN…md` sin ruta, dentro de
-  `docs/decisions` del repositorio (el directorio solo se sustituye en pruebas), que no sea un
-  enlace simbólico y cuyo texto cite los identificadores exigidos (el experimento y, para
-  particiones, la partición y la snapshot). Es un control en proceso, no criptográfico: no
-  autentica a una persona; deja la autorización trazable a un documento versionado.
+- Identificadores (QA3R2-04): `create()` solo acepta `EXP-NNNN` (cuatro dígitos ASCII, sin
+  espacios ni saltos de línea). Los antecedentes declarados conservan el identificador que
+  les dio el propietario (p. ej. `ANT-MR-H1`), porque nunca abren particiones ni respaldan
+  modelos.
+- Decisiones (QA3-04, QA3R2-04): `decision_ref` es un nombre de archivo `DEC-NNN…md` sin ruta,
+  dentro de `docs/decisions` del repositorio (el directorio solo se sustituye en pruebas), que
+  no sea un enlace simbólico. La autorización no se busca por subcadena en el texto: el
+  documento debe contener una línea estructurada, sola en su línea y al inicio de ella, que
+  coincida exactamente con lo que se autoriza:
+      AUTORIZA: EXP-NNNN                        (transiciones que decide el propietario)
+      AUTORIZA: EXP-NNNN <oos|lockbox> SNAP-…   (evaluación final de una partición)
+  Cada campo se compara por igualdad exacta (mayúsculas incluidas). Una línea que no siga la
+  gramática no autoriza nada. Es un control en proceso, no criptográfico: no autentica a una
+  persona; deja la autorización trazable a un documento versionado.
 - Consumo de OOS/LOCKBOX (QA3-06): se registra aquí (archivo versionado), no solo en el
   registro de accesos.
 - Concurrencia (QA3R2-03): toda escritura toma un `flock` exclusivo sobre `<registro>.lock`;
@@ -31,8 +40,30 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .snapshot import SEALED, SNAPSHOT_ID
+
 REPO_DECISIONS_DIR = Path(__file__).resolve().parents[3] / "docs" / "decisions"
-_DECISION_NAME = re.compile(r"^DEC-\d{3}[A-Za-z0-9_.-]*\.md$")
+_DECISION_NAME = re.compile(r"DEC-[0-9]{3}[A-Za-z0-9_.-]*\.md")            # siempre con fullmatch
+EXPERIMENT_ID = re.compile(r"EXP-[0-9]{4}")                                # siempre con fullmatch
+_AUTHORIZATION = re.compile(r"AUTORIZA: (EXP-[0-9]{4})(?: (\S+) (\S+))?")  # siempre con fullmatch
+
+
+def valid_experiment_id(experiment_id) -> bool:
+    return isinstance(experiment_id, str) and EXPERIMENT_ID.fullmatch(experiment_id) is not None
+
+
+def _valid_snapshot_id(snapshot_id) -> bool:
+    return isinstance(snapshot_id, str) and SNAPSHOT_ID.fullmatch(snapshot_id) is not None
+
+
+def authorizations(text: str) -> set[tuple[str, str | None, str | None]]:
+    """Líneas «AUTORIZA: …» del documento como tuplas (experimento, partición, snapshot)."""
+    out = set()
+    for line in text.splitlines():
+        m = _AUTHORIZATION.fullmatch(line.rstrip())
+        if m:
+            out.add(m.groups())
+    return out
 
 STATES = ("IDEA", "DESIGN", "PREREGISTERED", "DATA_VALIDATION", "DEVELOPMENT", "VALIDATION",
           "OOS_EVALUATION", "AUDIT", "HUMAN_REVIEW", "APPROVED", "REJECTED", "INCONCLUSIVE")
@@ -115,6 +146,12 @@ class ExperimentRegistry:
                         snapshot_last_open_time: int, decision_ref: str) -> dict | None:
         """Comprueba y registra el consumo de forma atómica entre procesos (QA3R2-03).
         Devuelve el registro, o None si la partición ya estaba consumida."""
+        if not valid_experiment_id(experiment_id):
+            raise ExperimentError(f"experimento no válido: {experiment_id!r} (formato EXP-NNNN)")
+        if partition not in SEALED:
+            raise ExperimentError(f"partición no válida: {partition!r}")
+        if not _valid_snapshot_id(snapshot_id):
+            raise ExperimentError(f"snapshot no válida: {snapshot_id!r}")
         with self._locked():
             if self.is_consumed(snapshot_id, partition, experiment_id):
                 return None
@@ -157,6 +194,8 @@ class ExperimentRegistry:
             return self._write(rec)
 
     def create(self, experiment_id: str, title: str, actor: str) -> dict:
+        if not valid_experiment_id(experiment_id):
+            raise ExperimentError(f"identificador no válido: {experiment_id!r} (formato EXP-NNNN)")
         if experiment_id in self.experiments():
             raise ExperimentError(f"{experiment_id} ya existe: los IDs no se reutilizan")
         return self._append({"kind": "CREATED", "experiment_id": experiment_id, "title": title,
@@ -172,19 +211,34 @@ class ExperimentRegistry:
                              "state": state, "origin": DECLARED_ANTECEDENT, "source": source,
                              "note": note, "actor": OWNER})
 
-    def decision_ok(self, ref: str | None, must_cite: list[str]) -> str | None:
-        """None si la decisión es válida; si no, el motivo (QA3-04)."""
-        if not ref or not _DECISION_NAME.match(ref):
+    def decision_ok(self, ref: str | None, experiment_id: str, partition: str | None = None,
+                    snapshot_id: str | None = None) -> str | None:
+        """None si la decisión autoriza exactamente lo pedido; si no, el motivo (QA3-04, QA3R2-04).
+        Sin partición ni snapshot exige `AUTORIZA: <exp>`; con ellas, `AUTORIZA: <exp> <partición> <snapshot>`."""
+        if not valid_experiment_id(experiment_id):
+            return f"experimento no válido: {experiment_id!r} (formato EXP-NNNN)"
+        if (partition is None) != (snapshot_id is None):
+            return "la autorización de partición exige partición y snapshot"
+        if partition is not None:
+            if partition not in SEALED:
+                return f"partición no válida: {partition!r}"
+            if not _valid_snapshot_id(snapshot_id):
+                return f"snapshot no válida: {snapshot_id!r}"
+        if not isinstance(ref, str) or not _DECISION_NAME.fullmatch(ref):
             return "decision_ref debe ser un nombre DEC-NNN…md sin ruta"
         path = self.decisions_dir / ref
         if path.is_symlink() or not path.is_file():
             return "la decisión citada no existe en docs/decisions"
         if path.resolve().parent != self.decisions_dir.resolve():
             return "la decisión está fuera de docs/decisions"
-        text = path.read_text(encoding="utf-8", errors="replace")
-        missing = [x for x in must_cite if x not in text]
-        if missing:
-            return f"la decisión no cita {missing}"
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError) as exc:
+            return f"la decisión no se puede leer: {exc!r}"
+        wanted = (experiment_id, partition, snapshot_id)
+        if wanted not in authorizations(text):
+            line = " ".join(x for x in wanted if x is not None)
+            return f"la decisión no cita exactamente la línea «AUTORIZA: {line}»"
         return None
 
     def transition(self, experiment_id: str, to: str, *, actor: str, evidence: dict | None = None,
@@ -214,7 +268,7 @@ class ExperimentRegistry:
         if to in ("APPROVED", "OOS_EVALUATION") or (cur == "HUMAN_REVIEW" and to in TERMINAL):
             if actor != OWNER:
                 raise ExperimentError(f"{to} solo lo decide el propietario (REQ-G-107)")
-            why = self.decision_ok(evidence.get("decision_ref"), [experiment_id])
+            why = self.decision_ok(evidence.get("decision_ref"), experiment_id)
             if why:
                 raise ExperimentError(why)
         return self._append({"kind": "TRANSITION", "experiment_id": experiment_id, "from": cur, "to": to,

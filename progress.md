@@ -1313,3 +1313,19 @@ Sin commit ni push. $0 de IA.
 Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub-agentes: 0.
 
 **Siguiente:** indicación del propietario. Pendientes: cierre de FEAT-015; FEAT-017..022; AC-018-2/6, AC-020-8, AC-022-6; SNAP-0001.
+
+---
+
+## 2026-11-24 | FASE 2 | IMPL-3: corrección de QA3R2-04 (FEAT-015) | COMPLETADO — PENDIENTE DE APROBACIÓN
+
+**Autorización del propietario:** corregir exclusivamente QA3R2-04, con validación de `EXP-NNNN`, coincidencia exacta de experimento, snapshot y partición, regresiones deterministas y Fail-Closed. Base `e375a18`.
+
+**Código:** `src/swingpilot/research/experiments.py` (`valid_experiment_id`, gramática `AUTORIZA:` con `fullmatch`, `decision_ok` con argumentos explícitos, validación en `create`/`claim_partition`, decisión ilegible → denegada) y `partitions.py` (llamada y docstring).
+
+**Pruebas:** 48 regresiones nuevas en `tests/unit/test_research.py` y `test_snapshot.py`. Con `e375a18` fallan 45 (43 por conceder de más; 9 de ellas abren OOS/LOCKBOX sintéticos) y pasan los 3 controles. Ids y decisiones simuladas ajustados en `test_research.py`, `test_snapshot.py`, `test_ml_registry.py` y `test_engines.py`. Suite: 518 passed, 5 skipped; validadores OK. Detalle en `harness/verification/IMPL-3_QA_ronda2.md` §Corrección de QA3R2-04.
+
+**Sin cambios:** estado de FEAT-015 (READY_FOR_REVIEW), `feature_list.json`, cortes, SNAP-0001 (no creada), OOS/LOCKBOX reales, registro real de experimentos. Sin commit ni push. $0 de IA. Sub-agentes: 0.
+
+**Siguiente:** revisión y aprobación del propietario.
+
+**Aprobación del propietario (2026-11-24):** «Apruebo las correcciones de QA3R2-04 y las 48 pruebas nuevas. Autorizo exclusivamente congelar los cambios actuales mediante un commit en develop, sin push.» FEAT-015 se mantiene en READY_FOR_REVIEW. Las cuatro observaciones adicionales (estado destino en la línea de transición, ids de antecedentes, `SNAPSHOT_ID.match`, formato en decisiones reales) quedan sin implementar. Sin cambios en SNAP-0001, cortes ni contratos.
