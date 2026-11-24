@@ -17,6 +17,10 @@ TC-ML-001, TC-ML-007, TC-ML-012, TC-ML-016, TC-ML-019).
   fallo se anota en el registro de accesos (QA3R2-03).
 - El control es en proceso: impide el uso accidental o no trazable desde el código; no
   sustituye permisos del sistema operativo frente a un usuario con privilegios.
+- Sellado (QA3R2-08): el cargador no se construye si OOS/LOCKBOX son legibles por el proceso
+  (root o sistema de archivos sin permisos POSIX), tampoco para `train_val`; `load_final` lo
+  vuelve a comprobar ANTES de registrar el consumo, de modo que un bloqueo nunca consume la
+  partición.
 - DEC-018: en IMPL-3 no se evalúan OOS ni LOCKBOX; ninguna autorización real se emite.
 """
 import json
@@ -32,7 +36,7 @@ import pandas as pd
 import pyarrow
 import pyarrow.parquet as pq
 
-from .snapshot import MODE_SEALED, SEALED, enforce_sealing, load_manifest, sha256_file
+from .snapshot import MODE_SEALED, SEALED, SealingError, enforce_sealing, load_manifest, sha256_file
 
 
 class PartitionAccessError(PermissionError):
@@ -60,7 +64,7 @@ class PartitionLoader:
         self.access_log = Path(access_log)
         self.registry = registry
         self.owner = owner
-        enforce_sealing(self.data_dir, self.manifest["files"])     # QA3R2-08
+        enforce_sealing(self.data_dir, self.manifest["files"])     # QA3R2-08: SealingError bloquea
 
     def _log(self, partition: str, allowed: bool, reason: str, experiment_id: str | None) -> None:
         self.access_log.parent.mkdir(parents=True, exist_ok=True)
@@ -146,6 +150,10 @@ class PartitionLoader:
             return "la autorización no es del propietario"
         if self.registry is None:
             return "sin registro de experimentos"
+        try:
+            enforce_sealing(self.data_dir, self.manifest["files"])   # QA3R2-08: antes del consumo
+        except SealingError as exc:
+            return f"sellado no efectivo: {exc}"
         why = self.registry.decision_ok(grant.decision_ref, grant.experiment_id, partition, grant.snapshot_id)
         if why:
             return why

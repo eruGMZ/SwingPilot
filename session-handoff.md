@@ -1,5 +1,15 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — QA3R2-08 RESUELTO POR COMPLETO (bloqueo ante sellado no efectivo)
+
+**Hecho:** corrección directa sin CR según las decisiones del propietario. Sonda de sellado antes de descargar o apartar huérfanos; comprobación final antes de confirmar, con rollback; `PartitionLoader` bloqueado (también `train_val`) y nueva comprobación antes de consumir; `verify-snapshot` → ERROR y código 1; sin omisión. 10 regresiones (todas fallan con `f8e7643`).
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 571 passed, 5 skipped (como usuario no root). Validadores → OK.
+**Aprobación final del propietario (2026-11-24)**, congelada en un commit en develop, sin push. Riesgos aceptados: CI con usuario sin privilegios; cuarentena de huérfanos existente; privilegios especiales de Linux y aislamiento del despliegue sujetos a G6; Laptop B como requisito previo de despliegue. Archivos: `src/swingpilot/research/{snapshot,partitions,cli}.py`, `tests/unit/test_snapshot.py`, `harness/verification/IMPL-3_QA_ronda2.md`, `progress.md`, `session-handoff.md`.
+**Requisito de despliegue pendiente:** verificar en Laptop B usuario no root, sistema de archivos POSIX y sellado efectivo (no confirmado).
+**Sin cambios:** contratos, `feature_list.json`, estados de FEAT (FEAT-015 READY_FOR_REVIEW), cortes, SNAP-0001, OOS/LOCKBOX reales.
+**Estado de hallazgos de FEAT-015:** QA3R2-02, 03, 04 y 08 resueltos y aprobados. FEAT-015 sigue en READY_FOR_REVIEW (su cierre requiere decisión del propietario).
+**Siguiente acción autorizada:** ninguna. Esperar indicación del propietario.
+
 ## IMPL-3 (2026-11-24) — QA3R2-04 RESUELTO POR COMPLETO
 
 **Estado:** QA3R2-04 resuelto por completo y aprobado por el propietario: corrección principal (`f04a2d1`) y observación adicional sobre el estado destino (`c314d92`, 17 pruebas). Registro en `harness/verification/IMPL-3_QA_ronda2.md`.

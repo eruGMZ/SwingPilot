@@ -24,15 +24,23 @@ DEC-005 P10; DEC-017 Q46; TC-ML-015, TC-ML-017).
   temporal. Si el proceso muere sin poder deshacer, queda un directorio de datos sin
   manifiesto: no es consumible, y el siguiente intento lo aparta como
   `.incomplete-<id>-<marca>` (sin borrarlo) y lo deja anotado en el manifiesto nuevo.
-- Sellado (QA3R2-08): el modo 0o000 solo protege si el sistema lo aplica. Como root, o en un
-  sistema de archivos sin permisos POSIX (p. ej. FAT/NTFS montados, algunos recursos de red),
-  el proceso sigue pudiendo leer OOS y LOCKBOX. `enforce_sealing` lo comprueba con `os.access`
-  al construir la snapshot, al verificarla y al abrir un `PartitionLoader`, y emite
-  `SealingWarning`; no bloquea, porque el control principal es la autorización en proceso de
-  `PartitionLoader`. Si un archivo sellado tiene otro modo (p. ej. 0o400 porque el proceso
-  murió con SIGKILL durante una lectura), se vuelve a sellar a 0o000 y se avisa. La lectura
-  autorizada abre el archivo y lo vuelve a sellar antes de hashearlo y parsearlo, de modo que
-  la ventana con 0o400 se reduce a dos `chmod` seguidos.
+- Sellado (QA3R2-08; decisión del propietario 2026-11-24, sin CR): el modo 0o000 solo protege
+  si el sistema lo aplica. Se exige un usuario distinto de root, un sistema de archivos con
+  permisos POSIX y un sellado verificado; si no se puede garantizar, se BLOQUEA (SealingError),
+  sin excepciones ni mecanismo de omisión:
+  * Construcción: antes de descargar nada y antes de apartar un directorio huérfano, una
+    sonda en `data_root` (archivo temporal en 0o000 + `os.access`, siempre borrado) comprueba
+    que el sellado es efectivo. Tras escribir las particiones, y antes del manifiesto y del
+    renombrado, se comprueba el sellado real de OOS/LOCKBOX; si falla, el rollback existente
+    deshace el directorio temporal: no queda snapshot confirmada.
+  * `PartitionLoader`: no se construye (ni siquiera para `train_val`) si OOS/LOCKBOX son
+    legibles por el proceso; `load_final` lo vuelve a comprobar antes de registrar el consumo.
+  * `verify_snapshot`: error explícito (la CLI termina con código 1).
+  Si un archivo sellado tiene otro modo (p. ej. 0o400 porque el proceso murió con SIGKILL
+  durante una lectura), se vuelve a sellar a 0o000 y se avisa (SealingWarning); solo se
+  bloquea si tras volver a sellarlo sigue siendo legible. La lectura autorizada abre el
+  archivo y lo vuelve a sellar antes de hashearlo y parsearlo, de modo que la ventana con
+  0o400 se reduce a dos `chmod` seguidos.
 - Identificadores (QA3R2-08): `valid_snapshot_id` usa `fullmatch` (sin salto de línea final).
   `load_manifest` rechaza un manifiesto cuyo `snapshot_id` no sea válido, porque de él se
   deriva la ruta de los datos.
@@ -76,7 +84,34 @@ class SnapshotError(RuntimeError):
 
 
 class SealingWarning(UserWarning):
-    """El sellado 0o000 de OOS/LOCKBOX no es efectivo o se encontró alterado (QA3R2-08)."""
+    """Un archivo sellado tenía otro modo y se volvió a sellar (QA3R2-08)."""
+
+
+class SealingError(SnapshotError):
+    """No se puede garantizar el sellado efectivo de OOS/LOCKBOX: se bloquea (QA3R2-08)."""
+
+
+_SEALING_REQUIREMENT = ("se exige un usuario distinto de root y un sistema de archivos con permisos "
+                        "POSIX en el que el modo 0o000 impida la lectura")
+
+
+def check_sealing_supported(directory: Path) -> None:
+    """Sonda previa (QA3R2-08): SealingError si el proceso es root o si un archivo en 0o000
+    dentro de `directory` sigue siendo legible. El archivo de sonda se borra siempre."""
+    if os.geteuid() == 0:
+        raise SealingError(f"el proceso se ejecuta como root: el sellado no es efectivo; {_SEALING_REQUIREMENT}")
+    fd, probe = tempfile.mkstemp(prefix=".seal-probe-", dir=directory)
+    try:
+        os.close(fd)
+        os.chmod(probe, MODE_SEALED)
+        readable = os.access(probe, os.R_OK)
+    finally:
+        try:
+            os.chmod(probe, stat.S_IRUSR | stat.S_IWUSR)
+        finally:
+            os.unlink(probe)
+    if readable:
+        raise SealingError(f"un archivo en 0o000 sigue siendo legible en {directory}; {_SEALING_REQUIREMENT}")
 
 
 def valid_snapshot_id(snapshot_id) -> bool:
@@ -84,9 +119,12 @@ def valid_snapshot_id(snapshot_id) -> bool:
 
 
 def enforce_sealing(data_dir: Path, files: dict) -> list[str]:
-    """Vuelve a sellar OOS/LOCKBOX si su modo no es 0o000 y comprueba que el proceso no puede
-    leerlos. Devuelve los avisos (también emitidos como SealingWarning). No lee su contenido."""
-    notes = []
+    """Vuelve a sellar OOS/LOCKBOX si su modo no es 0o000 (aviso SealingWarning) y lanza
+    SealingError si el proceso es root o si, tras ello, puede leerlos. Devuelve los avisos de
+    re-sellado. No lee su contenido."""
+    if os.geteuid() == 0:
+        raise SealingError(f"el proceso se ejecuta como root: el sellado no es efectivo; {_SEALING_REQUIREMENT}")
+    notes, readable = [], []
     for part in SEALED:
         path = Path(data_dir) / files[part]["file"]
         if not path.exists():
@@ -97,11 +135,12 @@ def enforce_sealing(data_dir: Path, files: dict) -> list[str]:
             notes.append(f"{part}: modo {oct(mode)} en lugar de 0o000; se volvió a sellar "
                          "(posible lectura interrumpida)")
         if os.access(path, os.R_OK):
-            notes.append(f"{part}: el sellado 0o000 no es efectivo, el proceso puede leer el archivo "
-                         "(root o sistema de archivos sin permisos POSIX); solo queda el control de "
-                         "PartitionLoader")
+            readable.append(part)
     for note in notes:
         warnings.warn(note, SealingWarning, stacklevel=2)
+    if readable:
+        raise SealingError(f"el sellado 0o000 no es efectivo para {', '.join(readable)}: el proceso puede "
+                           f"leer el archivo; {_SEALING_REQUIREMENT}")
     return notes
 
 
@@ -183,6 +222,15 @@ def build_snapshot(client: BinancePublicClient, snapshot_id: str, data_root: Pat
     manifest_path = manifest_dir / f"{snapshot_id}.json"
     if manifest_path.exists():
         raise SnapshotError(f"la snapshot {snapshot_id} ya existe: una snapshot no se reescribe")
+    # QA3R2-08: sonda de sellado antes de descargar y antes de apartar un huérfano
+    created_root = not data_root.exists()
+    data_root.mkdir(parents=True, exist_ok=True)
+    try:
+        check_sealing_supported(data_root)
+    except SealingError:
+        if created_root:
+            data_root.rmdir()
+        raise
     downloaded_at = now().strftime("%Y-%m-%dT%H:%M:%SZ")
     server_ms = client.server_time_ms()
     start_ms = _date_ms(start_date)
@@ -239,6 +287,7 @@ def build_snapshot(client: BinancePublicClient, snapshot_id: str, data_root: Pat
             files[part] = {"file": f"{part}.parquet", "sha256": sha256_file(path), "rows": int(len(out)),
                            "per_interval": stats}
             os.chmod(path, MODE_SEALED if part in SEALED else MODE_READONLY)
+        sealing_notes = enforce_sealing(tmp_dir, files)       # QA3R2-08: antes de confirmar
         manifest = _manifest(client, snapshot_id, downloaded_at, server_ms, start_date, range_start, range_end,
                              first_open, cuts, files, quarantined)
         with open(tmp_manifest, "w") as fh:
@@ -252,7 +301,7 @@ def build_snapshot(client: BinancePublicClient, snapshot_id: str, data_root: Pat
         _remove_tree(data_dir if renamed else tmp_dir)
         tmp_manifest.unlink(missing_ok=True)
         raise
-    return SnapshotResult(manifest, manifest_path, data_dir, enforce_sealing(data_dir, manifest["files"]))
+    return SnapshotResult(manifest, manifest_path, data_dir, sealing_notes)
 
 
 def _remove_tree(directory: Path) -> None:
@@ -304,7 +353,7 @@ def verify_snapshot(manifest_path: Path, data_root: Path) -> dict[str, str]:
 
     OOS y LOCKBOX no se verifican aquí: hashearlos es leerlos. Se verifican dentro de
     `PartitionLoader.load_final`, con autorización y registro (QA3-06). Sí comprueba su
-    sellado sin leerlos (QA3R2-08)."""
+    sellado sin leerlos: SealingError si no es efectivo (QA3R2-08)."""
     m = load_manifest(manifest_path)
     enforce_sealing(Path(data_root) / m["snapshot_id"], m["files"])
     info = m["files"]["train_val"]

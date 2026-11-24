@@ -17,7 +17,7 @@ from pathlib import Path
 from swingpilot.market_data import BinancePublicClient
 
 from .experiments import ExperimentRegistry
-from .snapshot import SealingWarning, build_snapshot, verify_snapshot
+from .snapshot import SealingError, SealingWarning, build_snapshot, verify_snapshot
 
 REPO = Path(__file__).resolve().parents[3]
 DATA_ROOT = REPO / "var" / "snapshots"          # fuera de Git (DEC-017 Q46)
@@ -40,11 +40,15 @@ def main(argv=None) -> int:
         return 2
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always", SealingWarning)
-        code = _run(a)
-    sealing = [str(w.message) for w in caught if issubclass(w.category, SealingWarning)]
-    for note in sealing:
+        try:
+            code = _run(a)
+        except SealingError as exc:                     # QA3R2-08: bloqueo explícito
+            print(f"ERROR de sellado: {exc}", file=sys.stderr)
+            code = 1
+    resealed = [str(w.message) for w in caught if issubclass(w.category, SealingWarning)]
+    for note in resealed:
         print(f"AVISO de sellado: {note}", file=sys.stderr)
-    return 1 if sealing and a.cmd == "verify-snapshot" else code
+    return 1 if resealed and a.cmd == "verify-snapshot" else code
 
 
 def _run(a) -> int:

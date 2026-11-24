@@ -137,3 +137,33 @@ Las rondas de QA permitidas están agotadas (2 de 2). Cualquier corrección post
 **Aprobación del propietario (2026-11-24):** «Apruebo la corrección; autorizo commit en develop, sin push.» Observación adicional de QA3R2-04 cerrada.
 
 **Estado de QA3R2-04 (2026-11-24): RESUELTO POR COMPLETO.** Corrección principal (formato `EXP-NNNN` y coincidencia exacta de experimento, partición y snapshot; `f04a2d1`) y observación adicional (estado destino en la autorización de transiciones, 17 pruebas; `c314d92`), ambas aprobadas por el propietario. Sin hallazgos pendientes bajo QA3R2-04.
+
+---
+
+## QA3R2-08 — bloqueo ante sellado no efectivo (2026-11-24, Orquestador; sin nueva ronda de QA)
+
+**Resolución contractual (aprobada por el propietario, 2026-11-24):** corrección directa de implementación, **sin CR**. El contrato v1.7 exige el control de acceso en proceso (REQ-G-109; AC-015-7; TC-ML-001, TC-ML-016), no el sellado por permisos del sistema operativo, que es una capa añadida en la implementación (QA3-06). Bloquear cuando esa capa no se puede garantizar es más restrictivo y no contradice ningún requisito. INV-012/REQ-G-029 se refiere a condiciones de riesgo de entradas; aquí es un precedente coherente, no una obligación. La verificación del entorno corresponde a G6.
+
+**Decisiones del propietario:** (1) bloquear la construcción de la snapshot y la inicialización de `PartitionLoader` (también para `train_val`) cuando no se pueda garantizar el sellado efectivo; (2) en `verify-snapshot`, error explícito con código 1; (3) se exige usuario distinto de root, sistema de archivos POSIX y sellado verificado; la verificación del entorno de Laptop B es un **requisito previo de despliegue, no un hecho confirmado**; (4) sin mecanismo de omisión.
+
+| Punto | Implementación |
+|---|---|
+| Sonda previa (`snapshot.check_sealing_supported`) | Antes de descargar y antes de apartar un huérfano: root → bloqueo; archivo temporal `.seal-probe-*` en `data_root` puesto en 0o000 y comprobado con `os.access`; la sonda se borra siempre (también si falla). Si `data_root` lo creó el intento bloqueado, se retira. |
+| Comprobación final en la construcción | Tras escribir y sellar las particiones en el directorio temporal, dentro del `try` y **antes** del manifiesto y del renombrado: `enforce_sealing(tmp_dir, files)`. Si falla, el rollback existente (QA3R2-02) borra el temporal y el manifiesto temporal; no queda snapshot confirmada. Se eliminó la comprobación posterior a la confirmación. |
+| `enforce_sealing` | Re-sellado automático de modos alterados con aviso (`SealingWarning`, sin cambios). Lanza `SealingError` (subclase de `SnapshotError`) si el proceso es root o si OOS/LOCKBOX siguen legibles tras re-sellar. |
+| `PartitionLoader` | `__init__` falla con `SealingError` antes de cualquier lectura o registro. `load_final` lo vuelve a comprobar en `_deny_reason`, **antes de `claim_partition`**: el bloqueo se registra como acceso denegado y no consume la partición. |
+| CLI | `SealingError` → «ERROR de sellado: …» y código 1 (construcción y verificación). El re-sellado sigue avisando con «AVISO de sellado». |
+
+**Pruebas (`tests/unit/test_snapshot.py`):** dos pruebas del comportamiento anterior (solo aviso) se sustituyen por sus versiones de bloqueo, más estrictas: `test_qa3r2_08_ineffective_sealing_blocks_verify_and_loader` y `…_cli_verify_fails_with_ineffective_sealing`. Esta última conserva el control conforme (código 0) y ya no lo condiciona a no ser root. Pruebas nuevas: `…_preflight_blocks_before_download_and_quarantine` (sistema de archivos y root: cero descargas, huérfano intacto, sin sonda ni temporales ni manifiesto), `…_preflight_block_leaves_no_created_root`, `…_final_check_failure_rolls_back_without_commit` (descarga hecha, sin confirmación, sin restos; control conforme posterior), `…_final_check_failure_keeps_orphan_quarantined_and_nothing_consumable`, `…_probe_files_are_cleaned_up` (con control conforme), `…_loader_blocked_before_any_read_or_consumption` y `…_final_read_rechecks_sealing_before_consumption` (sin consumo; control conforme posterior que lee y consume una vez). No se añadió ningún `skip`. Las aserciones existentes no se debilitaron.
+
+**Con `f8e7643`:** las 10 pruebas fallan. Comportamiento observado en la base con los mismos escenarios (sistema de archivos que ignora 0o000, y euid 0), ambos con huérfano: 15 descargas, el huérfano se aparta, la snapshot se confirma, `PartitionLoader` se construye, carga `train_val` (8675 filas) y lee y consume el LOCKBOX (1860 filas). La CLI de verificación solo avisaba. **Corregido:** 10/10, y todas las pruebas de QA3R2-08 pasan (36).
+
+**Suite:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 571 passed, 5 skipped (563 − 2 sustituidas + 10). Validadores → OK.
+
+**Riesgos residuales y notas:** (1) La suite ya no puede ejecutarse como root: las pruebas que construyen snapshots fallarían con `SealingError`. Es coherente con la decisión 3; un CI debe usar un usuario sin privilegios. (2) Si la comprobación final falla tras apartar un huérfano, este queda apartado (`.incomplete-…`, sin borrar), según la semántica de QA3R2-02. La sonda previa evita este caso cuando el sistema de archivos o el usuario no cumplen. (3) `os.access` evalúa el usuario real; con setuid o capacidades especiales (p. ej. `CAP_DAC_OVERRIDE` sin ser root) puede diferir. Corresponde a la verificación de despliegue (G6). (4) La verificación de Laptop B sigue pendiente como requisito de despliegue.
+
+**Estado de QA3R2-08:** implementado; **pendiente de aprobación final del propietario**.
+
+**Aprobación final del propietario (2026-11-24):** aprueba la corrección final de QA3R2-08 y su evidencia de verificación (571 passed, 5 skipped; validadores OK). Acepta los riesgos residuales y las restricciones operativas: (1) el CI debe ejecutarse con un usuario sin privilegios; (2) se acepta el comportamiento existente de cuarentena de huérfanos; (3) los privilegios especiales de Linux y el aislamiento efectivo del despliegue quedan sujetos a la verificación de G6; (4) la validación del entorno de Laptop B sigue siendo un requisito previo de despliegue.
+
+**Estado de QA3R2-08 (2026-11-24): RESUELTO POR COMPLETO.** Se cierra la condición registrada al aprobar `c9a054b` (comportamiento ante sellado no efectivo): ahora se bloquea. Sin hallazgos pendientes bajo QA3R2-08.

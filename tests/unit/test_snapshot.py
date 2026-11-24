@@ -604,22 +604,19 @@ def test_qa3r2_08_manifest_with_invalid_snapshot_id_is_rejected(snap):
             verify_snapshot(p, tmp / "var" / "snapshots")
 
 
-def test_qa3r2_08_ineffective_sealing_is_detected_and_warned(tmp_path, monkeypatch):
-    # Simula root o un sistema de archivos que ignora 0o000: el proceso puede leer OOS/LOCKBOX.
-    monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k: True)
-    with pytest.warns(SN.SealingWarning, match="no es efectivo"):
-        res = build(tmp_path)
-    assert len(res.sealing_warnings) == 2 and all("no es efectivo" in w for w in res.sealing_warnings)
+def test_qa3r2_08_ineffective_sealing_blocks_verify_and_loader(tmp_path, monkeypatch):
+    # Simula un sistema de archivos que ignora 0o000: el proceso puede leer OOS/LOCKBOX.
+    res = build(tmp_path)
     root = tmp_path / "var" / "snapshots"
-    for call in (lambda: verify_snapshot(res.manifest_path, root),
-                 lambda: PartitionLoader(res.manifest_path, root, tmp_path / "access.jsonl")):
-        with pytest.warns(SN.SealingWarning) as rec:
-            call()
-        assert sorted(str(w.message).split(":")[0] for w in rec) == ["lockbox", "oos"]
-        assert all("no es efectivo" in str(w.message) for w in rec)
+    monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k: True)
+    with pytest.raises(SN.SealingError, match="no es efectivo para oos, lockbox"):
+        verify_snapshot(res.manifest_path, root)
+    with pytest.raises(SN.SealingError, match="no es efectivo para oos, lockbox"):
+        PartitionLoader(res.manifest_path, root, tmp_path / "access.jsonl")
+    assert not (tmp_path / "access.jsonl").exists()                # ni siquiera train_val
 
 
-def test_qa3r2_08_cli_verify_reports_ineffective_sealing(tmp_path, monkeypatch, capsys):
+def test_qa3r2_08_cli_verify_fails_with_ineffective_sealing(tmp_path, monkeypatch, capsys):
     from swingpilot.research import cli
     res = build(tmp_path)
     monkeypatch.setattr(cli, "MANIFEST_DIR", res.manifest_path.parent)
@@ -629,13 +626,134 @@ def test_qa3r2_08_cli_verify_reports_ineffective_sealing(tmp_path, monkeypatch, 
     m["snapshot_id"] = "SNAP-0042"
     res.manifest_path.with_name("SNAP-0042.json").write_text(json.dumps(m))
     os.rename(res.data_dir, res.data_dir.with_name("SNAP-0042"))
-    if not ROOT:
-        assert cli.main(["verify-snapshot", "--id", "SNAP-0042"]) == 0      # control: sellado efectivo
-        assert "AVISO" not in capsys.readouterr().err
+    assert cli.main(["verify-snapshot", "--id", "SNAP-0042"]) == 0      # control: sellado efectivo
+    err = capsys.readouterr().err
+    assert "AVISO" not in err and "ERROR" not in err
     monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k: True)
     assert cli.main(["verify-snapshot", "--id", "SNAP-0042"]) == 1
-    err = capsys.readouterr().err
-    assert "AVISO de sellado" in err and "lockbox" in err and "oos" in err
+    out = capsys.readouterr()
+    assert "ERROR de sellado" in out.err and "oos, lockbox" in out.err and "OK" not in out.out
+
+
+# --- QA3R2-08 (decisión del propietario): bloqueo cuando el sellado no se puede garantizar ------
+
+class CountingBinance(SmallBinance):
+    def __init__(self):
+        super().__init__()
+        self.calls = 0
+
+    def __call__(self, url):
+        self.calls += 1
+        return super().__call__(url)
+
+
+def _snapshot_root_entries(tmp):
+    root = tmp / "var" / "snapshots"
+    return sorted(p.name for p in root.iterdir()) if root.exists() else None
+
+
+def _orphan(tmp):
+    orphan = tmp / "var" / "snapshots" / "SNAP-TEST"
+    orphan.mkdir(parents=True)
+    (orphan / "train_val.parquet").write_bytes(b"resto de una construccion interrumpida")
+    return orphan
+
+
+@pytest.mark.parametrize("cause", ["filesystem", "root"])
+def test_qa3r2_08_preflight_blocks_before_download_and_quarantine(tmp_path, monkeypatch, cause):
+    orphan = _orphan(tmp_path)
+    if cause == "filesystem":
+        monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k: True)
+    else:
+        monkeypatch.setattr(SN.os, "geteuid", lambda: 0)
+    fb = CountingBinance()
+    with pytest.raises(SN.SealingError, match="root" if cause == "root" else "sigue siendo legible"):
+        build(tmp_path, fb=fb)
+    assert fb.calls == 0                                            # ninguna descarga
+    assert _snapshot_root_entries(tmp_path) == ["SNAP-TEST"]        # ni cuarentena ni sonda ni temporales
+    assert (orphan / "train_val.parquet").read_bytes().startswith(b"resto")
+    assert not (tmp_path / "research" / "snapshots").exists()       # ningún manifiesto
+
+
+def test_qa3r2_08_preflight_block_leaves_no_created_root(tmp_path, monkeypatch):
+    monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k: True)
+    with pytest.raises(SN.SealingError):
+        build(tmp_path)
+    assert not (tmp_path / "var" / "snapshots").exists()            # el directorio creado se retira
+
+
+def _readable_only_partitions(monkeypatch):
+    # La sonda pasa (sellado efectivo en el directorio), pero OOS/LOCKBOX resultan legibles.
+    real = os.access
+    monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k:
+                        True if Path(path).name in ("oos.parquet", "lockbox.parquet") else real(path, mode, *a, **k))
+
+
+def test_qa3r2_08_final_check_failure_rolls_back_without_commit(tmp_path, monkeypatch):
+    _readable_only_partitions(monkeypatch)
+    fb = CountingBinance()
+    with pytest.raises(SN.SealingError, match="no es efectivo para oos, lockbox"):
+        build(tmp_path, fb=fb)
+    assert fb.calls > 0                                             # falló tras descargar, antes de confirmar
+    assert _snapshot_root_entries(tmp_path) == []                   # rollback: sin datos ni temporales
+    mdir = tmp_path / "research" / "snapshots"
+    assert not (mdir / "SNAP-TEST.json").exists() and not (mdir / "SNAP-TEST.json.tmp").exists()
+    monkeypatch.undo()
+    res = build(tmp_path)                                           # control: entorno conforme
+    assert verify_snapshot(res.manifest_path, tmp_path / "var" / "snapshots")["train_val"]
+
+
+def test_qa3r2_08_final_check_failure_keeps_orphan_quarantined_and_nothing_consumable(tmp_path, monkeypatch):
+    _orphan(tmp_path)
+    _readable_only_partitions(monkeypatch)
+    with pytest.raises(SN.SealingError):
+        build(tmp_path)
+    entries = _snapshot_root_entries(tmp_path)
+    assert len(entries) == 1 and entries[0].startswith(".incomplete-SNAP-TEST-")   # apartado, no borrado
+    assert not (tmp_path / "research" / "snapshots" / "SNAP-TEST.json").exists()
+    with pytest.raises(FileNotFoundError):
+        PartitionLoader(tmp_path / "research" / "snapshots" / "SNAP-TEST.json", tmp_path / "var" / "snapshots",
+                        tmp_path / "access.jsonl")
+
+
+def test_qa3r2_08_probe_files_are_cleaned_up(tmp_path, monkeypatch):
+    d = tmp_path / "d"
+    d.mkdir()
+    SN.check_sealing_supported(d)                                   # control conforme
+    assert list(d.iterdir()) == []
+    monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k: True)
+    with pytest.raises(SN.SealingError):
+        SN.check_sealing_supported(d)
+    assert list(d.iterdir()) == []
+
+
+def test_qa3r2_08_loader_blocked_before_any_read_or_consumption(snap, monkeypatch):
+    import swingpilot.research.partitions as P
+    res, tmp = snap
+    reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
+    _advance_to_oos(reg)
+    opened = []
+    real = P.pq.read_table
+    monkeypatch.setattr(P.pq, "read_table", lambda src, *a, **k: (opened.append(src), real(src, *a, **k))[1])
+    monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k: True)
+    with pytest.raises(SN.SealingError):
+        _loader(res, tmp, reg)
+    assert opened == [] and reg.consumed_partitions() == [] and not (tmp / "access.jsonl").exists()
+
+
+def test_qa3r2_08_final_read_rechecks_sealing_before_consumption(snap, monkeypatch):
+    res, tmp = snap
+    reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
+    _advance_to_oos(reg)
+    loader = _loader(res, tmp, reg)                                 # creado en un entorno conforme
+    monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k: True)
+    with pytest.raises(PartitionAccessError, match="sellado no efectivo"):
+        loader.load_final(grant(), "lockbox")
+    assert reg.consumed_partitions() == []                          # el bloqueo no consume
+    assert [(r["partition"], r["allowed"]) for r in loader.access_history()] == [("lockbox", False)]
+    monkeypatch.undo()
+    assert len(loader.load_final(grant(), "lockbox")) > 0           # control: sigue disponible una vez
+    assert [r["partition"] for r in reg.consumed_partitions()] == ["lockbox"]
 
 
 @pytest.mark.parametrize("entry", ["verify", "loader"])

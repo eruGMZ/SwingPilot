@@ -1371,3 +1371,19 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Sin cambios:** estados de FEAT (FEAT-015 READY_FOR_REVIEW; los demás sin cambio), `feature_list.json`, contratos, SNAP-0001, OOS/LOCKBOX reales. QA3R2-08 sigue CONDICIONADO y sin tocar. Sin push. $0 de IA.
 
 **Siguiente:** ninguna acción autorizada; esperar indicación del propietario.
+
+---
+
+## 2026-11-24 | FASE 2 | IMPL-3: QA3R2-08 — bloqueo ante sellado no efectivo (FEAT-015) | COMPLETADO — PENDIENTE DE APROBACIÓN FINAL
+
+**Resolución del propietario (2026-11-24):** corrección directa sin CR. Decisiones: bloquear la construcción y `PartitionLoader` (incluido `train_val`) cuando no se pueda garantizar el sellado efectivo; `verify-snapshot` → error con código 1; se exige usuario no root, sistema de archivos POSIX y sellado verificado (Laptop B: requisito previo de despliegue, no confirmado); sin mecanismo de omisión. Base `f8e7643`.
+
+**Código:** `src/swingpilot/research/snapshot.py` (`SealingError`, `check_sealing_supported` con sonda que siempre se borra, comprobación final antes de confirmar con rollback, `enforce_sealing` bloquea), `partitions.py` (bloqueo en `__init__` y nueva comprobación antes de `claim_partition`) y `cli.py` (ERROR de sellado → código 1).
+
+**Pruebas:** 2 pruebas del comportamiento de solo aviso sustituidas por versiones de bloqueo y 8 nuevas en `tests/unit/test_snapshot.py`; las 10 fallan con `f8e7643`. En la base, con sellado no efectivo, se descargaba, se apartaba el huérfano, se confirmaba la snapshot y se leía y consumía el LOCKBOX. Sin `skip` nuevos. Suite: 571 passed, 5 skipped; validadores OK. Detalle en `harness/verification/IMPL-3_QA_ronda2.md` §QA3R2-08 bloqueo.
+
+**Sin cambios:** contratos, `feature_list.json`, estados de FEAT (FEAT-015 READY_FOR_REVIEW), cortes, SNAP-0001 (no creada), OOS/LOCKBOX reales. Sin commit ni push. $0 de IA. Sub-agentes: 0.
+
+**Siguiente:** aprobación final del propietario de QA3R2-08.
+
+**Aprobación final del propietario (2026-11-24):** aprueba la corrección final de QA3R2-08 y su evidencia. Acepta los riesgos residuales y las restricciones operativas: CI con usuario sin privilegios; comportamiento existente de cuarentena de huérfanos; privilegios especiales de Linux y aislamiento del despliegue sujetos a G6; validación de Laptop B como requisito previo de despliegue. **QA3R2-08 RESUELTO POR COMPLETO** (deja de estar CONDICIONADO). FEAT-015 sigue en READY_FOR_REVIEW; sin cambios en `feature_list.json`, contratos, criterios de aceptación ni estados de FEAT. Sin pruebas adicionales en este paso. Commit en develop, sin push.
