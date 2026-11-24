@@ -1,5 +1,14 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — QA3R2-04 (observación adicional): estado destino en transiciones, APROBADA (commit en develop, sin push)
+
+**Hecho:** corrección directa sin CR, aprobada contractualmente por el propietario. Las transiciones que decide el propietario exigen `AUTORIZA: EXP-NNNN ESTADO_DESTINO` (OOS_EVALUATION, APPROVED, REJECTED, INCONCLUSIVE); la línea sin estado ya no autoriza nada; la gramática de particiones no cambia. Código afectado: registro de experimentos de FEAT-017 (AC-017-1). 17 regresiones (4 reproducen el defecto con `c9a054b`).
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 563 passed, 5 skipped. Validadores → OK.
+**Aprobada por el propietario (2026-11-24)** y congelada en un commit en develop, sin push. Archivos: `src/swingpilot/research/experiments.py`, `tests/unit/test_{research,snapshot,ml_registry,engines}.py`, `harness/verification/IMPL-3_QA_ronda2.md`, `progress.md`, `session-handoff.md`.
+**Sin cambios:** máquina de estados, contratos, AC, `feature_list.json`, estados de FEAT; QA3R2-08 sigue CONDICIONADO; SNAP-0001 y OOS/LOCKBOX reales intactos.
+**Pendientes:** QA3R2-08 CONDICIONADO (sellado no efectivo: avisar o bloquear).
+**Siguiente acción autorizada:** ninguna. Esperar indicación del propietario.
+
 ## IMPL-3 (2026-11-24) — QA3R2-08 aprobado en su alcance actual (CONDICIONADO); commit en develop, sin push
 
 **Hecho:** corrección autorizada de QA3R2-08 (FEAT-015). Detección del sellado no efectivo (`SealingWarning`; `verify-snapshot` → código 1), re-sellado de OOS/LOCKBOX con modo alterado, lectura autorizada con re-sellado inmediato (SIGKILL ya no deja 0o400), id `SNAP-NNNN` obligatorio en la CLI y `fullmatch` en `build_snapshot`/`load_manifest`. 28 regresiones (26 fallan con `f04a2d1`).

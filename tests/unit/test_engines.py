@@ -62,7 +62,7 @@ def e1(mk=None):
 def regs(tmp_path):
     dec = tmp_path / "dec"
     dec.mkdir()
-    (dec / "DEC-900_x.md").write_text("AUTORIZA: EXP-0301\n")
+    (dec / "DEC-900_x.md").write_text("AUTORIZA: EXP-0301 OOS_EVALUATION\nAUTORIZA: EXP-0301 APPROVED\n")
     exps = ExperimentRegistry(tmp_path / "r.jsonl", dec)
     mr = ModelRegistry(tmp_path / "m.db", exps)
     yield exps, mr

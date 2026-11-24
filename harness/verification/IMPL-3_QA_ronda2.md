@@ -111,3 +111,27 @@ Las rondas de QA permitidas están agotadas (2 de 2). Cualquier corrección post
 **Riesgos residuales:** (1) Con el sellado no efectivo solo se avisa; bloquear (Fail-Closed estricto) impediría construir o usar snapshots como root y queda a decisión del propietario. (2) Entre los dos `chmod` de una lectura autorizada sigue habiendo una ventana mínima. (3) La lectura autorizada carga OOS/LOCKBOX completos en memoria (pocos MB con BTC/USDT 1d/4h/1h). (4) `SNAPSHOT_ID` sigue admitiendo `SNAP-TEST*` en la API de Python (pruebas); la CLI solo acepta `SNAP-NNNN`.
 
 **Aprobación del propietario (2026-11-24):** cambios y 28 pruebas aprobados en su alcance actual. **Estado de QA3R2-08: CONDICIONADO**, no cerrado definitivamente hasta resolver el comportamiento ante sellado no efectivo (riesgo residual 1).
+
+---
+
+## QA3R2-04 — observación adicional: estado destino en la autorización de transiciones (2026-11-24, Orquestador; sin nueva ronda de QA)
+
+**Resolución contractual (aprobada por el propietario, 2026-11-24):** corrección directa, **sin CR**. El contrato v1.7 exige que las transiciones dependan de requisitos verificables y que APPROVED y la evaluación final las decida el propietario (REQ-G-104, REQ-G-107 (4), REQ-G-P23/TC-ML-009, REQ-G-109/TC-ML-001/007/012/016, AC-017-1, AC-015-7). No fija el mecanismo de verificación (`decision_ref`, línea `AUTORIZA:`). La corrección no cambia la máquina de estados, quién decide cada transición, el catálogo de eventos, los esquemas ni `approval_ref`. El propietario mantiene el verbo AUTORIZA para todas las transiciones que decide y aprueba expresamente la gramática `AUTORIZA: EXP-NNNN ESTADO_DESTINO`. La de particiones no cambia.
+
+**Relación con FEAT-017:** la observación surgió de QA3R2-04 (FEAT-015), pero el código afectado es el registro de experimentos de FEAT-017 (AC-017-1). FEAT-015 (AC-015-7: exige OOS_EVALUATION para abrir particiones) y FEAT-019 (promoción con APPROVED, TC-ML-009) dependen de él indirectamente. No cambian estados de FEAT, criterios de aceptación ni `feature_list.json`.
+
+| Aspecto | Corrección (`src/swingpilot/research/experiments.py`) |
+|---|---|
+| Gramática | Transición: `AUTORIZA: EXP-NNNN <ESTADO>` → tupla (exp, estado, None). Partición, sin cambios: `AUTORIZA: EXP-NNNN <oos\|lockbox> <SNAP-…>`. La línea sin campos ya no autoriza nada. |
+| Estados admitidos | `OWNER_DECIDED` = OOS_EVALUATION, APPROVED, REJECTED, INCONCLUSIVE: exactamente los que hoy exigen decisión del propietario (REJECTED/INCONCLUSIVE solo desde HUMAN_REVIEW, como antes). |
+| API | `decision_ok(..., *, target_state=None)`: o transición (`target_state`) o partición (`partition` + `snapshot_id`), nunca ambas ni ninguna. `transition()` pasa `target_state=to`. `partitions.py` no cambia. |
+
+**Pruebas (17 nuevas en `test_research.py`, prefijo `test_qa3r2_04b_`):** `bare_line_no_longer_authorizes` (4), `oos_authorization_is_not_reused_for_other_states` (3), `malformed_or_other_state_line_does_not_approve` (6), `owner_decision_with_its_exact_line_succeeds` (3) y `decision_ok_request_modes`. Los fixtures de `test_research.py`, `test_snapshot.py`, `test_ml_registry.py` y `test_engines.py` pasan a la línea con estado destino (dos líneas por experimento en las aprobaciones completas). Las aserciones no cambian.
+
+**Con `c9a054b`:** fallan 8 y pasan 9. **Defecto reproducido:** los 4 casos de `bare_line_no_longer_authorizes`: la línea `AUTORIZA: EXP-0101`, sin estado, autoriza OOS_EVALUATION, APPROVED, REJECTED e INCONCLUSIVE («DID NOT RAISE»). Los otros 4 fallos (`owner_decision_with_its_exact_line_succeeds` ×3, `decision_ok_request_modes`) se deben a que la base no reconoce la gramática nueva. Los 9 que pasan son controles Fail-Closed: la base ya denegaba esas líneas porque no aceptaba un solo campo tras el id. **Corregido:** 17/17.
+
+**Suite:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 563 passed, 5 skipped (546 + 17). Validadores → OK.
+
+**Efecto:** cada línea autoriza un único estado destino. Como la máquina solo avanza, en la práctica sirve una vez. Las decisiones futuras del propietario que autoricen una evaluación final necesitarán dos líneas: `AUTORIZA: EXP-NNNN OOS_EVALUATION` y `AUTORIZA: EXP-NNNN <oos|lockbox> <SNAP-…>`. No hay nada que migrar: el registro real solo contiene antecedentes y ninguna decisión real usa aún la gramática.
+
+**Aprobación del propietario (2026-11-24):** «Apruebo la corrección; autorizo commit en develop, sin push.» Observación adicional de QA3R2-04 cerrada.

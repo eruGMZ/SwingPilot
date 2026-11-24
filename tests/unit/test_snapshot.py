@@ -66,7 +66,7 @@ def snap(tmp_path):
     return build(tmp_path), tmp_path
 
 
-def _decisions(tmp, text="AUTORIZA: EXP-0900\nAUTORIZA: EXP-0900 lockbox SNAP-TEST\nAUTORIZA: EXP-0900 oos SNAP-TEST\n"):
+def _decisions(tmp, text="AUTORIZA: EXP-0900 OOS_EVALUATION\nAUTORIZA: EXP-0900 lockbox SNAP-TEST\nAUTORIZA: EXP-0900 oos SNAP-TEST\n"):
     dec = tmp / "decisions"
     dec.mkdir(exist_ok=True)
     (dec / "DEC-999_eval.md").write_text(text)
@@ -343,7 +343,7 @@ def test_tc_ml_001_grant_conditions(snap):
 
 def test_qa3_04_decision_must_be_plain_name_in_decisions_dir_and_cite_ids(snap):
     res, tmp = snap
-    dec = _decisions(tmp, text="AUTORIZA: EXP-0900\n")     # autoriza la transición, no la partición
+    dec = _decisions(tmp, text="AUTORIZA: EXP-0900 OOS_EVALUATION\n")     # autoriza la transición, no la partición
     reg = ExperimentRegistry(tmp / "registry.jsonl", dec)
     _advance_to_oos(reg)
     loader = _loader(res, tmp, reg)
@@ -481,7 +481,7 @@ _SUBSTRING_DECISIONS = [
 @pytest.mark.parametrize("part,text", _SUBSTRING_DECISIONS)
 def test_qa3r2_04_partition_requires_exact_experiment_partition_snapshot(snap, part, text):
     res, tmp = snap
-    dec = _decisions(tmp, text="AUTORIZA: EXP-0900\n")             # solo la transición a OOS_EVALUATION
+    dec = _decisions(tmp, text="AUTORIZA: EXP-0900 OOS_EVALUATION\n")             # solo la transición a OOS_EVALUATION
     (dec / "DEC-970_grant.md").write_text(text + "\n")
     reg = ExperimentRegistry(tmp / "registry.jsonl", dec)
     _advance_to_oos(reg)
@@ -498,7 +498,7 @@ def test_qa3r2_04_partition_requires_exact_experiment_partition_snapshot(snap, p
 @pytest.mark.parametrize("part", ["oos", "lockbox"])
 def test_qa3r2_04_exact_partition_line_still_grants(snap, part):
     res, tmp = snap
-    dec = _decisions(tmp, text="AUTORIZA: EXP-0900\n")
+    dec = _decisions(tmp, text="AUTORIZA: EXP-0900 OOS_EVALUATION\n")
     (dec / "DEC-971_grant.md").write_text(f"# Decisión\n\nAUTORIZA: EXP-0900 {part} SNAP-TEST\n")
     reg = ExperimentRegistry(tmp / "registry.jsonl", dec)
     _advance_to_oos(reg)
@@ -523,11 +523,11 @@ def test_qa3r2_04_claim_rejects_malformed_ids_without_writing(tmp_path, kw):
 def test_qa3r2_04_decision_ok_rejects_malformed_request(tmp_path):
     reg = ExperimentRegistry(tmp_path / "reg.jsonl", _decisions(tmp_path))
     assert reg.decision_ok("DEC-999_eval.md", "EXP-0900", "lockbox", "SNAP-TEST") is None
-    assert reg.decision_ok("DEC-999_eval.md", "EXP-0900") is None
+    assert reg.decision_ok("DEC-999_eval.md", "EXP-0900", target_state="OOS_EVALUATION") is None
     for args in [("EXP-900", "lockbox", "SNAP-TEST"), ("EXP-0900", "LOCKBOX", "SNAP-TEST"),
                  ("EXP-0900", "lockbox", "SNAP-TEST\n"), ("EXP-0900", "lockbox", None), ("EXP-0900", None, "SNAP-TEST")]:
         assert reg.decision_ok("DEC-999_eval.md", *args) is not None, args
-    assert reg.decision_ok("DEC-999_eval.md\n", "EXP-0900") is not None
+    assert reg.decision_ok("DEC-999_eval.md\n", "EXP-0900", target_state="OOS_EVALUATION") is not None
 
 
 def test_tc_ml_019_new_lockbox_only_after_consumed_snapshot_end(tmp_path):

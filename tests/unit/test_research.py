@@ -34,7 +34,7 @@ WF = {"train_months": 24, "embargo_months": 2, "test_months": 6, "step_months": 
 def reg(tmp_path):
     dec = tmp_path / "decisions"
     dec.mkdir()
-    (dec / "DEC-900_ok.md").write_text("Decisión de prueba\nAUTORIZA: EXP-0101\n")
+    (dec / "DEC-900_ok.md").write_text("Decisión de prueba\nAUTORIZA: EXP-0101 OOS_EVALUATION\nAUTORIZA: EXP-0101 APPROVED\n")
     return ExperimentRegistry(tmp_path / "registry.jsonl", dec)
 
 
@@ -86,7 +86,7 @@ def test_req_g_107_ai_cannot_approve_or_open_oos(reg):
 
 
 def test_qa3_04_decision_must_cite_the_experiment(reg, tmp_path):
-    (tmp_path / "decisions" / "DEC-901_other.md").write_text("AUTORIZA: EXP-0199\n")      # autoriza otro experimento
+    (tmp_path / "decisions" / "DEC-901_other.md").write_text("AUTORIZA: EXP-0199 OOS_EVALUATION\n")      # autoriza otro experimento
     _to_validation(reg)
     with pytest.raises(ExperimentError, match="no cita"):
         reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-901_other.md"})
@@ -127,18 +127,87 @@ def test_qa3r2_04_transition_requires_exact_authorization_line(reg, tmp_path, te
 
 
 def test_qa3r2_04_exact_line_still_authorizes(reg, tmp_path):
-    (tmp_path / "decisions" / "DEC-903_ok.md").write_text("# Decisión\n\nTexto libre sobre EXP-0101.\n\nAUTORIZA: EXP-0101   \n")
+    (tmp_path / "decisions" / "DEC-903_ok.md").write_text("# Decisión\n\nTexto libre sobre EXP-0101.\n\nAUTORIZA: EXP-0101 OOS_EVALUATION   \n")
     _to_validation(reg)
     reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-903_ok.md"})
     assert reg.state("EXP-0101") == "OOS_EVALUATION"
 
 
 def test_qa3r2_04_unreadable_decision_fails_closed(reg, tmp_path):
-    (tmp_path / "decisions" / "DEC-904_bin.md").write_bytes(b"AUTORIZA: EXP-0101\n\xff\xfe")
+    (tmp_path / "decisions" / "DEC-904_bin.md").write_bytes(b"AUTORIZA: EXP-0101 OOS_EVALUATION\n\xff\xfe")
     _to_validation(reg)
     with pytest.raises(ExperimentError, match="no se puede leer"):
         reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-904_bin.md"})
     assert reg.state("EXP-0101") == "VALIDATION"
+
+
+# --- Observación adicional de QA3R2-04 (FEAT-017): la línea de transición nombra el estado destino ---
+
+_SETUP = "DEC-910_setup.md"      # válido con y sin estado destino: solo prepara el experimento
+
+
+def _to_state_before(reg, tmp_path, target):
+    (tmp_path / "decisions" / _SETUP).write_text("AUTORIZA: EXP-0101\nAUTORIZA: EXP-0101 OOS_EVALUATION\n")
+    _to_validation(reg)
+    if target != "OOS_EVALUATION":
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": _SETUP})
+        reg.transition("EXP-0101", "AUDIT", actor="orquestador")
+        reg.transition("EXP-0101", "HUMAN_REVIEW", actor="orquestador")
+    return reg.state("EXP-0101")
+
+
+@pytest.mark.parametrize("target", ["OOS_EVALUATION", "APPROVED", "REJECTED", "INCONCLUSIVE"])
+def test_qa3r2_04b_bare_line_no_longer_authorizes(reg, tmp_path, target):
+    before = _to_state_before(reg, tmp_path, target)
+    (tmp_path / "decisions" / "DEC-911_bare.md").write_text("AUTORIZA: EXP-0101\n")
+    with pytest.raises(ExperimentError, match=f"no cita exactamente la línea «AUTORIZA: EXP-0101 {target}»"):
+        reg.transition("EXP-0101", target, actor="propietario", evidence={"decision_ref": "DEC-911_bare.md"})
+    assert reg.state("EXP-0101") == before                          # Fail-Closed: sin transición
+
+
+@pytest.mark.parametrize("target", ["APPROVED", "REJECTED", "INCONCLUSIVE"])
+def test_qa3r2_04b_oos_authorization_is_not_reused_for_other_states(reg, tmp_path, target):
+    _to_state_before(reg, tmp_path, target)
+    (tmp_path / "decisions" / "DEC-912_oos.md").write_text("AUTORIZA: EXP-0101 OOS_EVALUATION\n")
+    with pytest.raises(ExperimentError, match="no cita exactamente"):
+        reg.transition("EXP-0101", target, actor="propietario", evidence={"decision_ref": "DEC-912_oos.md"})
+    assert reg.state("EXP-0101") == "HUMAN_REVIEW"
+
+
+@pytest.mark.parametrize("text", [
+    "AUTORIZA: EXP-0101 approved",                   # mayúsculas exactas
+    "AUTORIZA: EXP-0101 APPROVED extra",             # tokens de más
+    "AUTORIZA: EXP-0101  APPROVED",
+    "AUTORIZA: EXP-0101 REJECTED",                   # otro estado destino
+    "AUTORIZA: EXP-01010 APPROVED",
+    "NO AUTORIZA: EXP-0101 APPROVED",
+])
+def test_qa3r2_04b_malformed_or_other_state_line_does_not_approve(reg, tmp_path, text):
+    _to_state_before(reg, tmp_path, "APPROVED")
+    (tmp_path / "decisions" / "DEC-913_bad.md").write_text(text + "\n")
+    with pytest.raises(ExperimentError, match="no cita exactamente"):
+        reg.transition("EXP-0101", "APPROVED", actor="propietario", evidence={"decision_ref": "DEC-913_bad.md"})
+    assert reg.state("EXP-0101") == "HUMAN_REVIEW"
+
+
+@pytest.mark.parametrize("target", ["APPROVED", "REJECTED", "INCONCLUSIVE"])
+def test_qa3r2_04b_owner_decision_with_its_exact_line_succeeds(reg, tmp_path, target):
+    _to_state_before(reg, tmp_path, target)
+    (tmp_path / "decisions" / "DEC-914_ok.md").write_text(f"# Decisión\n\nAUTORIZA: EXP-0101 {target}\n")
+    reg.transition("EXP-0101", target, actor="propietario", evidence={"decision_ref": "DEC-914_ok.md"})
+    assert reg.state("EXP-0101") == target
+
+
+def test_qa3r2_04b_decision_ok_request_modes(reg, tmp_path):
+    (tmp_path / "decisions" / "DEC-915_all.md").write_text(
+        "AUTORIZA: EXP-0101 APPROVED\nAUTORIZA: EXP-0101 lockbox SNAP-TEST\nAUTORIZA: EXP-0101 AUDIT\n")
+    ok = reg.decision_ok
+    assert ok("DEC-915_all.md", "EXP-0101", target_state="APPROVED") is None
+    assert ok("DEC-915_all.md", "EXP-0101", "lockbox", "SNAP-TEST") is None    # gramática de partición intacta
+    assert "no ambas" in ok("DEC-915_all.md", "EXP-0101")                      # ni transición ni partición
+    assert "no ambas" in ok("DEC-915_all.md", "EXP-0101", "lockbox", "SNAP-TEST", target_state="APPROVED")
+    for st in ("AUDIT", "HUMAN_REVIEW", "IDEA", "approved", "", "PENDING_DOCUMENTATION"):
+        assert "estado destino no válido" in ok("DEC-915_all.md", "EXP-0101", target_state=st), st
 
 
 def test_qa3_03_antecedents_restricted_and_not_eligible(reg):

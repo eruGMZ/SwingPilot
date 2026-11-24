@@ -24,7 +24,7 @@ D, C = "d" * 64, "c" * 64
 def env(tmp_path):
     dec = tmp_path / "decisions"
     dec.mkdir()
-    (dec / "DEC-901_ok.md").write_text("Decisiones de prueba\nAUTORIZA: EXP-0201\nAUTORIZA: EXP-0202\n")
+    (dec / "DEC-901_ok.md").write_text("Decisiones de prueba\n" + "".join(f"AUTORIZA: {e} {s}\n" for e in ("EXP-0201", "EXP-0202") for s in ("OOS_EVALUATION", "APPROVED")))
     exps = ExperimentRegistry(tmp_path / "registry.jsonl", dec)
     reg = ModelRegistry(tmp_path / "models.db", exps)
     yield reg, exps

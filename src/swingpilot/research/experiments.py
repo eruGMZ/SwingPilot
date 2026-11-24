@@ -20,10 +20,14 @@
   no sea un enlace simbólico. La autorización no se busca por subcadena en el texto: el
   documento debe contener una línea estructurada, sola en su línea y al inicio de ella, que
   coincida exactamente con lo que se autoriza:
-      AUTORIZA: EXP-NNNN                        (transiciones que decide el propietario)
+      AUTORIZA: EXP-NNNN <ESTADO_DESTINO>       (transiciones que decide el propietario)
       AUTORIZA: EXP-NNNN <oos|lockbox> SNAP-…   (evaluación final de una partición)
   Cada campo se compara por igualdad exacta (mayúsculas incluidas). Una línea que no siga la
-  gramática no autoriza nada. Es un control en proceso, no criptográfico: no autentica a una
+  gramática no autoriza nada. La línea de transición nombra el estado destino (observación
+  adicional de QA3R2-04, FEAT-017): una autorización de OOS_EVALUATION no vale para APPROVED
+  ni para un estado terminal, y la línea sin estado no autoriza nada. Los estados admitidos
+  son exactamente los que hoy decide el propietario (`OWNER_DECIDED`); como la máquina solo
+  avanza, cada línea sirve en la práctica una sola vez. Es un control en proceso, no criptográfico: no autentica a una
   persona; deja la autorización trazable a un documento versionado.
 - Consumo de OOS/LOCKBOX (QA3-06): se registra aquí (archivo versionado), no solo en el
   registro de accesos.
@@ -45,7 +49,8 @@ from .snapshot import SEALED, SNAPSHOT_ID
 REPO_DECISIONS_DIR = Path(__file__).resolve().parents[3] / "docs" / "decisions"
 _DECISION_NAME = re.compile(r"DEC-[0-9]{3}[A-Za-z0-9_.-]*\.md")            # siempre con fullmatch
 EXPERIMENT_ID = re.compile(r"EXP-[0-9]{4}")                                # siempre con fullmatch
-_AUTHORIZATION = re.compile(r"AUTORIZA: (EXP-[0-9]{4})(?: (\S+) (\S+))?")  # siempre con fullmatch
+# Transición: «AUTORIZA: EXP-NNNN ESTADO»; partición: «AUTORIZA: EXP-NNNN parte SNAP-…» (fullmatch)
+_AUTHORIZATION = re.compile(r"AUTORIZA: (EXP-[0-9]{4})(?: (\S+)(?: (\S+))?)?")
 
 
 def valid_experiment_id(experiment_id) -> bool:
@@ -57,7 +62,9 @@ def _valid_snapshot_id(snapshot_id) -> bool:
 
 
 def authorizations(text: str) -> set[tuple[str, str | None, str | None]]:
-    """Líneas «AUTORIZA: …» del documento como tuplas (experimento, partición, snapshot)."""
+    """Líneas «AUTORIZA: …» como tuplas: (experimento, estado, None) para una transición y
+    (experimento, partición, snapshot) para una partición. Una línea sin campos da
+    (experimento, None, None), que no autoriza nada."""
     out = set()
     for line in text.splitlines():
         m = _AUTHORIZATION.fullmatch(line.rstrip())
@@ -68,6 +75,8 @@ def authorizations(text: str) -> set[tuple[str, str | None, str | None]]:
 STATES = ("IDEA", "DESIGN", "PREREGISTERED", "DATA_VALIDATION", "DEVELOPMENT", "VALIDATION",
           "OOS_EVALUATION", "AUDIT", "HUMAN_REVIEW", "APPROVED", "REJECTED", "INCONCLUSIVE")
 TERMINAL = ("APPROVED", "REJECTED", "INCONCLUSIVE")
+# Estados destino que hoy decide el propietario con documento de decisión (sin cambiar la máquina)
+OWNER_DECIDED = ("OOS_EVALUATION", "APPROVED", "REJECTED", "INCONCLUSIVE")
 _FORWARD = {
     "IDEA": "DESIGN", "DESIGN": "PREREGISTERED", "PREREGISTERED": "DATA_VALIDATION",
     "DATA_VALIDATION": "DEVELOPMENT", "DEVELOPMENT": "VALIDATION", "VALIDATION": "OOS_EVALUATION",
@@ -212,13 +221,18 @@ class ExperimentRegistry:
                              "note": note, "actor": OWNER})
 
     def decision_ok(self, ref: str | None, experiment_id: str, partition: str | None = None,
-                    snapshot_id: str | None = None) -> str | None:
+                    snapshot_id: str | None = None, *, target_state: str | None = None) -> str | None:
         """None si la decisión autoriza exactamente lo pedido; si no, el motivo (QA3-04, QA3R2-04).
-        Sin partición ni snapshot exige `AUTORIZA: <exp>`; con ellas, `AUTORIZA: <exp> <partición> <snapshot>`."""
+        Transición: `target_state` y la línea `AUTORIZA: <exp> <estado>`. Partición: `partition`
+        y `snapshot_id` y la línea `AUTORIZA: <exp> <partición> <snapshot>`. Uno de los dos, no ambos."""
         if not valid_experiment_id(experiment_id):
             return f"experimento no válido: {experiment_id!r} (formato EXP-NNNN)"
         if (partition is None) != (snapshot_id is None):
             return "la autorización de partición exige partición y snapshot"
+        if (target_state is None) == (partition is None):
+            return "la autorización es de una transición (estado destino) o de una partición, no ambas"
+        if target_state is not None and target_state not in OWNER_DECIDED:
+            return f"estado destino no válido para una decisión del propietario: {target_state!r}"
         if partition is not None:
             if partition not in SEALED:
                 return f"partición no válida: {partition!r}"
@@ -235,7 +249,8 @@ class ExperimentRegistry:
             text = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError) as exc:
             return f"la decisión no se puede leer: {exc!r}"
-        wanted = (experiment_id, partition, snapshot_id)
+        wanted = (experiment_id, target_state, None) if target_state is not None \
+            else (experiment_id, partition, snapshot_id)
         if wanted not in authorizations(text):
             line = " ".join(x for x in wanted if x is not None)
             return f"la decisión no cita exactamente la línea «AUTORIZA: {line}»"
@@ -268,7 +283,7 @@ class ExperimentRegistry:
         if to in ("APPROVED", "OOS_EVALUATION") or (cur == "HUMAN_REVIEW" and to in TERMINAL):
             if actor != OWNER:
                 raise ExperimentError(f"{to} solo lo decide el propietario (REQ-G-107)")
-            why = self.decision_ok(evidence.get("decision_ref"), experiment_id)
+            why = self.decision_ok(evidence.get("decision_ref"), experiment_id, target_state=to)
             if why:
                 raise ExperimentError(why)
         return self._append({"kind": "TRANSITION", "experiment_id": experiment_id, "from": cur, "to": to,

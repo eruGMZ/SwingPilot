@@ -1345,3 +1345,19 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Siguiente:** revisión y aprobación del propietario.
 
 **Aprobación del propietario (2026-11-24):** «Apruebo los cambios implementados de QA3R2-08 y las 28 pruebas adicionales en su alcance actual. Autorizo exclusivamente registrar esta aprobación y congelar los cambios mediante un commit en develop, sin push.» **QA3R2-08 queda CONDICIONADO, no cerrado definitivamente:** falta resolver el comportamiento ante sellado no efectivo (hoy solo avisa). FEAT-015 se mantiene en READY_FOR_REVIEW. Sin nuevas correcciones; sin cambios en contratos, cortes ni SNAP-0001.
+
+---
+
+## 2026-11-24 | FASE 2 | IMPL-3: QA3R2-04, observación adicional — estado destino en la autorización de transiciones (FEAT-017) | COMPLETADO — PENDIENTE DE APROBACIÓN
+
+**Resolución del propietario (2026-11-24):** «Apruebo la resolución contractual y autorizo la corrección directa de la observación adicional de QA3R2-04, sin CR.» Mantiene el verbo AUTORIZA y aprueba la gramática `AUTORIZA: EXP-NNNN ESTADO_DESTINO`; la de particiones no cambia. Base `c9a054b`.
+
+**Código:** `src/swingpilot/research/experiments.py` (gramática con estado destino, `OWNER_DECIDED`, `decision_ok(..., target_state=)`, `transition()` pasa `to`).
+
+**Pruebas:** 17 regresiones en `tests/unit/test_research.py`. Con `c9a054b` fallan 8 (4 reproducen el defecto: la línea sin estado autoriza las 4 transiciones del propietario) y pasan 9 controles Fail-Closed. Fixtures ajustados en `test_research.py`, `test_snapshot.py`, `test_ml_registry.py` y `test_engines.py`. Suite: 563 passed, 5 skipped; validadores OK. Detalle en `harness/verification/IMPL-3_QA_ronda2.md` §QA3R2-04 observación adicional (incluye la relación con FEAT-017).
+
+**Sin cambios:** máquina de estados, contratos, criterios de aceptación, `feature_list.json`, estados de FEAT (FEAT-015 READY_FOR_REVIEW; FEAT-017 IN_PROGRESS), `partitions.py`. QA3R2-08 sin tocar (sigue CONDICIONADO). SNAP-0001 no creada; OOS/LOCKBOX reales intactos. Sin commit ni push. $0 de IA. Sub-agentes: 0.
+
+**Siguiente:** revisión y aprobación del propietario.
+
+**Aprobación del propietario (2026-11-24):** «Apruebo la corrección; autorizo commit en develop, sin push.» La observación adicional de QA3R2-04 queda corregida y aprobada. FEAT-015 sigue en READY_FOR_REVIEW y FEAT-017 en IN_PROGRESS; QA3R2-08 sigue CONDICIONADO.
