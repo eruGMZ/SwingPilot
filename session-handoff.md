@@ -1,5 +1,22 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — QA3R2-07 RESUELTO POR COMPLETO (FEAT-017); commit en develop, sin push
+
+**Aprobación del propietario (2026-11-24):** corrección y evidencia aprobadas; riesgos residuales aceptados dentro del alcance de QA3R2-07, excepto la persistencia de las desviaciones. Sin pruebas adicionales tras la aprobación.
+**Abierto:** ORQ-017-01 (desviaciones del preregistro solo en memoria; REQ-G-103, AC-017-3). Revisión contractual separada antes del cierre de FEAT-017; sin persistencia, nuevos tipos de registro ni cambios en el evaluador hasta entonces.
+**Estado:** FEAT-017 IN_PROGRESS (pendientes AC-017-10/11, ORQ-017-01, decisiones D1–D8 y SNAP-0001). QA3R2-06 y QA3R2-07 resueltos.
+**Siguiente acción autorizada:** ninguna. Esperar indicación del propietario.
+
+### Registro previo a la aprobación — QA3R2-07 corregido (FEAT-017), pendiente de aprobación; sin commit
+
+**Base:** `daa78d0` (develop, 1 commit por delante de `origin/develop`).
+**Hecho:** corrección directa autorizada de QA3R2-07, sin CR. `oos_seen`/`record_deviation` (`src/swingpilot/research/preregistration.py`) exigen un `ExperimentRegistry` y un experimento nativo registrado; la exposición sale de PARTITION_CONSUMED del mismo experimento (todas las snapshots); el registro de accesos solo añade evidencia; Fail-Closed ante registro ausente, ilegible, corrupto o incoherente. Defecto reproducido aparte con `daa78d0`. 29 pruebas nuevas y TC-ML-013 adaptada (mismas aserciones). Detalle en `harness/verification/IMPL-3_QA_ronda2.md` §Corrección de QA3R2-07.
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 665 passed, 5 skipped. Validadores → OK.
+**Hallazgo nuevo ORQ-017-01 (NO RESUELTO):** las desviaciones del preregistro solo viven en memoria (REQ-G-103, AC-017-3). Revisión contractual separada antes del cierre de FEAT-017; sin persistencia ni nuevos tipos de registro por ahora.
+**Sin commit ni push.** Archivos modificados: `src/swingpilot/research/preregistration.py`, `tests/unit/test_research.py`, `harness/verification/IMPL-3_QA_ronda2.md`, `progress.md`, `session-handoff.md`.
+**Sin cambios:** contrato, AC, `feature_list.json`, estados de FEAT (FEAT-017 IN_PROGRESS), carga de particiones, evaluador, D1–D7. SNAP-0001 no creada; OOS/LOCKBOX reales intactos; $0 de IA.
+**Siguiente acción autorizada:** ninguna. Esperar la aprobación expresa del propietario.
+
 ## IMPL-3 (2026-11-24) — QA3R2-06 RESUELTO POR COMPLETO (FEAT-017); commit en develop, sin push
 
 **Aprobación del propietario (2026-11-24):** corrección y evidencia aprobadas; riesgos residuales aceptados dentro del alcance. **Requisito conservado:** verificar la coherencia entre el `execution_model` preregistrado y `ExecutionModel` antes del piloto confirmatorio. Sin validación adicional ni topes realistas de costes en esta etapa. Sin pruebas adicionales tras la aprobación.

@@ -258,24 +258,173 @@ def prereg():
     return p
 
 
-def test_tc_ml_013_deviation_after_oos_derived_from_access_log():
+def test_tc_ml_013_deviation_after_oos_derived_from_access_log(reg):
+    # QA3R2-07: se pasa además el registro de experimentos (fuente de verdad); sin consumo
+    # registrado, el registro de accesos sigue pudiendo AÑADIR evidencia de exposición.
+    reg.create("EXP-0101", "x", actor="orquestador")
     fz = freeze(prereg())
     fz.verify()
     log = [{"allowed": True, "partition": "train_val", "experiment_id": None}]
-    fz.record_deviation("limitations", "otra", "aclaración antes de ver OOS", access_history=log)
+    fz.record_deviation("limitations", "otra", "aclaración antes de ver OOS", registry=reg, access_history=log)
     assert fz.confirmatory
     # un acceso denegado o de otro experimento no cuenta
     log += [{"allowed": False, "partition": "oos", "experiment_id": "EXP-0101"},
             {"allowed": True, "partition": "oos", "experiment_id": "EXP-0199"}]
-    fz.record_deviation("limitations", "otra2", "sigue antes de OOS", access_history=log)
+    fz.record_deviation("limitations", "otra2", "sigue antes de OOS", registry=reg, access_history=log)
     assert fz.confirmatory
     log.append({"allowed": True, "partition": "oos", "experiment_id": "EXP-0101"})
-    fz.record_deviation("wf_design", {**WF, "n_windows": 3}, "cambio tras ver OOS", access_history=log)
+    fz.record_deviation("wf_design", {**WF, "n_windows": 3}, "cambio tras ver OOS", registry=reg, access_history=log)
     assert not fz.confirmatory
     assert fz.content["wf_design"]["n_windows"] == 2
     fz.content["hypothesis"] = "alterada"
     with pytest.raises(PreregistrationError):
         fz.verify()
+
+
+# --- QA3R2-07: exposición a OOS/LOCKBOX derivada del registro de experimentos ---------------
+# El defecto original (daa78d0: registro con consumo y access_history vacío → after_oos False
+# y experimento confirmatorio) se reproduce aparte, porque la firma cambia (registry obligatorio).
+
+NEW_WF = {**WF, "n_windows": 3}
+CONTRADICTING_LOGS = {
+    "none": None,
+    "empty": [],
+    "stale_train_val": [{"allowed": True, "partition": "train_val", "experiment_id": None}],
+    "denied_oos": [{"allowed": False, "partition": "oos", "experiment_id": "EXP-0101"}],
+    "other_experiment": [{"allowed": True, "partition": "oos", "experiment_id": "EXP-0199"}],
+}
+
+
+def _oos_ready(reg, eid="EXP-0101"):
+    _to_validation(reg, eid)
+    reg.transition(eid, "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-900_ok.md"})
+
+
+def _consume(reg, partition="oos", sid="SNAP-TEST1", eid="EXP-0101"):
+    assert reg.claim_partition(snapshot_id=sid, partition=partition, experiment_id=eid,
+                               snapshot_last_open_time=0, decision_ref="DEC-900_ok.md") is not None
+
+
+@pytest.mark.parametrize("partition", ["oos", "lockbox"])
+@pytest.mark.parametrize("log_name", list(CONTRADICTING_LOGS))
+def test_qa3r2_07_registry_consumption_cannot_be_overridden_by_caller_log(reg, partition, log_name):
+    _oos_ready(reg)
+    _consume(reg, partition)
+    fz = freeze(prereg())
+    d = fz.record_deviation("wf_design", NEW_WF, "cambio tras OOS", registry=reg,
+                            access_history=CONTRADICTING_LOGS[log_name])
+    assert d["after_oos"] is True and not fz.confirmatory
+
+
+def test_qa3r2_07_consumption_on_any_snapshot_counts(reg):
+    _oos_ready(reg)
+    _consume(reg, "oos", sid="SNAP-TEST9")          # el preregistro cita otra snapshot («SNAP-X»)
+    fz = freeze(prereg())
+    assert fz.oos_seen(reg, []) is True
+
+
+@pytest.mark.parametrize("bad", [None, "registry.jsonl", object(), [{"kind": "PARTITION_CONSUMED"}]],
+                         ids=["none", "path_str", "object", "list"])
+def test_qa3r2_07_invalid_registry_fails_closed(bad):
+    fz = freeze(prereg())
+    with pytest.raises(PreregistrationError, match="ExperimentRegistry"):
+        fz.record_deviation("wf_design", NEW_WF, "x", registry=bad, access_history=[])
+    assert fz.deviations == []
+
+
+def test_qa3r2_07_unregistered_or_antecedent_experiment_fails_closed(reg):
+    fz = freeze(prereg())
+    with pytest.raises(PreregistrationError, match="nativo"):           # registro vacío
+        fz.oos_seen(reg)
+    p = prereg()
+    p["experiment_id"] = "EXP-0002"
+    reg.register_antecedent("EXP-0002", "antecedente", "REJECTED", "DEC-018", "nota")
+    with pytest.raises(PreregistrationError, match="nativo"):           # antecedente declarado
+        freeze(p).record_deviation("wf_design", NEW_WF, "x", registry=reg)
+
+
+def test_qa3r2_07_unreadable_or_corrupt_registry_fails_closed(reg, tmp_path):
+    reg.create("EXP-0101", "x", actor="orquestador")
+    fz = freeze(prereg())
+    with open(reg.path, "a") as fh:
+        fh.write("{no es json\n")
+    with pytest.raises(PreregistrationError, match="ilegible o corrupto"):
+        fz.record_deviation("wf_design", NEW_WF, "x", registry=reg)
+    d = tmp_path / "dir_registry.jsonl"
+    d.mkdir()                                                            # ilegible como archivo
+    with pytest.raises(PreregistrationError, match="ilegible o corrupto"):
+        fz.oos_seen(ExperimentRegistry(d, tmp_path / "decisions"))
+    orphan = tmp_path / "orphan.jsonl"                                   # TRANSITION sin CREATED
+    orphan.write_text('{"kind": "TRANSITION", "experiment_id": "EXP-0101", "to": "DESIGN"}\n')
+    with pytest.raises(PreregistrationError, match="ilegible o corrupto"):
+        fz.oos_seen(ExperimentRegistry(orphan, tmp_path / "decisions"))
+    assert fz.deviations == []
+
+
+@pytest.mark.parametrize("bad_record", [
+    {"kind": "PARTITION_CONSUMED", "partition": "oos", "snapshot_id": "SNAP-TEST1"},                 # sin experimento
+    {"kind": "PARTITION_CONSUMED", "experiment_id": "EXP-0101", "partition": "train_val", "snapshot_id": "SNAP-TEST1"},
+    {"kind": "PARTITION_CONSUMED", "experiment_id": "EXP-0101", "partition": "oos"},                 # sin snapshot
+    {"kind": "PARTITION_CONSUMED", "experiment_id": "EXP-0199", "partition": "OOS", "snapshot_id": "SNAP-TEST1"},
+], ids=["no_experiment", "bad_partition", "no_snapshot", "other_exp_bad_partition"])
+def test_qa3r2_07_inconsistent_consumption_record_fails_closed(reg, bad_record):
+    import json as _json
+    _oos_ready(reg)
+    with open(reg.path, "a") as fh:
+        fh.write(_json.dumps(bad_record) + "\n")
+    with pytest.raises(PreregistrationError, match="incoherente"):
+        freeze(prereg()).oos_seen(reg)
+
+
+def test_qa3r2_07_consumption_without_oos_evaluation_is_inconsistent(reg):
+    _to_validation(reg)                       # VALIDATION: nunca autorizado para OOS
+    _consume(reg, "oos")                      # claim_partition no comprueba el estado (lo hace partitions.py)
+    fz = freeze(prereg())
+    with pytest.raises(PreregistrationError, match="sin transición a OOS_EVALUATION"):
+        fz.record_deviation("wf_design", NEW_WF, "x", registry=reg)
+    assert fz.deviations == []
+
+
+@pytest.mark.parametrize("bad_log", ["oos", {"allowed": True}, [["oos"]], [None]], ids=["str", "dict", "list_of_list", "list_of_none"])
+def test_qa3r2_07_malformed_access_history_fails_closed(reg, bad_log):
+    reg.create("EXP-0101", "x", actor="orquestador")
+    with pytest.raises(PreregistrationError, match="registro de accesos"):
+        freeze(prereg()).oos_seen(reg, bad_log)
+
+
+def test_qa3r2_07_authorization_without_consumption_is_not_exposure(reg):
+    _oos_ready(reg)                           # autorizado (OOS_EVALUATION) pero sin consumo
+    fz = freeze(prereg())
+    assert fz.oos_seen(reg) is False
+    reg.transition("EXP-0101", "AUDIT", actor="orquestador")
+    fz.record_deviation("wf_design", NEW_WF, "sin exposición real", registry=reg, access_history=[])
+    assert fz.confirmatory
+
+
+def test_qa3r2_07_other_experiment_consumption_does_not_count(reg):
+    reg.create("EXP-0101", "x", actor="orquestador")
+    with open(reg.decisions_dir / "DEC-900_ok.md", "a") as fh:
+        fh.write("AUTORIZA: EXP-0102 OOS_EVALUATION\n")
+    _oos_ready(reg, "EXP-0102")
+    _consume(reg, "oos", eid="EXP-0102")
+    _consume(reg, "lockbox", eid="EXP-0102")
+    fz = freeze(prereg())
+    fz.record_deviation("wf_design", NEW_WF, "x", registry=reg)
+    assert fz.confirmatory
+
+
+def test_qa3r2_07_pre_exposure_and_non_design_deviations_preserved(reg):
+    _oos_ready(reg)
+    fz = freeze(prereg())
+    fz.record_deviation("wf_design", NEW_WF, "antes de la exposición", registry=reg)
+    _consume(reg, "oos")
+    assert fz.confirmatory                                   # la desviación previa no cambia
+    d = fz.record_deviation("limitations", "otra", "campo no de diseño tras OOS", registry=reg)
+    assert d["after_oos"] is True and fz.confirmatory        # campo fuera de DESIGN_FIELDS
+    fz.record_deviation("metrics", "otra", "campo de diseño tras OOS", registry=reg)
+    assert not fz.confirmatory
+    assert fz.content["wf_design"]["n_windows"] == 2         # el contenido congelado no cambia
+    fz.verify()
 
 
 def test_freeze_rejects_incomplete_or_invalid():

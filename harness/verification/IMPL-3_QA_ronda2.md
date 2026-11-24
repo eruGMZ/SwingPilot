@@ -206,3 +206,64 @@ Las rondas de QA permitidas están agotadas (2 de 2). Cualquier corrección post
 **Aprobación del propietario (2026-11-24):** aprueba la corrección de QA3R2-06 y su evidencia de verificación (65 casos; 24 regresiones que fallan con `c3f526c`; 636 passed, 5 skipped; validadores OK). Acepta los riesgos residuales documentados dentro del alcance de esta corrección. **Se mantiene como requisito** verificar la coherencia entre el modelo de ejecución preregistrado (`execution_model` del preregistro) y `ExecutionModel` antes del piloto confirmatorio (riesgo residual 2). En esta etapa no se añade validación adicional ni topes realistas de costes.
 
 **Estado de QA3R2-06 (2026-11-24): RESUELTO POR COMPLETO.** Commit en develop, sin push. FEAT-017 sigue en IN_PROGRESS; QA3R2-07 sigue abierto.
+
+---
+
+## Corrección de QA3R2-07 (2026-11-24, Orquestador; sin nueva ronda de QA)
+
+**Autorización del propietario (2026-11-24):** corrección directa de QA3R2-07, sin CR. `ExperimentRegistry` es la fuente de verdad del consumo de OOS/LOCKBOX: registro válido y experimento nativo registrado obligatorios; exposición derivada de los registros PARTITION_CONSUMED del mismo experimento en todas las snapshots; el registro de accesos opcional solo puede añadir evidencia; Fail-Closed ante evidencia ausente, ilegible, corrupta o incoherente; se conserva la distinción entre autorización y consumo, y las reglas de desviaciones previas a la exposición y de campos no de diseño. Base `daa78d0`. Sin cambios en el contrato, los AC, `feature_list.json`, los estados de FEAT, la carga de particiones, el evaluador ni las decisiones metodológicas D1–D7.
+
+**Resolución contractual:** corrección directa. REQ-G-103 (CR-011) y TC-ML-013 ya exigen que un cambio de diseño tras ver resultados OOS sea una desviación y quite el carácter confirmatorio; QA3-13 ya pretendía derivarlo de registros y no de una marca manual. Ningún documento del contrato cita `oos_seen`, `record_deviation` ni `after_oos`: es una API interna. Criterios afectados: AC-017-3 (directo), AC-017-9 (indirecto: el registro es su fuente de verdad).
+
+**Defecto reproducido con `daa78d0`** (fuente extraída con `git archive` en el directorio temporal de la sesión; script sintético, sin datos reales): registro con `PARTITION_CONSUMED(EXP-0101, oos, SNAP-TEST1)` y cambio de `wf_design`. Con un registro de accesos vacío, uno obsoleto (solo `train_val`) o uno filtrado (solo el acceso denegado) → `after_oos=False` y **experimento confirmatorio** en los tres casos. Las pruebas nuevas no pueden ejecutarse igual sobre la base porque la firma cambia (`registry` obligatorio): con `daa78d0` las 30 fallan por `TypeError` de firma, no por comportamiento; la evidencia del defecto es la reproducción separada.
+
+| Punto | Implementación (`src/swingpilot/research/preregistration.py`) |
+|---|---|
+| API | `oos_seen(registry, access_history=None)`; `record_deviation(..., *, registry, access_history=None)`. `registry` es obligatorio. |
+| Registro válido | `isinstance(registry, ExperimentRegistry)`; si no → `PreregistrationError`. |
+| Experimento | `EXP-NNNN` válido, presente en el registro y con origen `REGISTRY` (los antecedentes declarados no cuentan); si no → error. |
+| Exposición | Cualquier `PARTITION_CONSUMED` del mismo experimento con partición `oos` o `lockbox`, en cualquier snapshot. El consumo se anota antes de leer, así que cuenta aunque la lectura fallara. |
+| Autorización ≠ consumo | Estar en OOS_EVALUATION o después sin consumo registrado no es exposición. |
+| Registro de accesos | Opcional; solo añade exposición (acceso permitido a `oos`/`lockbox` del mismo experimento). Debe ser una lista de objetos; si no → error. |
+| Fail-Closed | Registro ilegible (p. ej. directorio), JSON corrupto o TRANSITION sin CREATED → error. `PARTITION_CONSUMED` incoherente (sin experimento, partición distinta de `oos`/`lockbox`, sin snapshot), también de otro experimento → error. Consumo del experimento sin transición a OOS_EVALUATION en su historia → error. En todos los casos no se registra la desviación. |
+| Sin cambios | `experiments.py`, `partitions.py`, `acceptance.py`; `confirmatory` y `DESIGN_FIELDS` iguales. |
+
+**Pruebas (`tests/unit/test_research.py`):**
+
+| Grupo | Casos | Resultado |
+|---|---|---|
+| **Regresiones** (`test_qa3r2_07_registry_consumption_cannot_be_overridden_by_caller_log`) | consumo de `oos` y de `lockbox` × registro de accesos ausente, vacío, obsoleto, con solo el acceso denegado o de otro experimento | 10: `after_oos=True` y no confirmatorio |
+| Exposición en cualquier snapshot | consumo en `SNAP-TEST9` con preregistro que cita otra snapshot | 1 |
+| Fail-Closed: registro no válido | `None`, ruta como texto, objeto arbitrario, lista | 4 (sin desviación registrada) |
+| Fail-Closed: experimento no nativo | registro vacío; antecedente declarado | 1 |
+| Fail-Closed: registro ilegible o corrupto | línea JSON corrupta; ruta que es un directorio; TRANSITION sin CREATED | 1 |
+| Fail-Closed: consumo incoherente | sin experimento; partición `train_val`; sin snapshot; partición inválida de otro experimento | 4 |
+| Fail-Closed: consumo sin OOS_EVALUATION | consumo con el experimento en VALIDATION | 1 |
+| Fail-Closed: registro de accesos malformado | texto, objeto, lista de listas, lista con `None` | 4 |
+| Controles | autorización sin consumo (OOS_EVALUATION y AUDIT) → confirmatorio; consumo de `oos` y `lockbox` de otro experimento no cuenta; desviación previa a la exposición sigue confirmatoria; campo no de diseño tras la exposición sigue confirmatorio; campo de diseño tras la exposición → no confirmatorio; contenido congelado intacto | 3 |
+
+**Prueba existente adaptada:** `test_tc_ml_013_deviation_after_oos_derived_from_access_log` recibe el registro (`reg`, con EXP-0101 creado) y pasa `registry=reg` en cada desviación. Sus aserciones no cambian: los accesos de `train_val`, denegados o de otro experimento no cuentan; un acceso permitido a OOS del experimento en el registro de accesos sigue quitando el carácter confirmatorio (ahora como evidencia añadida); el contenido congelado no cambia y `verify` detecta alteraciones.
+
+**Suite:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 665 passed, 5 skipped (636 + 29 nuevas; TC-ML-013 adaptada, no nueva). Validadores (`scripts/validate_{manifest,requirements,gates}.py`) → OK.
+
+**Riesgos residuales y notas:** (1) La exposición fuera de SwingPilot (datos usados por `trading-bot`, `IMPL-3_EXP-0001_procedencia.md` §4) no consta en el registro y esta corrección no la detecta; corresponde a la decisión metodológica D3 y a la declaración del preregistro (REQ-G-101/102). (2) Un registro incoherente de otro experimento bloquea las desviaciones de todos: es Fail-Closed a propósito. (3) `after_oos` se calcula al registrar la desviación; las desviaciones siguen solo en memoria (hallazgo ORQ-017-01). (4) El registro es un archivo local versionado; su autenticidad depende del control de versiones, no de una firma. (5) El evaluador de aceptación no consulta el carácter confirmatorio (sin cambios, por indicación del propietario).
+
+**Estado de QA3R2-07:** implementado; **pendiente de aprobación del propietario**. Sin commit ni push.
+
+### ORQ-017-01 — Persistencia de las desviaciones del preregistro (hallazgo nuevo, NO RESUELTO)
+
+**Origen:** análisis de QA3R2-07 por el Orquestador (2026-11-24). **Severidad propuesta:** MENOR (contractual). **FEAT/AC:** FEAT-017, AC-017-3; REQ-G-103 («Las desviaciones se documentan y justifican»), TC-ML-013.
+
+**Descripción:** `FrozenPreregistration.deviations` (`src/swingpilot/research/preregistration.py`) vive solo en memoria. Ninguna desviación se escribe en disco ni en el registro de experimentos. Si el objeto se reconstruye (otro proceso o sesión), sus desviaciones se pierden y `confirmatory` vuelve a ser `True`. El evaluador de aceptación tampoco consulta el carácter confirmatorio.
+
+**Por qué no se corrige aquí:** persistirlas exigiría un nuevo tipo de registro (p. ej. `DEVIATION`) en el registro de experimentos o un archivo nuevo, y decidir si el formato del registro es contractual. El propietario indicó no implementar persistencia, no introducir nuevos tipos de registro y no modificar el evaluador.
+
+**Pendiente:** revisión contractual separada **antes del cierre de FEAT-017** (corrección directa o CR, según se decida).
+
+### Aprobación de QA3R2-07 (2026-11-24)
+
+**Aprobación del propietario:** aprueba la corrección de QA3R2-07 y su evidencia de verificación (defecto reproducido aparte con `daa78d0`; 29 pruebas nuevas y TC-ML-013 adaptada; 665 passed, 5 skipped; validadores OK). Acepta los riesgos residuales documentados dentro del alcance de QA3R2-07 (1, 2, 4 y 5), **excepto** la falta de persistencia de las desviaciones (riesgo 3), que queda como ORQ-017-01.
+
+**Estado de QA3R2-07 (2026-11-24): RESUELTO POR COMPLETO.** Commit en develop, sin push; sin pruebas adicionales tras la aprobación.
+
+**ORQ-017-01: ABIERTO.** Revisión contractual separada antes del cierre de FEAT-017. Sin persistencia, sin nuevos tipos de registro y sin cambios en el evaluador hasta esa revisión. FEAT-017 sigue en IN_PROGRESS.

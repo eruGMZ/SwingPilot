@@ -1451,3 +1451,23 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Siguiente:** aprobación del propietario de la corrección de QA3R2-06.
 
 **Aprobación del propietario (2026-11-24):** aprueba la corrección de QA3R2-06 y su evidencia; acepta los riesgos residuales dentro del alcance de la corrección. Requisito conservado: verificar la coherencia entre el modelo de ejecución preregistrado y `ExecutionModel` antes del piloto confirmatorio. Sin validación adicional ni topes realistas de costes en esta etapa. **QA3R2-06 RESUELTO POR COMPLETO.** Commit en develop, sin push; sin pruebas adicionales. FEAT-017 sigue IN_PROGRESS; `feature_list.json`, contratos, AC y demás estados sin cambios; QA3R2-07 abierto; SNAP-0001 no creada; $0 de IA.
+
+---
+
+## 2026-11-24 | FASE 2 | IMPL-3: corrección de QA3R2-07 (exposición a OOS/LOCKBOX desde el registro de experimentos; FEAT-017) | IMPLEMENTADO — PENDIENTE DE APROBACIÓN DEL PROPIETARIO
+
+**Autorización del propietario (2026-11-24):** corrección directa de QA3R2-07, sin CR, sobre `daa78d0`. `ExperimentRegistry` como fuente de verdad del consumo; registro válido y experimento nativo obligatorios; exposición por PARTITION_CONSUMED del mismo experimento en todas las snapshots; el registro de accesos solo añade evidencia; Fail-Closed ante evidencia ausente, ilegible, corrupta o incoherente; autorización ≠ consumo; reglas previas conservadas. Persistencia de desviaciones: documentar como hallazgo aparte, sin implementar.
+
+**Cambios:** `src/swingpilot/research/preregistration.py` (`oos_seen(registry, access_history=None)`, `record_deviation(..., registry, access_history=None)`, funciones `_registry_exposure` y `_access_log_exposure`); `tests/unit/test_research.py` (29 casos nuevos; `test_tc_ml_013_*` adaptada para pasar el registro, con las mismas aserciones); `harness/verification/IMPL-3_QA_ronda2.md` (§Corrección de QA3R2-07 y hallazgo ORQ-017-01); `progress.md`; `session-handoff.md`.
+
+**Evidencia:** defecto reproducido con `daa78d0` (fuente extraída con `git archive`; script sintético): con consumo de OOS registrado y registro de accesos vacío, obsoleto o filtrado → `after_oos=False` y experimento confirmatorio. Las pruebas nuevas fallan con la base por `TypeError` de firma (no por comportamiento), de ahí la reproducción separada. Corregido: 30 pruebas de QA3R2-07/TC-ML-013 pasan (10 regresiones, 1 de snapshots, 15 Fail-Closed, 3 controles, TC-ML-013). Suite: `.venv/bin/pytest -q -p no:cacheprovider tests` → 665 passed, 5 skipped. Validadores → OK.
+
+**Hallazgo nuevo ORQ-017-01 (NO RESUELTO):** las desviaciones del preregistro solo viven en memoria; al reconstruir el objeto se pierden y el experimento vuelve a ser confirmatorio (REQ-G-103, AC-017-3). Requiere revisión contractual separada antes del cierre de FEAT-017. No se implementó persistencia ni nuevos tipos de registro; el evaluador no se tocó.
+
+**Riesgos residuales:** exposición fuera de SwingPilot (trading-bot) no detectable por el registro (D3); un registro incoherente de otro experimento bloquea todas las desviaciones (Fail-Closed intencional); autenticidad del registro basada en control de versiones.
+
+**Sin cambios:** contrato, AC, `feature_list.json`, estados de FEAT (FEAT-017 IN_PROGRESS), carga de particiones, evaluador, D1–D7. SNAP-0001 no creada; sin backtests reales; OOS/LOCKBOX reales intactos. Sin commit ni push. $0 de IA. Sub-agentes: 0.
+
+**Siguiente:** aprobación del propietario de la corrección de QA3R2-07.
+
+**Aprobación del propietario (2026-11-24):** aprueba la corrección de QA3R2-07 y su evidencia; acepta los riesgos residuales dentro de su alcance, excepto la falta de persistencia de las desviaciones. **QA3R2-07 RESUELTO POR COMPLETO.** **ORQ-017-01 sigue ABIERTO** (revisión contractual separada antes del cierre de FEAT-017). Commit en develop, sin push; sin pruebas adicionales. FEAT-017 sigue IN_PROGRESS; `feature_list.json`, contratos, AC, demás estados y D1–D7 sin cambios; SNAP-0001 no creada; $0 de IA.

@@ -12,6 +12,9 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
+from .experiments import REGISTRY_ORIGIN, ExperimentRegistry, valid_experiment_id
+from .snapshot import SEALED
+
 # Campos obligatorios (REQ-G-103 + CR-011 + REQ-G-109)
 REQUIRED_FIELDS = (
     "experiment_id", "research_question", "hypothesis", "null_hypothesis", "justification",
@@ -123,24 +126,76 @@ class FrozenPreregistration:
         if hashlib.sha256(canonical_json(self.content).encode()).hexdigest() != self.sha256:
             raise PreregistrationError("el contenido congelado fue alterado")
 
-    def oos_seen(self, access_history: list[dict]) -> bool:
-        """QA3-13: se deriva del registro de accesos, no de una marca manual. Cuenta cualquier
-        acceso permitido a OOS o LOCKBOX de este experimento."""
-        return any(r.get("allowed") and r.get("partition") in ("oos", "lockbox")
-                   and r.get("experiment_id") == self.experiment_id for r in access_history)
+    def oos_seen(self, registry, access_history: list[dict] | None = None) -> bool:
+        """Exposición a OOS/LOCKBOX de este experimento (QA3-13, QA3R2-07; REQ-G-103).
+
+        - Fuente de verdad: los registros PARTITION_CONSUMED del registro de experimentos para
+          este experimento, en cualquier snapshot. El consumo se anota antes de leer, así que
+          cuenta aunque la lectura fallara.
+        - Autorización ≠ consumo: estar en OOS_EVALUATION (o después) sin consumo registrado
+          no es exposición.
+        - El registro de accesos opcional solo puede AÑADIR evidencia de exposición; nunca
+          anula el consumo registrado.
+        - Fail-Closed: sin registro válido, experimento no nativo o no registrado, registro
+          ilegible, corrupto o incoherente → PreregistrationError (nunca «no visto» por defecto).
+        """
+        consumed = _registry_exposure(registry, self.experiment_id)
+        return consumed or _access_log_exposure(access_history, self.experiment_id)
 
     def record_deviation(self, field_name: str, new_value, justification: str, *,
-                         access_history: list[dict]) -> dict:
+                         registry, access_history: list[dict] | None = None) -> dict:
         """El contenido congelado no cambia: la desviación se documenta aparte (REQ-G-103)."""
         if field_name not in self.content:
             raise PreregistrationError(f"campo desconocido: {field_name}")
         if not justification.strip():
             raise PreregistrationError("toda desviación debe justificarse")
         d = {"field": field_name, "old": self.content[field_name], "new": new_value,
-             "after_oos": self.oos_seen(access_history), "justification": justification,
+             "after_oos": self.oos_seen(registry, access_history), "justification": justification,
              "at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
         self.deviations.append(d)
         return d
+
+
+def _registry_exposure(registry, experiment_id) -> bool:
+    """Consumo de OOS/LOCKBOX según el registro de experimentos (QA3R2-07). Fail-Closed."""
+    if not isinstance(registry, ExperimentRegistry):
+        raise PreregistrationError("se requiere un ExperimentRegistry válido (QA3R2-07)")
+    if not valid_experiment_id(experiment_id):
+        raise PreregistrationError(f"experimento no válido: {experiment_id!r} (formato EXP-NNNN)")
+    try:
+        records = registry.records()
+        experiments = registry.experiments()
+    except Exception as exc:   # ilegible, JSON corrupto, TRANSITION sin CREATED…
+        raise PreregistrationError(f"registro de experimentos ilegible o corrupto (QA3R2-07): {exc!r}") from exc
+    exp = experiments.get(experiment_id)
+    if exp is None or exp.get("origin") != REGISTRY_ORIGIN:
+        raise PreregistrationError(
+            f"{experiment_id} no es un experimento nativo registrado (los antecedentes no cuentan) (QA3R2-07)")
+    seen = False
+    for r in records:
+        if not isinstance(r, dict) or r.get("kind") != "PARTITION_CONSUMED":
+            continue
+        eid, part, sid = r.get("experiment_id"), r.get("partition"), r.get("snapshot_id")
+        if not isinstance(eid, str) or part not in SEALED or not isinstance(sid, str) or not sid:
+            raise PreregistrationError(f"registro PARTITION_CONSUMED incoherente (QA3R2-07): {r!r}")
+        if eid == experiment_id:
+            seen = True
+    if seen and not any(h.get("kind") == "TRANSITION" and h.get("to") == "OOS_EVALUATION"
+                        for h in exp["history"]):
+        # solo se consume en OOS_EVALUATION (partitions.py): consumo sin esa transición es incoherente
+        raise PreregistrationError(
+            f"{experiment_id}: consumo registrado sin transición a OOS_EVALUATION (registro incoherente) (QA3R2-07)")
+    return seen
+
+
+def _access_log_exposure(access_history, experiment_id) -> bool:
+    """Evidencia adicional del registro de accesos: solo puede añadir exposición (QA3R2-07)."""
+    if access_history is None:
+        return False
+    if not isinstance(access_history, (list, tuple)) or not all(isinstance(r, dict) for r in access_history):
+        raise PreregistrationError("registro de accesos ilegible: se espera una lista de objetos (QA3R2-07)")
+    return any(bool(r.get("allowed")) and r.get("partition") in SEALED
+               and r.get("experiment_id") == experiment_id for r in access_history)
 
 
 def freeze(prereg: dict) -> FrozenPreregistration:
