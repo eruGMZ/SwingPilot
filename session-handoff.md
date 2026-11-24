@@ -1,6 +1,43 @@
 # session-handoff.md — SwingPilot Harness
 
-## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: QA-CR020-04
+## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: pruebas de caracterización de CR-022 §F (requieren autorización expresa)
+
+**Base:** commit «docs(impl-3): approve CR-022 exact-pair relevance under DEC-024» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push; comprobar con `git status -sb`). Contrato **v1.10** congelado (CR-022, DEC-024).
+**Última evidencia funcional:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 822 passed, 5 skipped (en `d84535a`; CR-022 no cambió código ni pruebas). Validadores OK antes del commit. Registro real sin cambios (SHA-256 `07efad20…`).
+
+**Objetivo siguiente (aprobado en alcance por DEC-024; implementación y ejecución pendientes de autorización separada y expresa):** cuatro pruebas de caracterización de TC-ML-024 (CR-022 §F) en `tests/unit/test_trials_accounting.py`, solo con datos sintéticos:
+1. P5: dos configuraciones posteriores de `Y`; la selección cita solo una → la otra es NO RELEVANTE; `N_eval` = `N_pre` + 1.
+2. Variante: una DEVIATION posterior a ambas cita solo una → la otra es INDETERMINADA; veredicto INCONCLUSIVE (`SUBSEQUENT_TRIAL_INFLUENCE_UNDETERMINED`).
+3. Una referencia `provenance_id` en la selección no hace relevante ninguna prueba posterior.
+4. Un par citado por dos puntos de decisión suma una sola vez.
+Deben **pasar** con el código actual (son de caracterización, no regresiones); no se adapta ninguna prueba existente ni se modifica código funcional. La evidencia se revisa antes de cerrar CONF-011 y de verificar QA-CR020-04.
+
+**Estado de los hallazgos de la QA independiente de CR-020** (`harness/verification/IMPL-3_CR-020_QA_independiente.md`, sin modificar): QA-CR020-01, 02 y 03 corregidos y aceptados, pendientes de reverificación independiente (obligaciones en los puntos de control anteriores); **QA-CR020-04 pendiente de la evidencia de caracterización** (aclaración contractual CR-022 aplicada; implementación conforme, CR-022 §E); QA-CR020-05, 06, O3 y O4 sin resolver.
+**Estado general:** CONF-009, CONF-010 y CONF-011 OPEN (CONF-011, LOW, hasta revisar la evidencia de caracterización); D2 pendiente de cierre; FEAT-015 DONE; FEAT-017 IN_PROGRESS; D3–D7 PENDIENTES; SNAP-0001 no creada; gates sin cambios; `feature_list.json` sin cambios.
+**Restricciones vigentes:** sin particiones reales, experimentos, SNAP-0001 ni IA; registro real solo lectura; commit y push solo con indicación del propietario.
+**Siguiente acción autorizada:** ninguna. Esperar la autorización expresa del propietario para implementar y ejecutar las pruebas de caracterización.
+
+## PUNTO DE CONTROL (2026-11-24) — CR-022 APROBADA (DEC-024); contrato v1.10 aplicado y aceptado; congelado en commit (sustituido por el punto de reanudación superior)
+
+**Base:** `d84535a` en `develop` (= `origin/develop`). Cambios contractuales y documentales sin commit. Contrato **v1.10** (CR-022, DEC-024) aplicado; congelarlo requiere la revisión del propietario y su indicación de commit.
+**Aplicado:** REQ-G-P17 (frase CR-022) y TC-ML-024 (entradas y resultado esperado); cabeceras v1.10 en los cinco documentos de `implementation/`; CR-020 §J (nota de vigencia); CR-022 APROBADA (§J); DEC-024 (nuevo); CONF-011 con severidad LOW confirmada. **Validadores:** OK. Suite no ejecutada (sin cambios de código ni de pruebas).
+**Archivos (sin commit):** `docs/decisions/DEC-024_aprobacion-cr022-relevancia-par-exacto.md` (nuevo), `harness/change_requests/CR-022_relevancia-por-par-exacto.md` (nuevo), `harness/change_requests/CR-020_contabilidad-pruebas-trials-count.md` (§J añadida), `implementation/{requirements,test_plan,architecture,api_contracts,data_flow,conflict_register}.md`, `progress.md`, `session-handoff.md`.
+**Se conservan:** gramática de `informed_by`, semántica de `provenance_id`, `N_pre`, `N_eval`, deduplicación por par, carácter confirmatorio y cálculo estadístico. La implementación actual ya cumple CR-022 (§E).
+**Pruebas de caracterización (CR-022 §F, 1–4: P5; variante con DEVIATION; `provenance_id`; par citado dos veces):** aprobadas en alcance; implementación y ejecución **diferidas** a una autorización separada, después de congelar este punto de control. Deben pasar con el código actual (no son regresiones).
+**Estado:** CONF-011 OPEN hasta que se produzca y revise la evidencia de caracterización; QA-CR020-04 pendiente de verificación. QA-CR020-01, 02 y 03 pendientes de reverificación independiente; 05, 06, O3 y O4 sin resolver. CONF-009 y CONF-010 OPEN; FEAT-015 DONE; FEAT-017 IN_PROGRESS; `feature_list.json` sin cambios.
+**Siguiente acción autorizada:** ninguna. Esperar la revisión del propietario. **Siguiente objetivo previsto** (requiere autorización expresa): congelar el contrato v1.10 (commit) y después implementar y ejecutar las pruebas de caracterización de CR-022 §F.
+
+## PUNTO DE CONTROL (2026-11-24) — QA-CR020-04: CR-022 PROPUESTA y CONF-011 registrado (sustituido por el punto de reanudación superior)
+
+**Base:** `d84535a` en `develop` (= `origin/develop`). Cambios documentales sin commit. Contrato **v1.9** sin cambios.
+**Decisión del propietario (2026-11-24):** opción A (referencias al par exacto); se rechaza la atribución implícita a nivel de experimento; referencias explícitas a experimentos diferidas.
+**Preparado:** `harness/change_requests/CR-022_relevancia-por-par-exacto.md` (PROPUESTA) y CONF-011 en `implementation/conflict_register.md` (OPEN; severidad LOW propuesta). La implementación actual ya cumple la aclaración (CR-022 §E): sin cambio de código.
+**Archivos (sin commit):** CR-022 (nuevo), `implementation/conflict_register.md`, `progress.md`, `session-handoff.md`.
+**Decisiones pendientes del propietario:** CR-022 §I (aprobación, aplicación al contrato v1.10 con su documento de decisión, pruebas de caracterización de §F, severidad de CONF-011).
+**Estado:** QA-CR020-04 sin resolver hasta que la aclaración se apruebe y se verifique. Los demás estados no cambian respecto del punto siguiente (QA-CR020-01, 02 y 03 pendientes de reverificación independiente; 05, 06, O3 y O4 sin resolver). CONF-009, CONF-010 y CONF-011 OPEN; FEAT-015 DONE; FEAT-017 IN_PROGRESS.
+**Siguiente acción autorizada:** ninguna. Esperar la revisión del propietario.
+
+## PUNTO DE CONTROL (2026-11-24) — reanudación en QA-CR020-04 (sustituido por el punto de reanudación superior)
 
 **Base:** commit «fix(impl-3): resolve QA-CR020-02 confirmatory status consistency» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push; comprobar con `git status -sb`). Contrato **v1.9** sin cambios.
 **Última evidencia:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 822 passed, 5 skipped; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK. Registro real sin cambios (SHA-256 `07efad20…`). Pruebas no reejecutadas para el commit.

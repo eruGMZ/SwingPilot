@@ -281,3 +281,10 @@ El texto de esta CR se conserva sin cambios como evidencia aprobada (DEC-021). D
 - ORQ-017-01, unicidad de `deviation_id`: un duplicado byte a byte idéntico es una sola desviación lógica; uno distinto es incoherente (CR-021 §D.2, §G.3).
 
 Las demás obligaciones de esta CR siguen vigentes. La implementación de CR-021 está PENDIENTE.
+
+## J. Nota de vigencia (2026-11-24, DEC-024)
+
+El texto de esta CR se conserva sin cambios como evidencia aprobada (DEC-021). Desde DEC-024, `harness/change_requests/CR-022_relevancia-por-par-exacto.md` **aclara**, sin sustituir ninguna otra obligación:
+- §C.4.2, tabla de clasificación, casos 1, 2 y 3: «citar `T`» significa incluir en `informed_by` la referencia exacta de su par (`experiment_id`, `config_id`). Las palabras «el experimento o» del caso 2 no crean ninguna referencia a experimentos: la gramática de `informed_by` (R2) no cambia, y una referencia `provenance_id` nunca cita una prueba posterior. Cada prueba posterior se clasifica por separado, también las del mismo experimento. Si se da cualquier condición del caso 3, prevalece sobre el caso 2 (CR-022 §C.1, §C.2).
+
+Se conserva la §I (CR-021). Las demás obligaciones de esta CR siguen vigentes.
