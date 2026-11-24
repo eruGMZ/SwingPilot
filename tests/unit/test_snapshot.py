@@ -116,7 +116,7 @@ def test_tc_ml_017_gaps_are_nan_and_counted_consistently(snap):
     assert m["gaps_total"] == {"1d": 0, "4h": 1, "1h": 1}
     for iv in ("1d", "4h", "1h"):   # QA3-09: el total coincide con la suma por partición
         assert m["gaps_total"][iv] == sum(m["files"][p]["per_interval"][iv]["gaps"] for p in m["files"])
-    h1 = _loader(res, tmp).load_train_val("1h")
+    h1 = _loader(res, tmp)._load_train_val_for_inspection("1h")
     row = h1[h1["open_time"] == START + 30 * DAY_MS + 3 * H]
     assert len(row) == 1 and row[["open", "high", "low", "close", "volume"]].isna().all(axis=None)
 
@@ -168,7 +168,7 @@ def test_tc_ml_015_tampering_is_detected(snap):
     with pytest.raises(SnapshotError):
         verify_snapshot(res.manifest_path, tmp / "var" / "snapshots")
     with pytest.raises(PartitionAccessError):
-        _loader(res, tmp).load_train_val()
+        _loader(res, tmp)._load_train_val_for_inspection()
 
 
 def test_snapshot_is_never_rewritten(snap):
@@ -267,7 +267,7 @@ def test_qa3r2_02_killed_process_leaves_nothing_consumable_and_retry_quarantines
 def test_train_validation_split_uses_manifest_cut(snap):
     res, tmp = snap
     loader = _loader(res, tmp)
-    tr, va = loader.split_train_validation(loader.load_train_val("1d"))
+    tr, va = loader.split_train_validation(loader._load_train_val_for_inspection("1d"))
     cut = res.manifest["cuts_ms"]["train_end"]
     assert tr["open_time"].max() < cut <= va["open_time"].min()
     assert va["open_time"].max() < res.manifest["cuts_ms"]["val_end"]
@@ -304,7 +304,7 @@ def test_tc_ml_016_lockbox_and_oos_denied_without_grant_and_logged(snap, monkeyp
     real = P.pq.read_table
     monkeypatch.setattr(P.pq, "read_table", lambda path, *a, **k: (opened.append(Path(path).name), real(path, *a, **k))[1])
     loader = _loader(res, tmp)
-    loader.load_train_val()
+    loader._load_train_val_for_inspection()
     for part in ("lockbox", "oos"):
         with pytest.raises(PartitionAccessError):
             loader.load_final(None, part)
@@ -317,11 +317,15 @@ def _advance_to_oos(reg, eid="EXP-0900"):
     reg.create(eid, "prueba", actor="orquestador")
     reg.transition(eid, "DESIGN", actor="orquestador")
     reg.transition(eid, "PREREGISTERED", actor="orquestador",
-                   evidence={"preregistration_sha256": "a" * 64, "min_history_ok": True})
+                   evidence={"preregistration_sha256": "a" * 64, "min_history_ok": True,
+                             "trials_accounting": reg.trials_accounting(eid, ["A"])})        # CR-020
     reg.transition(eid, "DATA_VALIDATION", actor="orquestador")
     reg.transition(eid, "DEVELOPMENT", actor="orquestador", evidence={"snapshot_verified": True})
     reg.transition(eid, "VALIDATION", actor="orquestador")
-    reg.transition(eid, "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-999_eval.md"})
+    reg.begin_configuration_evaluation(eid, "A", actor="orquestador")                    # CR-020
+    reg.transition(eid, "OOS_EVALUATION", actor="propietario",
+                   evidence={"decision_ref": "DEC-999_eval.md", "selected_config_id": "A",
+                             "selection_inputs_sha256": "0" * 64, "informed_by": []})
 
 
 def grant(part="lockbox", eid="EXP-0900", by="propietario", ref="DEC-999_eval.md"):
@@ -818,3 +822,130 @@ def test_qa3r2_08_authorized_read_still_verifies_hash_and_reseals(snap, part):
     df = loader.load_final(grant(part=part), part)
     assert len(df) == res.manifest["files"][part]["rows"]
     assert _mode(res.data_dir / f"{part}.parquet") == 0
+
+
+# --- CR-020 §C.3.2 (TC-ML-023): el cargador de Train+Val exige el inicio de evaluación registrado ---
+
+def test_tc_ml_023_loader_delivers_train_val_only_for_registered_pair(snap):
+    res, tmp = snap
+    reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
+    reg.create("EXP-0900", "prueba", actor="orquestador")
+    reg.transition("EXP-0900", "DESIGN", actor="orquestador")
+    reg.transition("EXP-0900", "PREREGISTERED", actor="orquestador",
+                   evidence={"preregistration_sha256": "a" * 64, "min_history_ok": True,
+                             "trials_accounting": reg.trials_accounting("EXP-0900", ["A"])})
+    reg.transition("EXP-0900", "DATA_VALIDATION", actor="orquestador")
+    reg.transition("EXP-0900", "DEVELOPMENT", actor="orquestador", evidence={"snapshot_verified": True})
+    loader = _loader(res, tmp, reg)
+    with pytest.raises(PartitionAccessError, match="sin inicio de evaluación"):
+        loader.load_train_val_for_configuration("EXP-0900", "A", "1d")
+    reg.begin_configuration_evaluation("EXP-0900", "A", actor="orquestador")
+    df = loader.load_train_val_for_configuration("EXP-0900", "A", "1d")
+    assert len(df) > 0 and set(df["interval"]) == {"1d"}
+    assert [(r["partition"], r["allowed"]) for r in loader.access_history()] == [("train_val", False), ("train_val", True)]
+    no_reg = _loader(res, tmp)
+    with pytest.raises(PartitionAccessError, match="sin registro"):
+        no_reg.load_train_val_for_configuration("EXP-0900", "A")
+
+
+# --- A2 (CR-020 §C.3.2; decisión del propietario, opción B): única vía pública de Train+Val -----
+
+import ast as _ast  # noqa: E402
+
+_PRIVATE_LOADER = "_load_train_val_for_inspection"
+_REPO = Path(__file__).resolve().parents[2]
+
+
+def _external_loader_uses(source: str) -> list[int]:
+    """Líneas que usan el cargador privado (o el antiguo nombre público) fuera de su definición."""
+    out = []
+    for node in _ast.walk(_ast.parse(source)):
+        if isinstance(node, _ast.Attribute) and node.attr in (_PRIVATE_LOADER, "load_train_val"):
+            out.append(node.lineno)
+        if isinstance(node, _ast.Name) and node.id in (_PRIVATE_LOADER, "load_train_val"):
+            out.append(node.lineno)
+    return out
+
+
+def test_a2_static_guard_no_external_use_of_private_loader():
+    assert _external_loader_uses("x = loader._load_train_val_for_inspection('1d')") == [1]    # el detector detecta
+    assert _external_loader_uses("x = loader.load_train_val()") == [1]
+    assert _external_loader_uses("x = loader.load_train_val_for_configuration('E', 'A')") == []
+    offenders = {}
+    for root in ("src", "scripts"):
+        for path in sorted((_REPO / root).rglob("*.py")):
+            if path.name == "partitions.py" and path.parent.name == "research":
+                continue
+            hits = _external_loader_uses(path.read_text(encoding="utf-8"))
+            if hits:
+                offenders[str(path.relative_to(_REPO))] = hits
+    assert offenders == {}, offenders
+
+
+def test_a2_only_the_guarded_loader_is_public():
+    public = {n for n in dir(PartitionLoader) if n.startswith("load_train_val")}
+    assert public == {"load_train_val_for_configuration"}
+    assert callable(getattr(PartitionLoader, _PRIVATE_LOADER))
+
+
+def _dev_registry(tmp, eids=("EXP-0900",)):
+    reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
+    for eid in eids:
+        reg.create(eid, "prueba", actor="orquestador")
+        reg.transition(eid, "DESIGN", actor="orquestador")
+        reg.transition(eid, "PREREGISTERED", actor="orquestador",
+                       evidence={"preregistration_sha256": "a" * 64, "min_history_ok": True,
+                                 "trials_accounting": reg.trials_accounting(eid, ["A", "B"])})
+        reg.transition(eid, "DATA_VALIDATION", actor="orquestador")
+        reg.transition(eid, "DEVELOPMENT", actor="orquestador", evidence={"snapshot_verified": True})
+    return reg
+
+
+def _no_read(loader):
+    reads = []
+    loader._read = lambda part: reads.append(part) or (_ for _ in ()).throw(AssertionError("leyó datos"))
+    return reads
+
+
+def test_a2_malformed_evaluation_record_does_not_unlock_data(snap):
+    res, tmp = snap
+    reg = _dev_registry(tmp)
+    reg._append({"kind": "CONFIGURATION_EVALUATED", "experiment_id": "EXP-0999", "config_id": "A",   # nunca creado
+                 "preregistration_sha256": "a" * 64, "partition": "train_val", "actor": "manual"})
+    loader = _loader(res, tmp, reg)
+    reads = _no_read(loader)
+    with pytest.raises(PartitionAccessError):
+        loader.load_train_val_for_configuration("EXP-0999", "A")
+    assert reads == [] and loader.access_history()[-1]["allowed"] is False
+
+
+def test_a2_pair_must_match_exactly(snap):
+    res, tmp = snap
+    reg = _dev_registry(tmp, ("EXP-0900", "EXP-0901"))
+    reg.begin_configuration_evaluation("EXP-0900", "A", actor="orquestador")
+    loader = _loader(res, tmp, reg)
+    reads = _no_read(loader)
+    for eid, cfg in (("EXP-0900", "B"), ("EXP-0901", "A")):
+        with pytest.raises(PartitionAccessError, match="sin inicio de evaluación"):
+            loader.load_train_val_for_configuration(eid, cfg)
+    assert reads == [] and [r["allowed"] for r in loader.access_history()] == [False, False]
+
+
+@pytest.mark.parametrize("case", ["corrupt_json", "inconsistent_antecedent", "missing_file"])
+def test_a2_unreadable_or_inconsistent_registry_denies_and_logs(snap, case):
+    res, tmp = snap
+    reg = _dev_registry(tmp)
+    reg.begin_configuration_evaluation("EXP-0900", "A", actor="orquestador")
+    if case == "corrupt_json":
+        with open(reg.path, "a") as fh:
+            fh.write('{"kind": "CONFIG')
+    elif case == "inconsistent_antecedent":
+        reg.register_antecedent("EXP-0001", "TF H4", "PENDING_DOCUMENTATION", source="s", note="n")   # sin procedencia
+    else:
+        reg.path.unlink()
+    loader = _loader(res, tmp, reg)
+    reads = _no_read(loader)
+    with pytest.raises(PartitionAccessError):
+        loader.load_train_val_for_configuration("EXP-0900", "A")
+    assert reads == [] and loader.access_history()[-1]["allowed"] is False
+

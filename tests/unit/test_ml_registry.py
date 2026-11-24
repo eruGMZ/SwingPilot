@@ -33,10 +33,10 @@ def env(tmp_path):
 
 def approve(exps, eid):
     exps.create(eid, "x", actor="orquestador")
-    for to, ev in [("DESIGN", {}), ("PREREGISTERED", {"preregistration_sha256": "a" * 64, "min_history_ok": True}),
+    for to, ev in [("DESIGN", {}), ("PREREGISTERED", None),
                    ("DATA_VALIDATION", {}), ("DEVELOPMENT", {"snapshot_verified": True}), ("VALIDATION", {})]:
-        exps.transition(eid, to, actor="orquestador", evidence=ev)
-    exps.transition(eid, "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-901_ok.md"})
+        exps.transition(eid, to, actor="orquestador", evidence=_cr020_freeze_ev(exps, eid) if ev is None else ev)
+    exps.transition(eid, "OOS_EVALUATION", actor="propietario", evidence=_cr020_oos_ev(exps, eid, "DEC-901_ok.md"))
     exps.transition(eid, "AUDIT", actor="orquestador")
     exps.transition(eid, "HUMAN_REVIEW", actor="orquestador")
     exps.transition(eid, "APPROVED", actor="propietario", evidence={"decision_ref": "DEC-901_ok.md"})
@@ -147,3 +147,18 @@ def test_no_training_code_in_ml_package():
         mods = {a.name.split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.Import) for a in n.names}
         mods |= {n.module.split(".")[0] for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) and n.module}
         assert not mods & {"sklearn", "xgboost", "torch"}, py
+
+
+def _cr020_freeze_ev(exps, eid, sha="a" * 64):
+    """CR-020: la congelación exige el «trials_accounting» recalculado desde el registro."""
+    return {"preregistration_sha256": sha, "min_history_ok": True,
+            "trials_accounting": exps.trials_accounting(eid, ["A"])}
+
+
+def _cr020_oos_ev(exps, eid, ref):
+    """CR-020: inicio duradero de la evaluación de «A» y registro de la selección de candidata."""
+    import hashlib
+    exps.begin_configuration_evaluation(eid, "A", actor="orquestador")
+    inputs = ('{"experiment_id":"%s","results":{"A":{"sharpe":1.0}}}' % eid).encode()
+    return {"decision_ref": ref, "selected_config_id": "A",
+            "selection_inputs_sha256": hashlib.sha256(inputs).hexdigest(), "informed_by": []}

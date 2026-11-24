@@ -1,5 +1,31 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — Implementación de CR-020 APROBADA por el propietario (con A2); commit en develop, sin push
+
+**Aprobación del propietario:** implementación funcional de CR-020 (v1.8, DEC-021) con la corrección A2; evidencia aceptada (778 passed, 5 skipped; validadores OK) y limitaciones residuales aceptadas. No es aprobación de QA independiente.
+**D2:** resuelta metodológicamente, aplicada contractualmente e implementada funcionalmente. Pendientes: registro real de procedencia y verificación independiente.
+**Estado:** CONF-009 y CONF-010 OPEN; FEAT-015 DONE; FEAT-017 IN_PROGRESS; D3–D7 PENDIENTES; SNAP-0001 no creada; registro real sin cambios.
+**Siguiente acción autorizada:** ninguna. Esperar autorización expresa antes de registrar la procedencia real de los antecedentes.
+
+### Registro previo a la aprobación — Corrección A2 aplicada (opción B); sin commit
+
+**Propietario:** aceptación provisional de CR-020 (sin commit ni aprobación final); DEVELOPMENT/VALIDATION provisional (exploración previa → D5); REQ-G-103 estricta; opción B de A2 aprobada.
+**Hecho:** cargador sin configuración privado (`_load_train_val_for_inspection`); `load_train_val_for_configuration` única vía pública, con el par en `accounting()["pairs"]` y Fail-Closed; guarda estática sobre `src/` y `scripts/`. Detalle: `harness/verification/IMPL-3_CR-020_implementacion.md` §8.
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 778 passed, 5 skipped. Validadores → OK. Antes de la corrección: 2 defectos de comportamiento genuinos + 5 fallos de interfaz.
+**Límite:** control de vías de la aplicación, no del sistema de archivos (`train_val.parquet` sin sellar).
+**Siguiente acción autorizada:** ninguna. Esperar la revisión del propietario antes del commit.
+
+## IMPL-3 (2026-11-24) — CR-020 implementada (FEAT-017); pendiente de revisión del propietario; sin commit
+
+**Base:** `d372e28` (develop = `origin/develop`, sincronizados).
+**Hecho:** registro (`ANTECEDENT_PROVENANCE`, `CONFIGURATION_EVALUATED`, conteo G/N_pre), congelación y selección validadas en el bloqueo, `informed_by`, regla de selección, conciliación del evaluador (`trials.py`), cargador con puerta. Detalle: `harness/verification/IMPL-3_CR-020_implementacion.md`.
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 771 passed, 5 skipped. Validadores → OK. Regresiones contra `d372e28`: 4 de comportamiento.
+**Ambigüedades abiertas (Fail-Closed):** estados que permiten evaluar (piloto previo a la congelación bloqueado hasta D5); `load_train_val` genérico; configuración no planificada → INCONCLUSIVE sin condición.
+**Registro real:** sin cambios; su `trials_count()` es indeterminado hasta los registros de procedencia autorizados.
+**Archivos modificados:** `src/swingpilot/research/{experiments,preregistration,acceptance,partitions,trials}.py`, `research/README.md`, `tests/unit/test_{research,snapshot,ml_registry,engines,trials_accounting,cr020_regressions}.py`, `harness/verification/IMPL-3_CR-020_implementacion.md`, `progress.md`, `session-handoff.md`.
+**Sin cambios:** contrato, AC, `feature_list.json`, estados de FEAT, gates; CONF-009/010 OPEN; D3–D7.
+**Siguiente acción autorizada:** ninguna. Esperar la revisión del propietario antes del commit, de los registros reales de procedencia o de la QA independiente.
+
 ## IMPL-3 (2026-11-24) — Aplicación contractual de CR-020 APROBADA; D2 resuelta (método y contrato); commit en develop, sin push
 
 **Aprobación del propietario (2026-11-24):** aplicación contractual de CR-020, contrato v1.8, DEC-021 y `feature_list.json` v1.17.0; REQ-4036 como fuente extraída; omisión de las líneas `AUTORIZA: PROCEDENCIA` en DEC-021 (los registros reales de procedencia requieren una autorización separada).

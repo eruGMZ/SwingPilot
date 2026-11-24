@@ -14,7 +14,13 @@ devuelve APPROVED: eso solo lo decide el propietario (REQ-G-107).
 Fail-Closed (QA3-05, QA3-07):
 - Cualquier entrada numérica no finita (NaN, ±inf) → INCONCLUSIVE.
 - El evaluador calcula él mismo Sharpe, drawdown y DSR a partir de las series; no acepta
-  métricas declaradas. El número de pruebas sale del registro de experimentos.
+  métricas declaradas. El número de pruebas no se acepta como declaración.
+
+Número de pruebas (CR-020, DEC-021; REQ-G-P17 v1.8): el DSR usa el conteo experimental congelado
+`N_pre`, reconstruido desde el registro, o `N_eval` = `N_pre` + pruebas posteriores relevantes;
+nunca el conteo vivo. Conteo incoherente, evidencia insuficiente, configuración no planificada,
+selección fuera de la regla congelada o influencia indeterminable → INCONCLUSIVE (`trials.py`).
+Aumentar el conteo no restaura el carácter confirmatorio perdido.
 - El conteo de trades OOS declarado debe coincidir con la serie.
 
 Dominio y coherencia (QA3R2-01) → INCONCLUSIVE si no se cumple:
@@ -38,6 +44,8 @@ from dataclasses import dataclass
 from statistics import NormalDist
 
 import numpy as np
+
+from .trials import reconcile
 
 PF_MIN, EXPECTANCY_MIN_R, DD_MAX, SHARPE_OOS_MIN = 1.3, 0.10, 0.20, 0.80
 MIN_TRADES = {"train_val": 100, "oos": 30, "lockbox": 30}
@@ -172,15 +180,34 @@ def _domain_errors(ev: ExperimentEvidence) -> list[str]:
     return errs
 
 
-def evaluate(ev: ExperimentEvidence, registry) -> Verdict:
+def evaluate(ev: ExperimentEvidence, registry, *, preregistration, selection_inputs: bytes | None) -> Verdict:
+    """Veredicto del evaluador (C.5): INCONCLUSIVE no cambia por sí solo el estado del
+    experimento; cualquier veredicto distinto de ELIGIBLE_FOR_HUMAN_REVIEW lo hace no elegible
+    para aprobación (TC-ML-006)."""
+    _check_inputs(ev)
+    rec = reconcile(registry, preregistration, selection_inputs)
+    accounting = {k: rec[k] for k in ("N_pre", "N_eval", "breakdown", "trials_live", "trials_after_freeze",
+                                      "relevant", "undetermined")}
+    if not rec["ok"]:
+        return Verdict("INCONCLUSIVE", list(rec["reasons"]),
+                       {"trials_count": None, "trials_accounting": accounting, "buy_and_hold": ev.buy_and_hold_report})
+    return _evaluate_with_trials(ev, rec["N_eval"], {"trials_accounting": accounting})
+
+
+def _check_inputs(ev: ExperimentEvidence) -> None:
     if not 0 < ev.dsr_min_probability < 1:
         raise ValueError("dsr_min_probability debe venir del preregistro, en (0, 1)")
     if not ev.buy_and_hold_report:
         raise ValueError("falta la comparación con comprar y mantener (P11: reporte obligatorio)")
     if ev.trades.get("oos") != len(ev.oos_net_r):
         raise ValueError(f"trades OOS declarados ({ev.trades.get('oos')}) ≠ serie ({len(ev.oos_net_r)}) (QA3-07)")
-    trials = registry.trials_count()
-    metrics: dict = {"trials_count": trials, "buy_and_hold": ev.buy_and_hold_report}
+
+
+def _evaluate_with_trials(ev: ExperimentEvidence, trials: int, extra: dict | None = None) -> Verdict:
+    """Métricas y umbrales con un número de pruebas ya conciliado. Uso interno: solo `evaluate`
+    lo obtiene del registro (las pruebas unitarias de umbrales lo llaman directamente)."""
+    _check_inputs(ev)
+    metrics: dict = {"trials_count": trials, "buy_and_hold": ev.buy_and_hold_report, **(extra or {})}
     numeric = [*ev.oos_net_r, *ev.oos_equity, *ev.oos_period_returns, ev.periods_per_year,
                ev.sr_variance_across_trials, *ev.trades.values()]
     if not _finite(*numeric) or ev.periods_per_year <= 0 or ev.sr_variance_across_trials < 0 or not ev.oos_equity:

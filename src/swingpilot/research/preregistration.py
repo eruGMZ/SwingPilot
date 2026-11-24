@@ -4,9 +4,18 @@ DEC-005 P15/P16; DEC-011; TC-ML-011, TC-ML-013, TC-ML-014).
 El preregistro se congela con un SHA-256 de su JSON canónico antes de cualquier evaluación
 confirmatoria. Un cambio posterior en un campo congelado queda como desviación; si ocurre tras
 ver resultados OOS en un campo de diseño, el experimento deja de ser confirmatorio.
+
+CR-020 (DEC-021; contrato v1.8): el preregistro declara `trials_count` con el desglose de
+`trials_accounting` (H_doc, H_bound, E, planned_config_ids, planned_new, N_pre, provenance_ids) y
+una `candidate_selection_rule` determinista (`PRIMARY <config_id>` o
+`ARGMAX <métrica> TIEBREAK <config_id>,…`). `preregister` congela en el registro solo si el
+desglose coincide con el recalculado dentro del bloqueo. `begin_evaluation` registra el inicio
+duradero de la evaluación de una configuración; una configuración no planificada se registra
+igualmente (cuenta) junto con su DEVIATION. Las desviaciones nuevas exigen `informed_by` (R2).
 """
 import hashlib
 import json
+import math
 import re
 import uuid
 from dataclasses import dataclass, field
@@ -15,7 +24,7 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from .experiments import (REGISTRY_ORIGIN, ExperimentError, ExperimentRegistry, PersistenceUncertainError,
-                          valid_experiment_id)
+                          accounting_shape_error, valid_config_id, valid_experiment_id)
 from .snapshot import SEALED
 
 # Campos obligatorios (REQ-G-103 + CR-011 + REQ-G-109)
@@ -26,11 +35,13 @@ REQUIRED_FIELDS = (
     "wf_design", "label_horizon_months", "snapshot", "observed_trade_rate_per_month",
     "trade_rate_source", "execution_model", "regime_declaration", "sharpe_definition",
     "antecedents", "trials_count", "min_history", "statistical_tests",
+    "candidate_selection_rule",                                   # CR-020 §C.3.4 (R1)
 )
 WF_KEYS = ("train_months", "embargo_months", "test_months", "step_months", "roll_frequency", "n_windows")
 # Campos cuyo cambio tras ver OOS invalida el carácter confirmatorio (CR-011, REQ-G-109)
 DESIGN_FIELDS = ("wf_design", "label_horizon_months", "execution_model", "acceptance_criteria",
-                 "rejection_criteria", "metrics", "costs", "entry_rules", "exit_rules", "data_split")
+                 "rejection_criteria", "metrics", "costs", "entry_rules", "exit_rules", "data_split",
+                 "candidate_selection_rule")                      # CR-020 §C.3.4
 # DEC-005 / DEC-011 / REQ-G-106
 CONTRACT_WF = {"train_months": 24, "embargo_months": 2, "test_months": 6, "step_months": 6}
 MIN_WF_WINDOWS = 2
@@ -44,6 +55,67 @@ class PreregistrationError(ValueError):
 
 class DeviationPersistenceUncertain(PreregistrationError):
     """La escritura de una desviación falló después de empezar (ORQ-017-01)."""
+
+
+class EvaluationPersistenceUncertain(PreregistrationError):
+    """El inicio de evaluación (o su DEVIATION) no consta con certeza: la evaluación no empieza
+    (CR-020 §C.3.2)."""
+
+
+# --- Regla de selección de candidata (CR-020 §C.3.4, R1) --------------------------------------
+_RULE_PRIMARY = re.compile(r"PRIMARY (\S+)", re.ASCII)
+_RULE_ARGMAX = re.compile(r"ARGMAX ([A-Za-z0-9_.-]+) TIEBREAK (\S+)", re.ASCII)
+
+
+def _declared_metrics(metrics) -> set:
+    if isinstance(metrics, list):
+        return {m for m in metrics if isinstance(m, str)}
+    if isinstance(metrics, dict):
+        return {m for m in metrics if isinstance(m, str)}
+    return set()
+
+
+def parse_selection_rule(rule, planned: list[str], metrics) -> dict:
+    """Valida la regla con `fullmatch` contra las configuraciones planificadas y las métricas
+    declaradas. Devuelve su forma normalizada; si no es válida → PreregistrationError."""
+    if not isinstance(rule, str):
+        raise PreregistrationError("candidate_selection_rule debe ser texto")
+    m = _RULE_PRIMARY.fullmatch(rule)
+    if m:
+        cfg = m.group(1)
+        if not valid_config_id(cfg) or cfg not in planned:
+            raise PreregistrationError(f"PRIMARY cita una configuración no planificada: {cfg!r}")
+        return {"form": "PRIMARY", "config_id": cfg}
+    m = _RULE_ARGMAX.fullmatch(rule)
+    if m:
+        metric, order = m.group(1), m.group(2).split(",")
+        if metric not in _declared_metrics(metrics):
+            raise PreregistrationError(f"ARGMAX usa una métrica no declarada en «metrics»: {metric!r}")
+        if not all(valid_config_id(c) for c in order) or len(set(order)) != len(order) \
+                or sorted(order) != sorted(planned):
+            raise PreregistrationError("TIEBREAK debe enumerar todas las configuraciones planificadas una sola vez")
+        return {"form": "ARGMAX", "metric": metric, "tiebreak": order}
+    raise PreregistrationError(f"candidate_selection_rule mal formada: {rule!r} "
+                               "(formas: «PRIMARY <config_id>», «ARGMAX <métrica> TIEBREAK <config_id>,…»)")
+
+
+def apply_selection_rule(parsed: dict, results: dict) -> str:
+    """Aplica la regla congelada a los resultados de Train+Val {config_id: {métrica: valor}}.
+    ARGMAX: mayor valor; empate → primera en TIEBREAK. Valor no numérico o no finito → error."""
+    if parsed["form"] == "PRIMARY":
+        return parsed["config_id"]
+    best, best_val = None, None
+    for cfg in parsed["tiebreak"]:
+        if cfg not in results:
+            continue
+        val = results[cfg].get(parsed["metric"]) if isinstance(results[cfg], dict) else None
+        if isinstance(val, bool) or not isinstance(val, (int, float)) or not math.isfinite(val):
+            raise PreregistrationError(f"resultado no numérico o no finito para {cfg}: {val!r}")
+        if best is None or val > best_val:
+            best, best_val = cfg, val
+    if best is None:
+        raise PreregistrationError("sin resultados a los que aplicar la regla")
+    return best
 
 
 def canonical_json(obj) -> str:
@@ -177,7 +249,7 @@ class FrozenPreregistration:
         return consumed or _access_log_exposure(access_history, self.experiment_id)
 
     def record_deviation(self, field_name: str, new_value, justification: str, *,
-                         registry, access_history: list[dict] | None = None,
+                         registry, informed_by: list, access_history: list[dict] | None = None,
                          actor: str = "orquestador") -> dict:
         """Documenta una desviación de forma duradera (REQ-G-103; ORQ-017-01).
 
@@ -200,6 +272,27 @@ class FrozenPreregistration:
             raise PreregistrationError("toda desviación debe justificarse")
         if not isinstance(actor, str) or not actor.strip():
             raise PreregistrationError("la desviación exige un actor")
+        build = self._deviation_builder(registry, field_name, new_value, justification, informed_by,
+                                        access_history, actor)
+        try:
+            rec = registry.append_deviation(build)
+        except PersistenceUncertainError as exc:
+            self._persistence_uncertain = build.deviation_id
+            raise DeviationPersistenceUncertain(
+                f"persistencia incierta de la desviación {build.deviation_id}; no se da por registrada ni por ausente "
+                f"(ORQ-017-01): {exc}") from exc
+        except ExperimentError as exc:
+            raise PreregistrationError(str(exc)) from exc
+        self._registry = registry
+        self.deviations.append(rec)
+        return rec
+
+    def _deviation_builder(self, registry, field_name, new_value, justification, informed_by, access_history,
+                           actor, extra: dict | None = None):
+        """Constructor del registro DEVIATION, ejecutado dentro del bloqueo exclusivo (ORQ-017-01).
+        `informed_by` es obligatorio en las desviaciones nuevas (R2, CR-020)."""
+        if not isinstance(informed_by, list):
+            raise PreregistrationError("toda desviación nueva exige «informed_by» (lista, puede estar vacía) (R2)")
         deviation_id = uuid.uuid4().hex
         eid = self.experiment_id
 
@@ -210,29 +303,64 @@ class FrozenPreregistration:
             if _preregistered_sha(registry, eid) != self.sha256:
                 raise PreregistrationError(f"{eid}: el SHA-256 del preregistro no coincide con el de PREREGISTERED "
                                            "en el registro (ORQ-017-01)")
+            why = registry.informed_by_error(informed_by, registry.records())
+            if why:
+                raise PreregistrationError(f"informed_by no verificable (R2): {why}")
             rec = {"kind": "DEVIATION", "deviation_id": deviation_id, "experiment_id": eid,
                    "preregistration_sha256": self.sha256, "field": field_name,
                    "old": self.content[field_name], "new": new_value, "justification": justification,
                    "after_oos": bool(consumed or evidence), "access_log_evidence": evidence,
-                   "actor": actor, "authorizes_change": False}
+                   "actor": actor, "authorizes_change": False, "informed_by": list(informed_by), **(extra or {})}
             try:
                 json.dumps(rec, ensure_ascii=False, sort_keys=True)
             except (TypeError, ValueError) as exc:
                 raise PreregistrationError(f"desviación no serializable: {exc!r}") from exc
             return rec
+        build.deviation_id = deviation_id
+        return build
 
+    def planned_config_ids(self) -> list[str]:
+        return list(self.content["trials_count"]["planned_config_ids"])
+
+    def begin_evaluation(self, config_id: str, *, registry, actor: str = "orquestador",
+                         informed_by: list | None = None, justification: str | None = None,
+                         access_history: list[dict] | None = None) -> dict:
+        """Inicio duradero de la evaluación de una configuración (CR-020 §C.3.2). Debe llamarse
+        ANTES de evaluar. Configuración no planificada: cuenta y se registra su DEVIATION (exige
+        justificación e `informed_by`); el experimento deja de ser confirmatorio (REQ-G-103 v1.8).
+        Rechazo previo → EvaluationRequestRejected; escritura incierta → EvaluationPersistenceUncertain."""
+        if not isinstance(registry, ExperimentRegistry):
+            raise PreregistrationError("se requiere un ExperimentRegistry válido")
+        self.verify()
+        if _preregistered_sha(registry, self.experiment_id) != self.sha256:
+            raise PreregistrationError("el SHA-256 de este preregistro no coincide con el de PREREGISTERED")
+        builder = None
+        if config_id not in self.planned_config_ids():
+            if not isinstance(justification, str) or not justification.strip():
+                raise PreregistrationError("una configuración no planificada exige justificar la desviación")
+            builder = self._deviation_builder(registry, "trials_count", {"unplanned_config_id": config_id},
+                                              justification, informed_by, access_history, actor,
+                                              extra={"config_id": config_id})
         try:
-            rec = registry.append_deviation(build)
+            rec = registry.begin_configuration_evaluation(self.experiment_id, config_id, actor=actor,
+                                                          deviation_builder=builder)
         except PersistenceUncertainError as exc:
-            self._persistence_uncertain = deviation_id
-            raise DeviationPersistenceUncertain(
-                f"persistencia incierta de la desviación {deviation_id}; no se da por registrada ni por ausente "
-                f"(ORQ-017-01): {exc}") from exc
-        except ExperimentError as exc:
-            raise PreregistrationError(str(exc)) from exc
-        self._registry = registry
-        self.deviations.append(rec)
+            raise EvaluationPersistenceUncertain(str(exc)) from exc
         return rec
+
+
+def preregister(registry, frozen: "FrozenPreregistration", *, actor: str = "orquestador") -> dict:
+    """Congela en el registro (DESIGN → PREREGISTERED) con el SHA-256 y el `trials_accounting`
+    declarado en el preregistro; el registro lo recalcula dentro del bloqueo y rechaza la
+    transición si no coincide (CR-020 §C.3.3, TC-ML-022)."""
+    if not isinstance(registry, ExperimentRegistry):
+        raise PreregistrationError("se requiere un ExperimentRegistry válido")
+    frozen.verify()
+    c = frozen.content
+    return registry.transition(frozen.experiment_id, "PREREGISTERED", actor=actor,
+                               evidence={"preregistration_sha256": frozen.sha256,
+                                         "min_history_ok": c["min_history"].get("ok") is True,
+                                         "trials_accounting": c["trials_count"]})
 
 
 def _registry_exposure(registry, experiment_id) -> bool:
@@ -339,6 +467,8 @@ def _deviation_shape_error(r) -> str | None:
     ev = r["access_log_evidence"]
     if not isinstance(ev, list) or not all(_is_exposure_entry(e, r["experiment_id"]) for e in ev):
         return "evidencia del registro de accesos no válida"
+    if "informed_by" in r and not isinstance(r["informed_by"], list):   # R2: ausente = histórico
+        return "informed_by no es una lista"
     return None
 
 
@@ -352,7 +482,7 @@ def _replay(registry, experiment_id) -> list[dict]:
     records, _ = _read(registry)
     consumed = preregistered = False
     seen_ids, out = set(), []
-    for r in records:
+    for i, r in enumerate(records):
         if not isinstance(r, dict):
             raise PreregistrationError(f"registro no válido: {r!r} (ORQ-017-01)")
         kind, eid = r.get("kind"), r.get("experiment_id")
@@ -364,6 +494,9 @@ def _replay(registry, experiment_id) -> list[dict]:
             why = _deviation_shape_error(r)
             if why is None and r["deviation_id"] in seen_ids:
                 why = "deviation_id duplicado"
+            if why is None and "informed_by" in r:
+                ib = registry.informed_by_error(r["informed_by"], records[:i])
+                why = f"informed_by no verificable: {ib}" if ib else None
             if why:
                 raise PreregistrationError(f"registro DEVIATION incoherente ({why}) (ORQ-017-01): {r!r}")
             seen_ids.add(r["deviation_id"])
@@ -401,6 +534,11 @@ def freeze(prereg: dict) -> FrozenPreregistration:
         raise PreregistrationError("histórico mínimo no alcanzado: no se congela (queda en DESIGN)")
     if prereg["trade_rate_source"] != "train_only":
         raise PreregistrationError("la tasa de trades debe venir solo de Train")
+    why = accounting_shape_error(prereg["trials_count"])               # CR-020 §C.3.3
+    if why:
+        raise PreregistrationError(f"trials_count debe declarar el desglose de la contabilidad de pruebas: {why}")
+    parse_selection_rule(prereg["candidate_selection_rule"], prereg["trials_count"]["planned_config_ids"],
+                         prereg["metrics"])                           # CR-020 §C.3.4
     content = json.loads(canonical_json(prereg))
     return FrozenPreregistration(content, hashlib.sha256(canonical_json(content).encode()).hexdigest(),
                                  datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"))

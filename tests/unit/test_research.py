@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 from swingpilot.research import acceptance as A  # noqa: E402
 from swingpilot.research import indicators as I  # noqa: E402
 from swingpilot.research.backtest import EntrySignal, ExecutionModel, run_backtest  # noqa: E402
-from swingpilot.research.experiments import ExperimentError, ExperimentRegistry  # noqa: E402
+from swingpilot.research.experiments import ExperimentError, ExperimentRegistry, TrialsAccountingError  # noqa: E402
 from swingpilot.research.preregistration import (PreregistrationError, check_min_history,  # noqa: E402
                                                  freeze, min_history_months, walk_forward_windows,
                                                  validate_wf_design)
@@ -41,10 +41,12 @@ def reg(tmp_path):
 def _preregister(reg, eid="EXP-0101", sha=None):
     # ORQ-017-01: PREREGISTERED cita el SHA-256 real del preregistro de prueba (antes "f"*64),
     # porque las desviaciones se vinculan a ese hash. Solo cambia la preparación.
+    # CR-020: la congelación exige además el «trials_accounting» recalculado desde el registro.
     reg.create(eid, "x", actor="orquestador")
     reg.transition(eid, "DESIGN", actor="orquestador")
     reg.transition(eid, "PREREGISTERED", actor="orquestador",
-                   evidence={"preregistration_sha256": sha or freeze(prereg()).sha256, "min_history_ok": True})
+                   evidence={"preregistration_sha256": sha or freeze(prereg()).sha256, "min_history_ok": True,
+                             "trials_accounting": reg.trials_accounting(eid, ["A"])})
 
 
 def _to_validation(reg, eid="EXP-0101", sha=None):
@@ -52,6 +54,17 @@ def _to_validation(reg, eid="EXP-0101", sha=None):
     reg.transition(eid, "DATA_VALIDATION", actor="orquestador")
     reg.transition(eid, "DEVELOPMENT", actor="orquestador", evidence={"snapshot_verified": True})
     reg.transition(eid, "VALIDATION", actor="orquestador")
+    reg.begin_configuration_evaluation(eid, "A", actor="orquestador")      # CR-020: inicio duradero
+
+
+SELECTION_INPUTS = b'{"experiment_id":"EXP-0101","results":{"A":{"sharpe":1.0}}}'
+
+
+def _oos_ev(ref, cfg="A", inputs=SELECTION_INPUTS, informed_by=()):
+    """CR-020 §C.3.4: la transición a OOS_EVALUATION registra la selección de candidata."""
+    import hashlib
+    return {"decision_ref": ref, "selected_config_id": cfg,
+            "selection_inputs_sha256": hashlib.sha256(inputs).hexdigest(), "informed_by": list(informed_by)}
 
 
 def test_twelve_states_and_forward_only(reg):
@@ -79,8 +92,8 @@ def test_req_g_107_ai_cannot_approve_or_open_oos(reg):
     with pytest.raises(ExperimentError, match="propietario"):
         reg.transition("EXP-0101", "OOS_EVALUATION", actor="orquestador", evidence={"decision_ref": "DEC-900_ok.md"})
     with pytest.raises(ExperimentError, match="no existe"):
-        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-404_x.md"})
-    reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-900_ok.md"})
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence=_oos_ev("DEC-404_x.md"))
+    reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence=_oos_ev("DEC-900_ok.md"))
     reg.transition("EXP-0101", "AUDIT", actor="orquestador")
     reg.transition("EXP-0101", "HUMAN_REVIEW", actor="orquestador")
     with pytest.raises(ExperimentError, match="propietario"):
@@ -95,10 +108,10 @@ def test_qa3_04_decision_must_cite_the_experiment(reg, tmp_path):
     (tmp_path / "decisions" / "DEC-901_other.md").write_text("AUTORIZA: EXP-0199 OOS_EVALUATION\n")      # autoriza otro experimento
     _to_validation(reg)
     with pytest.raises(ExperimentError, match="no cita"):
-        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-901_other.md"})
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence=_oos_ev("DEC-901_other.md"))
     with pytest.raises(ExperimentError, match="sin ruta"):
         reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario",
-                       evidence={"decision_ref": str(tmp_path / "decisions" / "DEC-900_ok.md")})
+                       evidence=_oos_ev(str(tmp_path / "decisions" / "DEC-900_ok.md")))
 
 
 @pytest.mark.parametrize("bad", ["EXP-1", "EXP-00001", "exp-0001", "EXP-000A", "EXP-0001 ", " EXP-0001",
@@ -128,14 +141,14 @@ def test_qa3r2_04_transition_requires_exact_authorization_line(reg, tmp_path, te
     (tmp_path / "decisions" / "DEC-902_sub.md").write_text(text + "\n")
     _to_validation(reg)
     with pytest.raises(ExperimentError, match="no cita exactamente"):
-        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-902_sub.md"})
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence=_oos_ev("DEC-902_sub.md"))
     assert reg.state("EXP-0101") == "VALIDATION"
 
 
 def test_qa3r2_04_exact_line_still_authorizes(reg, tmp_path):
     (tmp_path / "decisions" / "DEC-903_ok.md").write_text("# Decisión\n\nTexto libre sobre EXP-0101.\n\nAUTORIZA: EXP-0101 OOS_EVALUATION   \n")
     _to_validation(reg)
-    reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-903_ok.md"})
+    reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence=_oos_ev("DEC-903_ok.md"))
     assert reg.state("EXP-0101") == "OOS_EVALUATION"
 
 
@@ -143,7 +156,7 @@ def test_qa3r2_04_unreadable_decision_fails_closed(reg, tmp_path):
     (tmp_path / "decisions" / "DEC-904_bin.md").write_bytes(b"AUTORIZA: EXP-0101 OOS_EVALUATION\n\xff\xfe")
     _to_validation(reg)
     with pytest.raises(ExperimentError, match="no se puede leer"):
-        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-904_bin.md"})
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence=_oos_ev("DEC-904_bin.md"))
     assert reg.state("EXP-0101") == "VALIDATION"
 
 
@@ -156,7 +169,7 @@ def _to_state_before(reg, tmp_path, target):
     (tmp_path / "decisions" / _SETUP).write_text("AUTORIZA: EXP-0101\nAUTORIZA: EXP-0101 OOS_EVALUATION\n")
     _to_validation(reg)
     if target != "OOS_EVALUATION":
-        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": _SETUP})
+        reg.transition("EXP-0101", "OOS_EVALUATION", actor="propietario", evidence=_oos_ev(_SETUP))
         reg.transition("EXP-0101", "AUDIT", actor="orquestador")
         reg.transition("EXP-0101", "HUMAN_REVIEW", actor="orquestador")
     return reg.state("EXP-0101")
@@ -233,12 +246,15 @@ def test_tc_ml_010_rejected_experiments_are_kept_and_counted(reg):
     reg.register_antecedent("ANT-MR-H1", "Mean Reversion H1", "REJECTED", source="DEC-017", note="rechazada")
     exps = reg.experiments()
     assert exps["EXP-0101"]["state"] == "REJECTED" and len(exps["EXP-0101"]["history"]) == 7
-    assert reg.trials_count() == 4
+    # CR-020 (REQ-G-P17 v1.8): la unidad ya no es el experimento. Con antecedentes sin procedencia
+    # el conteo es indeterminado (Fail-Closed); el conteo por configuraciones se prueba en TC-ML-020/021.
+    with pytest.raises(TrialsAccountingError, match="sin procedencia"):
+        reg.trials_count()
     with pytest.raises(ExperimentError, match="reutilizan"):
         reg.create("EXP-0101", "otra vez", actor="orquestador")
     with pytest.raises(ExperimentError, match="antecedente"):
         reg.transition("EXP-0001", "DESIGN", actor="propietario")
-    assert len(reg.path.read_text().splitlines()) == 10   # append-only
+    assert len(reg.path.read_text().splitlines()) == 11   # append-only (+1: CONFIGURATION_EVALUATED, CR-020)
 
 
 def test_repository_registry_contains_declared_antecedents():
@@ -246,7 +262,12 @@ def test_repository_registry_contains_declared_antecedents():
     r = ExperimentRegistry(repo / "research" / "experiments" / "registry.jsonl")
     ex = r.experiments()
     assert ex["EXP-0001"]["state"] == "PENDING_DOCUMENTATION" and ex["ANT-MR-H1"]["state"] == "REJECTED"
-    assert r.eligible_state("EXP-0001") is None and r.trials_count() >= 2
+    assert r.eligible_state("EXP-0001") is None
+    # CR-020: sin registros ANTECEDENT_PROVENANCE (pendientes de autorización del propietario) el
+    # conteo del registro real es indeterminado; nunca se sustituye por el número de experimentos.
+    assert not any(x["kind"] == "ANTECEDENT_PROVENANCE" for x in r.records())
+    with pytest.raises(TrialsAccountingError, match="sin procedencia"):
+        r.trials_count()
 
 
 # --- Preregistro (REQ-G-103, TC-ML-013, TC-ML-014) ------------------------------------------
@@ -259,8 +280,12 @@ def prereg():
                                "execution_model", "regime_declaration", "sharpe_definition")}
     p.update(experiment_id="EXP-0101", timeframes=["H4"], wf_design=dict(WF), label_horizon_months=1,
              snapshot={"id": "SNAP-X"}, observed_trade_rate_per_month=3.0, trade_rate_source="train_only",
-             antecedents=["EXP-0001"], trials_count=3, min_history={"ok": True},
-             statistical_tests={"dsr_min_probability": "<pre>"})
+             antecedents=["EXP-0001"], min_history={"ok": True},
+             statistical_tests={"dsr_min_probability": "<pre>"},
+             # CR-020: desglose de la contabilidad de pruebas y regla de selección congelada
+             trials_count={"H_doc": 0, "H_bound": 0, "E": 0, "planned_config_ids": ["A"], "planned_new": 1,
+                           "N_pre": 1, "provenance_ids": []},
+             candidate_selection_rule="PRIMARY A")
     return p
 
 
@@ -271,15 +296,15 @@ def test_tc_ml_013_deviation_after_oos_derived_from_access_log(reg):
     fz = freeze(prereg())
     fz.verify()
     log = [{"allowed": True, "partition": "train_val", "experiment_id": None}]
-    fz.record_deviation("limitations", "otra", "aclaración antes de ver OOS", registry=reg, access_history=log)
+    fz.record_deviation("limitations", "otra", "aclaración antes de ver OOS", informed_by=[], registry=reg, access_history=log)
     assert fz.confirmatory
     # un acceso denegado o de otro experimento no cuenta
     log += [{"allowed": False, "partition": "oos", "experiment_id": "EXP-0101"},
             {"allowed": True, "partition": "oos", "experiment_id": "EXP-0199"}]
-    fz.record_deviation("limitations", "otra2", "sigue antes de OOS", registry=reg, access_history=log)
+    fz.record_deviation("limitations", "otra2", "sigue antes de OOS", informed_by=[], registry=reg, access_history=log)
     assert fz.confirmatory
     log.append({"allowed": True, "partition": "oos", "experiment_id": "EXP-0101"})
-    fz.record_deviation("wf_design", {**WF, "n_windows": 3}, "cambio tras ver OOS", registry=reg, access_history=log)
+    fz.record_deviation("wf_design", {**WF, "n_windows": 3}, "cambio tras ver OOS", informed_by=[], registry=reg, access_history=log)
     assert not fz.confirmatory
     assert fz.content["wf_design"]["n_windows"] == 2
     fz.content["hypothesis"] = "alterada"
@@ -303,7 +328,7 @@ CONTRADICTING_LOGS = {
 
 def _oos_ready(reg, eid="EXP-0101"):
     _to_validation(reg, eid)
-    reg.transition(eid, "OOS_EVALUATION", actor="propietario", evidence={"decision_ref": "DEC-900_ok.md"})
+    reg.transition(eid, "OOS_EVALUATION", actor="propietario", evidence=_oos_ev("DEC-900_ok.md"))
 
 
 def _consume(reg, partition="oos", sid="SNAP-TEST1", eid="EXP-0101"):
@@ -317,7 +342,7 @@ def test_qa3r2_07_registry_consumption_cannot_be_overridden_by_caller_log(reg, p
     _oos_ready(reg)
     _consume(reg, partition)
     fz = freeze(prereg())
-    d = fz.record_deviation("wf_design", NEW_WF, "cambio tras OOS", registry=reg,
+    d = fz.record_deviation("wf_design", NEW_WF, "cambio tras OOS", informed_by=[], registry=reg,
                             access_history=CONTRADICTING_LOGS[log_name])
     assert d["after_oos"] is True and not fz.confirmatory
 
@@ -334,7 +359,7 @@ def test_qa3r2_07_consumption_on_any_snapshot_counts(reg):
 def test_qa3r2_07_invalid_registry_fails_closed(bad):
     fz = freeze(prereg())
     with pytest.raises(PreregistrationError, match="ExperimentRegistry"):
-        fz.record_deviation("wf_design", NEW_WF, "x", registry=bad, access_history=[])
+        fz.record_deviation("wf_design", NEW_WF, "x", informed_by=[], registry=bad, access_history=[])
     assert fz.deviations == []
 
 
@@ -346,7 +371,7 @@ def test_qa3r2_07_unregistered_or_antecedent_experiment_fails_closed(reg):
     p["experiment_id"] = "EXP-0002"
     reg.register_antecedent("EXP-0002", "antecedente", "REJECTED", "DEC-018", "nota")
     with pytest.raises(PreregistrationError, match="nativo"):           # antecedente declarado
-        freeze(p).record_deviation("wf_design", NEW_WF, "x", registry=reg)
+        freeze(p).record_deviation("wf_design", NEW_WF, "x", informed_by=[], registry=reg)
 
 
 def test_qa3r2_07_unreadable_or_corrupt_registry_fails_closed(reg, tmp_path):
@@ -355,7 +380,7 @@ def test_qa3r2_07_unreadable_or_corrupt_registry_fails_closed(reg, tmp_path):
     with open(reg.path, "a") as fh:
         fh.write("{no es json\n")
     with pytest.raises(PreregistrationError, match="ilegible o corrupto"):
-        fz.record_deviation("wf_design", NEW_WF, "x", registry=reg)
+        fz.record_deviation("wf_design", NEW_WF, "x", informed_by=[], registry=reg)
     d = tmp_path / "dir_registry.jsonl"
     d.mkdir()                                                            # ilegible como archivo
     with pytest.raises(PreregistrationError, match="ilegible o corrupto"):
@@ -387,7 +412,7 @@ def test_qa3r2_07_consumption_without_oos_evaluation_is_inconsistent(reg):
     _consume(reg, "oos")                      # claim_partition no comprueba el estado (lo hace partitions.py)
     fz = freeze(prereg())
     with pytest.raises(PreregistrationError, match="sin transición a OOS_EVALUATION"):
-        fz.record_deviation("wf_design", NEW_WF, "x", registry=reg)
+        fz.record_deviation("wf_design", NEW_WF, "x", informed_by=[], registry=reg)
     assert fz.deviations == []
 
 
@@ -403,7 +428,7 @@ def test_qa3r2_07_authorization_without_consumption_is_not_exposure(reg):
     fz = freeze(prereg())
     assert fz.oos_seen(reg) is False
     reg.transition("EXP-0101", "AUDIT", actor="orquestador")
-    fz.record_deviation("wf_design", NEW_WF, "sin exposición real", registry=reg, access_history=[])
+    fz.record_deviation("wf_design", NEW_WF, "sin exposición real", informed_by=[], registry=reg, access_history=[])
     assert fz.confirmatory
 
 
@@ -415,19 +440,19 @@ def test_qa3r2_07_other_experiment_consumption_does_not_count(reg):
     _consume(reg, "oos", eid="EXP-0102")
     _consume(reg, "lockbox", eid="EXP-0102")
     fz = freeze(prereg())
-    fz.record_deviation("wf_design", NEW_WF, "x", registry=reg)
+    fz.record_deviation("wf_design", NEW_WF, "x", informed_by=[], registry=reg)
     assert fz.confirmatory
 
 
 def test_qa3r2_07_pre_exposure_and_non_design_deviations_preserved(reg):
     _oos_ready(reg)
     fz = freeze(prereg())
-    fz.record_deviation("wf_design", NEW_WF, "antes de la exposición", registry=reg)
+    fz.record_deviation("wf_design", NEW_WF, "antes de la exposición", informed_by=[], registry=reg)
     _consume(reg, "oos")
     assert fz.confirmatory                                   # la desviación previa no cambia
-    d = fz.record_deviation("limitations", "otra", "campo no de diseño tras OOS", registry=reg)
+    d = fz.record_deviation("limitations", "otra", "campo no de diseño tras OOS", informed_by=[], registry=reg)
     assert d["after_oos"] is True and fz.confirmatory        # campo fuera de DESIGN_FIELDS
-    fz.record_deviation("metrics", "otra", "campo de diseño tras OOS", registry=reg)
+    fz.record_deviation("metrics", "otra", "campo de diseño tras OOS", informed_by=[], registry=reg)
     assert not fz.confirmatory
     assert fz.content["wf_design"]["n_windows"] == 2         # el contenido congelado no cambia
     fz.verify()
@@ -467,7 +492,7 @@ def test_orq_017_01_regression_reconstruction_after_exposure_is_not_confirmatory
     _oos_ready(reg)
     _consume(reg, "oos")
     fz = freeze(prereg())
-    rec = fz.record_deviation("wf_design", NEW_WF, "cambio tras OOS", registry=reg)
+    rec = fz.record_deviation("wf_design", NEW_WF, "cambio tras OOS", informed_by=[], registry=reg)
     assert rec["after_oos"] is True and rec["authorizes_change"] is False
     # otra sesión: registro y preregistro nuevos
     fresh, fz2 = _fresh_reg(reg), _rebuild(fz)
@@ -490,7 +515,7 @@ def test_orq_017_01_regression_separate_process_writes_parent_reconstructs(reg):
             "c = json.loads(sys.argv[2]);"
             "r = ExperimentRegistry(c['path'], c['dec']);"
             "f = FrozenPreregistration(c['content'], c['sha'], c['at']);"
-            "print(f.record_deviation('wf_design', c['new'], 'cambio en otro proceso', registry=r)['after_oos'])")
+            "print(f.record_deviation('wf_design', c['new'], 'cambio en otro proceso', informed_by=[], registry=r)['after_oos'])")
     arg = _json.dumps({"path": str(reg.path), "dec": str(reg.decisions_dir), "content": fz.content,
                        "sha": fz.sha256, "at": fz.frozen_at_utc, "new": NEW_WF})
     out = _subprocess.run([sys.executable, "-c", code, SRC_DIR, arg], capture_output=True, text=True, timeout=60)
@@ -509,7 +534,7 @@ def test_orq_017_01_deterministic_concurrency_exposure_and_append_under_same_loc
     def worker():
         started.set()
         try:
-            result["rec"] = fz.record_deviation("wf_design", NEW_WF, "concurrente", registry=reg)
+            result["rec"] = fz.record_deviation("wf_design", NEW_WF, "concurrente", informed_by=[], registry=reg)
         except BaseException as exc:          # pragma: no cover - se informa en la aserción
             result["exc"] = exc
 
@@ -537,13 +562,13 @@ def test_orq_017_01_deterministic_concurrency_exposure_and_append_under_same_loc
 def test_orq_017_01_exposure_chronology_is_file_order(reg):
     _oos_ready(reg)
     fz = freeze(prereg())
-    before = fz.record_deviation("wf_design", NEW_WF, "antes de la exposición", registry=reg)
+    before = fz.record_deviation("wf_design", NEW_WF, "antes de la exposición", informed_by=[], registry=reg)
     _consume(reg, "lockbox")
-    after_nd = fz.record_deviation("limitations", "otra", "no de diseño tras exposición", registry=reg)
+    after_nd = fz.record_deviation("limitations", "otra", "no de diseño tras exposición", informed_by=[], registry=reg)
     assert before["after_oos"] is False and after_nd["after_oos"] is True
     st = _rebuild(fz).confirmatory_status(_fresh_reg(reg))
     assert st["confirmatory"] is True and len(st["deviations"]) == 2
-    after_d = fz.record_deviation("metrics", "otra", "de diseño tras exposición", registry=reg)
+    after_d = fz.record_deviation("metrics", "otra", "de diseño tras exposición", informed_by=[], registry=reg)
     st = _rebuild(fz).confirmatory_status(_fresh_reg(reg))
     assert st["confirmatory"] is False and st["design_deviations_after_oos"] == [after_d["deviation_id"]]
 
@@ -554,7 +579,7 @@ def test_orq_017_01_access_log_exposure_is_persisted_and_verifiable(reg):
     log = [{"allowed": True, "partition": "oos", "experiment_id": "EXP-0101", "snapshot_id": "SNAP-TEST1",
             "at_utc": "2026-11-24T00:00:00Z", "reason": "x"},
            {"allowed": True, "partition": "train_val", "experiment_id": None}]
-    rec = fz.record_deviation("wf_design", NEW_WF, "tras acceso registrado solo en el log", registry=reg,
+    rec = fz.record_deviation("wf_design", NEW_WF, "tras acceso registrado solo en el log", informed_by=[], registry=reg,
                               access_history=log)
     assert rec["after_oos"] is True and rec["access_log_evidence"] == [log[0]]
     st = _rebuild(fz).confirmatory_status(_fresh_reg(reg))           # sin pasar el log al reconstruir
@@ -566,10 +591,10 @@ def test_orq_017_01_hash_binding(reg):
     other = prereg()
     other["limitations"] = "contenido distinto"
     with pytest.raises(PreregistrationError, match="SHA-256"):           # preregistro con otro hash
-        freeze(other).record_deviation("wf_design", NEW_WF, "x", registry=reg)
+        freeze(other).record_deviation("wf_design", NEW_WF, "x", informed_by=[], registry=reg)
     assert _deviation_records(reg) == []
     fz = freeze(prereg())
-    fz.record_deviation("limitations", "y", "válida", registry=reg)
+    fz.record_deviation("limitations", "y", "válida", informed_by=[], registry=reg)
     # DEVIATION válida de OTRO experimento con otro hash: se ignora
     reg._append({"kind": "DEVIATION", "deviation_id": "a" * 32, "experiment_id": "EXP-0199",
                  "preregistration_sha256": "b" * 64, "field": "metrics", "old": 1, "new": 2,
@@ -589,7 +614,7 @@ def test_orq_017_01_requires_preregistered_transition(reg):
     reg.create("EXP-0101", "x", actor="orquestador")
     fz = freeze(prereg())
     with pytest.raises(PreregistrationError, match="PREREGISTERED"):
-        fz.record_deviation("limitations", "y", "x", registry=reg)
+        fz.record_deviation("limitations", "y", "x", informed_by=[], registry=reg)
     with pytest.raises(PreregistrationError, match="PREREGISTERED"):
         confirmatory_status(reg, "EXP-0101")
 
@@ -625,7 +650,7 @@ def test_orq_017_01_malformed_deviation_evidence_fails_closed(reg, case):
     with pytest.raises(PreregistrationError, match="incoherente"):
         confirmatory_status(_fresh_reg(reg), "EXP-0101")
     with pytest.raises(PreregistrationError, match="incoherente"):       # tampoco se puede añadir otra
-        freeze(prereg()).record_deviation("limitations", "z", "x", registry=reg)
+        freeze(prereg()).record_deviation("limitations", "z", "x", informed_by=[], registry=reg)
 
 
 def test_orq_017_01_chronology_and_duplicate_inconsistencies_fail_closed(reg, tmp_path):
@@ -648,7 +673,8 @@ def test_orq_017_01_chronology_and_duplicate_inconsistencies_fail_closed(reg, tm
     r3._append(_valid_deviation())
     r3.transition("EXP-0101", "DESIGN", actor="orquestador")
     r3.transition("EXP-0101", "PREREGISTERED", actor="orquestador",
-                  evidence={"preregistration_sha256": freeze(prereg()).sha256, "min_history_ok": True})
+                  evidence={"preregistration_sha256": freeze(prereg()).sha256, "min_history_ok": True,
+                            "trials_accounting": r3.trials_accounting("EXP-0101", ["A"])})
     with pytest.raises(PreregistrationError, match="anterior a PREREGISTERED"):
         confirmatory_status(r3, "EXP-0101")
     # JSON corrupto
@@ -667,7 +693,7 @@ def test_orq_017_01_fsync_failure_is_uncertain_record_present(reg, monkeypatch):
         raise OSError("fsync simulado")
     monkeypatch.setattr(_experiments_mod.os, "fsync", bad_fsync)
     with pytest.raises(DeviationPersistenceUncertain, match="incierta"):
-        fz.record_deviation("wf_design", NEW_WF, "tras OOS", registry=reg)
+        fz.record_deviation("wf_design", NEW_WF, "tras OOS", informed_by=[], registry=reg)
     monkeypatch.undo()
     assert fz.deviations == []                                   # no se informa éxito
     with pytest.raises(PreregistrationError, match="incierta"):
@@ -675,7 +701,7 @@ def test_orq_017_01_fsync_failure_is_uncertain_record_present(reg, monkeypatch):
     with pytest.raises(PreregistrationError, match="incierta"):
         fz.confirmatory_status(reg)
     with pytest.raises(PreregistrationError, match="incierta"):
-        fz.record_deviation("limitations", "y", "x", registry=reg)
+        fz.record_deviation("limitations", "y", "x", informed_by=[], registry=reg)
     # el registro sí quedó escrito: la reconstrucción lo ve
     assert len(_deviation_records(reg)) == 1
     assert _rebuild(fz).confirmatory_status(_fresh_reg(reg))["confirmatory"] is False
@@ -689,7 +715,7 @@ def test_orq_017_01_write_failure_before_bytes_is_still_uncertain(reg, monkeypat
         raise OSError("disco lleno simulado")
     monkeypatch.setattr(ExperimentRegistry, "_write", failing_write)
     with pytest.raises(DeviationPersistenceUncertain):
-        fz.record_deviation("wf_design", NEW_WF, "x", registry=reg)
+        fz.record_deviation("wf_design", NEW_WF, "x", informed_by=[], registry=reg)
     monkeypatch.undo()
     assert fz.deviations == []
     with pytest.raises(PreregistrationError, match="incierta"):
@@ -707,22 +733,22 @@ def test_orq_017_01_partial_write_fails_closed_for_everyone(reg, monkeypatch):
         raise OSError("corte a mitad de escritura")
     monkeypatch.setattr(ExperimentRegistry, "_write", half_write)
     with pytest.raises(DeviationPersistenceUncertain):
-        fz.record_deviation("wf_design", NEW_WF, "x", registry=reg)
+        fz.record_deviation("wf_design", NEW_WF, "x", informed_by=[], registry=reg)
     monkeypatch.undo()
     with pytest.raises(PreregistrationError, match="ilegible o corrupto"):
         _rebuild(fz).confirmatory_status(_fresh_reg(reg))
     with pytest.raises(PreregistrationError, match="ilegible o corrupto"):
-        _rebuild(fz).record_deviation("limitations", "y", "x", registry=_fresh_reg(reg))
+        _rebuild(fz).record_deviation("limitations", "y", "x", informed_by=[], registry=_fresh_reg(reg))
 
 
 def test_orq_017_01_build_failure_writes_nothing_and_is_not_uncertain(reg):
     _preregister(reg)
     fz = freeze(prereg())
     with pytest.raises(PreregistrationError, match="serializable") as ei:
-        fz.record_deviation("limitations", object(), "x", registry=reg)
+        fz.record_deviation("limitations", object(), "x", informed_by=[], registry=reg)
     assert not isinstance(ei.value, DeviationPersistenceUncertain)
     assert _deviation_records(reg) == []
-    fz.record_deviation("limitations", "y", "x", registry=reg)       # el objeto sigue utilizable
+    fz.record_deviation("limitations", "y", "x", informed_by=[], registry=reg)       # el objeto sigue utilizable
     assert fz.confirmatory is True
 
 
@@ -732,10 +758,10 @@ def test_orq_017_01_guards_justification_content_and_no_default_certification(re
     with pytest.raises(PreregistrationError, match="falta el registro"):
         fz.confirmatory                                          # sin registro: no se certifica
     with pytest.raises(PreregistrationError, match="justificarse"):
-        fz.record_deviation("limitations", "y", "   ", registry=reg)
+        fz.record_deviation("limitations", "y", "   ", informed_by=[], registry=reg)
     fz.content["hypothesis"] = "alterada"
     with pytest.raises(PreregistrationError, match="alterado"):
-        fz.record_deviation("limitations", "y", "x", registry=reg)
+        fz.record_deviation("limitations", "y", "x", informed_by=[], registry=reg)
     assert _deviation_records(reg) == []
     with pytest.raises(ExperimentError, match="DEVIATION"):
         reg.append_deviation(lambda: {"kind": "PARTITION_CONSUMED"})
@@ -745,8 +771,8 @@ def test_orq_017_01_trials_count_and_transitions_unaffected(reg):
     _oos_ready(reg)
     before = (reg.trials_count(), reg.state("EXP-0101"), reg.experiments()["EXP-0101"]["history"])
     fz = freeze(prereg())
-    fz.record_deviation("limitations", "y", "x", registry=reg)
-    fz.record_deviation("wf_design", NEW_WF, "x", registry=reg)
+    fz.record_deviation("limitations", "y", "x", informed_by=[], registry=reg)
+    fz.record_deviation("wf_design", NEW_WF, "x", informed_by=[], registry=reg)
     assert (reg.trials_count(), reg.state("EXP-0101"), reg.experiments()["EXP-0101"]["history"]) == before
     reg.transition("EXP-0101", "AUDIT", actor="orquestador")
     reg.transition("EXP-0101", "HUMAN_REVIEW", actor="orquestador")
@@ -1062,12 +1088,8 @@ def test_qa3r2_06_slippage_robustness_scenarios_preserved():
 
 # --- Evaluador de aceptación (TC-ML-004..006, QA3-05, QA3-07) -----------------------------
 
-class FakeReg:
-    def __init__(self, n):
-        self.n = n
-
-    def trials_count(self):
-        return self.n
+# CR-020: las pruebas de umbrales usan `_evaluate_with_trials` (número de pruebas ya conciliado);
+# la conciliación con el registro se prueba en tests/unit/test_trials_accounting.py.
 
 
 def evidence(net=None, risk=0.01, **kw):
@@ -1085,14 +1107,14 @@ def evidence(net=None, risk=0.01, **kw):
 
 
 def test_tc_ml_004_small_sample_is_inconclusive():
-    v = A.evaluate(evidence(trades={"train_val": 99, "oos": 40, "lockbox": 35}), FakeReg(3))
+    v = A._evaluate_with_trials(evidence(trades={"train_val": 99, "oos": 40, "lockbox": 35}), 3)
     assert v.outcome == "INCONCLUSIVE" and "train_val" in v.reasons[0]
-    v = A.evaluate(evidence(trades={"train_val": 120, "oos": 40, "lockbox": 29}), FakeReg(3))
+    v = A._evaluate_with_trials(evidence(trades={"train_val": 120, "oos": 40, "lockbox": 29}), 3)
     assert v.outcome == "INCONCLUSIVE" and "lockbox" in v.reasons[0]
 
 
 def _rejects(ev, fragment, trials=3):
-    v = A.evaluate(ev, FakeReg(trials))
+    v = A._evaluate_with_trials(ev, trials)
     assert v.outcome == "REJECTED" and any(fragment in r for r in v.reasons), v.reasons
 
 
@@ -1107,13 +1129,13 @@ def test_tc_ml_005_threshold_failures_reject_with_reason():
 
 
 def test_tc_ml_006_statistics_required_and_never_approved():
-    assert A.evaluate(evidence(), FakeReg(3)).outcome == "ELIGIBLE_FOR_HUMAN_REVIEW"
+    assert A._evaluate_with_trials(evidence(), 3).outcome == "ELIGIBLE_FOR_HUMAN_REVIEW"
     _rejects(evidence(baseline_beaten=False), "línea base")
     _rejects(evidence(), "Deflated Sharpe", trials=10_000)   # QA3-07: más pruebas del registro → rechazo
     with pytest.raises(ValueError, match="comprar y mantener"):
-        A.evaluate(evidence(buy_and_hold_report={}), FakeReg(3))
+        A._evaluate_with_trials(evidence(buy_and_hold_report={}), 3)
     with pytest.raises(ValueError, match="preregistro"):
-        A.evaluate(evidence(dsr_min_probability=0), FakeReg(3))
+        A._evaluate_with_trials(evidence(dsr_min_probability=0), 3)
 
 
 @pytest.mark.parametrize("kw", [
@@ -1121,7 +1143,7 @@ def test_tc_ml_006_statistics_required_and_never_approved():
     dict(oos_net_r=[0.5] * 39 + [float("nan")]), dict(periods_per_year=float("inf")),
     dict(sr_variance_across_trials=float("nan")), dict(oos_equity=[])])
 def test_qa3_05_non_finite_inputs_fail_closed(kw):
-    v = A.evaluate(evidence(**kw), FakeReg(3))
+    v = A._evaluate_with_trials(evidence(**kw), 3)
     assert v.outcome == "INCONCLUSIVE" and "Fail-Closed" in v.reasons[0]
 
 
@@ -1148,19 +1170,19 @@ _GOOD = evidence()
     ("trades_float", dict(trades={"train_val": 120.0, "oos": 40, "lockbox": 35})),
 ])
 def test_qa3r2_01_invalid_or_incoherent_inputs_never_eligible(case, kw):
-    v = A.evaluate(evidence(**kw), FakeReg(3))
+    v = A._evaluate_with_trials(evidence(**kw), 3)
     assert v.outcome == "INCONCLUSIVE", (case, v)
     assert "Fail-Closed" in v.reasons[0], (case, v.reasons)
 
 
 def test_qa3r2_01_valid_coherent_evidence_still_eligible():
     # Control: la evidencia coherente por defecto sigue siendo ELIGIBLE (sin falsos rechazos).
-    assert A.evaluate(evidence(), FakeReg(3)).outcome == "ELIGIBLE_FOR_HUMAN_REVIEW"
+    assert A._evaluate_with_trials(evidence(), 3).outcome == "ELIGIBLE_FOR_HUMAN_REVIEW"
 
 
 def test_qa3_07_declared_oos_count_must_match_series():
     with pytest.raises(ValueError, match="QA3-07"):
-        A.evaluate(evidence(trades={"train_val": 120, "oos": 500, "lockbox": 35}), FakeReg(3))
+        A._evaluate_with_trials(evidence(trades={"train_val": 120, "oos": 500, "lockbox": 35}), 3)
 
 
 def test_metric_helpers():

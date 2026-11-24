@@ -1,7 +1,8 @@
 """Acceso controlado a las particiones de la snapshot (FEAT-015/017; REQ-G-101, REQ-G-109;
 TC-ML-001, TC-ML-007, TC-ML-012, TC-ML-016, TC-ML-019).
 
-- `train_val` se carga libremente en desarrollo (tras verificar su SHA-256).
+- `train_val` (tras verificar su SHA-256): la única vía pública es
+  `load_train_val_for_configuration`, que exige el inicio de evaluación registrado (CR-020; A2).
 - `oos` y `lockbox` (archivos sin permisos, 0o000) solo con una `FinalEvaluationGrant`:
   experimento del propio registro (no un antecedente, QA3-03) en OOS_EVALUATION; autorización
   del propietario citando una decisión de docs/decisions con la línea exacta
@@ -22,6 +23,15 @@ TC-ML-001, TC-ML-007, TC-ML-012, TC-ML-016, TC-ML-019).
   vuelve a comprobar ANTES de registrar el consumo, de modo que un bloqueo nunca consume la
   partición.
 - DEC-018: en IMPL-3 no se evalúan OOS ni LOCKBOX; ninguna autorización real se emite.
+- CR-020 (§C.3.2) y A2 (opción B del propietario): `load_train_val_for_configuration` solo
+  entrega Train+Val si el par (experimento, configuración) está en la evidencia VALIDADA del
+  registro (`accounting()["pairs"]`). Registro ausente, ilegible, corrupto, mal formado o
+  incoherente → denegado, anotado y sin leer datos (Fail-Closed). La lectura sin configuración
+  es privada (`_load_train_val_for_inspection`): solo para comprobar la integridad de la snapshot
+  (FEAT-015); una guarda estática impide usarla fuera de este módulo en `src/` y `scripts/`.
+- Límite de arquitectura: es un control de las vías de acceso de la aplicación, no de seguridad
+  del sistema de archivos. `train_val.parquet` no está sellado (FEAT-015) y cualquier proceso
+  puede leerlo directamente.
 """
 import json
 import os
@@ -109,8 +119,34 @@ class PartitionLoader:
             raise PartitionAccessError(f"{partition}: SHA-256 no coincide con el manifiesto")
         return pq.read_table(path).to_pandas()
 
-    def load_train_val(self, interval: str | None = None) -> pd.DataFrame:
+    def _load_train_val_for_inspection(self, interval: str | None = None) -> pd.DataFrame:
+        """Uso interno: inspección de la integridad de la snapshot (FEAT-015). No es una vía de
+        evaluación; las evaluaciones usan `load_train_val_for_configuration` (CR-020, A2)."""
         self._log("train_val", True, "desarrollo", None)
+        df = self._read("train_val")
+        return df[df["interval"] == interval].reset_index(drop=True) if interval else df
+
+    def load_train_val_for_configuration(self, experiment_id: str, config_id: str,
+                                         interval: str | None = None) -> pd.DataFrame:
+        """Train+Val para evaluar una configuración (CR-020 §C.3.2): solo si el inicio de su
+        evaluación consta de forma duradera en el registro (relectura). Si no consta, o el
+        registro falta o es ilegible, no se entregan datos y se anota el rechazo."""
+        reason = None
+        if self.registry is None:
+            reason = "sin registro de experimentos"
+        elif not Path(self.registry.path).is_file():
+            reason = "registro de experimentos ausente"
+        else:
+            try:                                    # evidencia validada, no un escaneo del archivo (A2)
+                pairs = self.registry.accounting()["pairs"]
+                if (experiment_id, config_id) not in pairs:
+                    reason = f"sin inicio de evaluación registrado para {experiment_id}/{config_id} (CR-020)"
+            except Exception as exc:
+                reason = f"registro de experimentos ilegible, corrupto o incoherente: {exc!r}"
+        if reason:
+            self._log("train_val", False, reason, experiment_id)
+            raise PartitionAccessError(f"acceso a train_val denegado: {reason}")
+        self._log("train_val", True, f"evaluación de la configuración {config_id}", experiment_id)
         df = self._read("train_val")
         return df[df["interval"] == interval].reset_index(drop=True) if interval else df
 
