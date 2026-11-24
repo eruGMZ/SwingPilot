@@ -270,3 +270,14 @@ Requiere aprobación explícita del propietario y las decisiones de F. Al aproba
 - **Aprobación de la aplicación contractual (propietario, 2026-11-24):** aprueba la aplicación contractual de CR-020, el contrato v1.8, DEC-021 y `feature_list.json` v1.17.0. Aprueba también de forma expresa la inclusión de REQ-4036 como fuente extraída de la política en REQ-G-P17, y la omisión de las líneas `AUTORIZA: PROCEDENCIA` en DEC-021, que mantiene la autorización separada para los registros reales de procedencia.
 - **Limitación de la verificación:** los validadores existentes (`scripts/validate_manifest.py`, `validate_requirements.py` y `validate_gates.py`) comprueban el manifiesto, las extracciones y el estado de los gates; no verifican la corrección semántica del texto del contrato.
 
+
+## I. Nota de vigencia (2026-11-24, DEC-023)
+
+El texto de esta CR se conserva sin cambios como evidencia aprobada (DEC-021). Desde DEC-023, `harness/change_requests/CR-021_durabilidad-autorizacion-evaluacion.md` (revisión 2) **sustituye** las siguientes obligaciones, sin alterar su significado histórico:
+- §C.1, definición de «Configuración evaluada»: el cómputo conservador incluye las líneas `CONFIGURATION_EVALUATED` legibles y válidas mientras consten, deduplicadas por par lógico; la evidencia de toda evaluación con acceso autorizado es duradera (CR-021 §D.1, §F.1, §F.8).
+- §C.3: se añade el tipo `EVALUATION_PERSISTED` (CR-021 §D.3).
+- §C.3.2, «Orden obligatorio», paso 1 (idempotencia sin escritura) y paso 3 (condición del cargador): sustituidos por CR-021 §D.4 y §D.5.
+- §C.3.2, «Escritura fallida o incierta» («Si el registro llegó a escribirse, el par cuenta») y «Significado (B.4.3)»: el cómputo vale mientras el registro conste; su pérdida antes de confirmarse no es un subconteo (CR-021 §F.8, §G.2).
+- ORQ-017-01, unicidad de `deviation_id`: un duplicado byte a byte idéntico es una sola desviación lógica; uno distinto es incoherente (CR-021 §D.2, §G.3).
+
+Las demás obligaciones de esta CR siguen vigentes. La implementación de CR-021 está PENDIENTE.

@@ -1,5 +1,30 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE CONTROL (2026-11-24) — CR-021 APROBADA (DEC-023); contrato v1.9 congelado en develop (sin implementar), sin push
+
+**Aceptación del propietario (2026-11-24):** aplicación documental aceptada y contrato v1.9 congelado. Comprobación semántica de REQ-G-104: aclaración mínima («…de la evidencia certificada (no del marcador; …)») para no contradecir R2; validadores OK; registrado en DEC-023. Commit de los 13 archivos, sin push. **Siguiente acción autorizada:** ninguna; esperar instrucciones del propietario.
+
+**Base:** `fde522c` (`develop` = `origin/develop`). **Decisión:** DEC-023.
+**Aplicado:** contrato v1.9 (REQ-G-104, REQ-G-P17, TC-ML-020, TC-ML-023 y cabeceras); CR-021 APROBADA (§L); nota de vigencia en CR-020 (§I; sustitución sin reescritura); `feature_list.json` v1.18.0 (bloque `cr021`: requisitos aprobados frente a comportamiento no implementado); historial de CONF-010.
+**No implementado:** CR-021 completa. El código de `fde522c` sigue reproduciendo QA-CR020-03 (`harness/verification/IMPL-3_QA-CR020-03_reproduccion.py`).
+**Obligaciones de implementación (requieren autorización):** protocolo CR-021 §D.4–§D.5; P1 demostrada en todas las rutas de lectura, escritura, acceso y evaluación (no basta el salto de línea final); adaptación de las pruebas ejecutables de CR-021 §G.5; regresiones que fallen con `fde522c`.
+**Validadores:** OK. Suite no ejecutada.
+**Archivos (sin commit):** `docs/decisions/DEC-023_…md` (nuevo), `harness/change_requests/CR-021_…md` (nuevo), `harness/change_requests/CR-020_…md` (§I añadida), `harness/verification/IMPL-3_QA-CR020-03_reproduccion.py` (nuevo), `implementation/{requirements,test_plan,architecture,api_contracts,data_flow,conflict_register}.md`, `feature_list.json`, `progress.md`, `session-handoff.md`.
+**Estado:** QA-CR020-03 sin resolver; QA-CR020-01 corregido y aceptado (pendiente de reverificación independiente); QA-CR020-02, 04, 05, 06, O3 y O4 sin resolver; CONF-009 y CONF-010 OPEN; FEAT-015 DONE; FEAT-017 IN_PROGRESS.
+
+## PUNTO DE CONTROL (2026-11-24) — QA-CR020-03 bloqueado contractualmente; CR-021 PROPUESTA (revisión 2); sin commit
+
+**Revisión 2 (documental):** diseño conceptual aceptado provisionalmente (no es aprobación final). R1: garantías I2a (evaluaciones autorizadas, evidencia duradera) e I2b (intentos no confirmados: cuentan mientras consten; su pérdida antes de congelar no se detecta; requiere enmendar REQ-G-P17, CR-020 §C.3.2 y TC-ML-023). R2: autorización basada en la durabilidad de la evidencia, no del marcador (§F.4). R3: política P1–P5 ante corrupción (§F.2). Decisiones pendientes: CR-021 §J (1–7). Sin contradicción técnica abierta; queda la confirmación de la lectura de R2 (decisión 2).
+
+**Base:** `fde522c` (`develop` = `origin/develop`). La corrección de QA-CR020-03 se detuvo antes de tocar código (bloqueo aceptado por el propietario).
+**Bloqueo:** una línea legible no prueba durabilidad; una corrección sólida exige un registro escrito tras un `fsync` correcto (tipo nuevo) y reescribir la evidencia en el reintento (contrario a CR-020 §C.3.2 paso 1).
+**Propuesta:** `harness/change_requests/CR-021_durabilidad-autorizacion-evaluacion.md` (PROPUESTA; su preparación está autorizada, no su aprobación ni su implementación): `EVALUATION_PERSISTED`, copias idénticas de recuperación, conteo conservador separado del acceso autorizado.
+**Reproducción:** `.venv/bin/python -I -B harness/verification/IMPL-3_QA-CR020-03_reproduccion.py` sobre `fde522c`.
+**Archivos nuevos o modificados (sin commit):** CR-021 (nuevo), `harness/verification/IMPL-3_QA-CR020-03_reproduccion.py` (nuevo), `progress.md`, `session-handoff.md`.
+**Estado:** QA-CR020-03 sin resolver (QA-CR020-02, 04, 05, 06, O3 y O4 también); QA-CR020-01 corregido y aceptado, pendiente de reverificación independiente; CONF-009 y CONF-010 OPEN; FEAT-015 DONE; FEAT-017 IN_PROGRESS; contrato v1.8 sin cambios.
+**Decisiones pendientes del propietario:** CR-021 §J.
+**Siguiente acción autorizada:** ninguna. Esperar la aprobación expresa del propietario.
+
 ## PUNTO DE CONTROL (2026-11-24) — QA-CR020-01 corregido y aceptado por el propietario; pendiente de reverificación independiente; commit en develop, sin push
 
 **Aceptación del propietario (2026-11-24):** corrección funcional y evidencia aprobadas (validación previa de la desviación, rechazo sin escritura ni acceso, contabilidad conservadora y acceso denegado tras persistencia parcial, reintento idempotente, 11 pruebas nuevas, 789 passed / 5 skipped, validadores OK, Fail-Closed ante desviaciones mal formadas con conciliación manual sin reescribir historial, congelación legible exigida). Detalle: `harness/verification/IMPL-3_QA-CR020-01_correccion.md` §8. QA-CR020-03 sigue sin resolver, incluida la durabilidad de registros legibles tras un fallo de `fsync`. Commit de los ocho archivos, sin push; pruebas no reejecutadas para el commit. **Siguiente acción autorizada:** ninguna; esperar instrucciones del propietario.
