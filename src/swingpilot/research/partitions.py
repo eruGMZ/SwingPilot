@@ -26,10 +26,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+import hashlib
+
 import pandas as pd
+import pyarrow
 import pyarrow.parquet as pq
 
-from .snapshot import MODE_SEALED, SEALED, load_manifest, sha256_file
+from .snapshot import MODE_SEALED, SEALED, enforce_sealing, load_manifest, sha256_file
 
 
 class PartitionAccessError(PermissionError):
@@ -57,6 +60,7 @@ class PartitionLoader:
         self.access_log = Path(access_log)
         self.registry = registry
         self.owner = owner
+        enforce_sealing(self.data_dir, self.manifest["files"])     # QA3R2-08
 
     def _log(self, partition: str, allowed: bool, reason: str, experiment_id: str | None) -> None:
         self.access_log.parent.mkdir(parents=True, exist_ok=True)
@@ -85,15 +89,21 @@ class PartitionLoader:
         path = self.data_dir / info["file"]
         sealed = partition in SEALED
         if sealed:
+            # QA3R2-08: se abre y se vuelve a sellar de inmediato; hash y parseo usan el
+            # descriptor ya abierto, así un SIGKILL durante la lectura no deja el archivo en 0o400.
             os.chmod(path, stat.S_IRUSR)
-        try:
-            actual = sha256_file(path)
-            if actual != info["sha256"]:
-                raise PartitionAccessError(f"{partition}: SHA-256 no coincide con el manifiesto")
-            return pq.read_table(path).to_pandas()
-        finally:
-            if sealed:
+            try:
+                fh = open(path, "rb")
+            finally:
                 os.chmod(path, MODE_SEALED)
+            with fh:
+                data = fh.read()
+            if hashlib.sha256(data).hexdigest() != info["sha256"]:
+                raise PartitionAccessError(f"{partition}: SHA-256 no coincide con el manifiesto")
+            return pq.read_table(pyarrow.BufferReader(data)).to_pandas()
+        if sha256_file(path) != info["sha256"]:
+            raise PartitionAccessError(f"{partition}: SHA-256 no coincide con el manifiesto")
+        return pq.read_table(path).to_pandas()
 
     def load_train_val(self, interval: str | None = None) -> pd.DataFrame:
         self._log("train_val", True, "desarrollo", None)

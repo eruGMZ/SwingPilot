@@ -561,3 +561,142 @@ def test_manifest_records_download_parameters(snap):
     assert m["source"]["start_date"] == "2017-08-17" and m["lockbox"]["status"] == "SEALED"
     assert m["source"]["require_complete_download"] is True
 
+
+
+# --- QA3R2-08: sellado no efectivo o alterado; identificadores de snapshot en la CLI ------------
+
+def _mode(path):
+    import stat
+    return stat.S_IMODE(os.stat(path).st_mode)
+
+
+@pytest.mark.parametrize("bad", ["SNAP-1", "SNAP-00001", "snap-0001", "SNAP-0001\n", " SNAP-0001", "../SNAP-0001",
+                                 "SNAP-0001/../x", "SNAP-TEST", ""])
+@pytest.mark.parametrize("cmd", ["build-snapshot", "verify-snapshot"])
+def test_qa3r2_08_cli_rejects_malformed_snapshot_id(monkeypatch, tmp_path, capsys, cmd, bad):
+    from swingpilot.research import cli
+    called = []
+    monkeypatch.setattr(cli, "REGISTRY", tmp_path / "reg.jsonl")
+    monkeypatch.setattr(cli, "MANIFEST_DIR", tmp_path / "manifests")
+    monkeypatch.setattr(cli, "build_snapshot", lambda *a, **k: called.append("build"))
+    monkeypatch.setattr(cli, "verify_snapshot", lambda *a, **k: called.append("verify"))
+    argv = [cmd, "--id", bad] + (["--confirm"] if cmd == "build-snapshot" else [])
+    assert cli.main(argv) == 2
+    assert called == [] and "SNAP-NNNN" in capsys.readouterr().err
+    assert not (tmp_path / "manifests").exists() and not (tmp_path / "reg.jsonl").exists()
+
+
+def test_qa3r2_08_build_rejects_snapshot_id_with_trailing_newline(tmp_path):
+    with pytest.raises(SnapshotError, match="no válido"):
+        build(tmp_path, sid="SNAP-TEST\n")
+    assert not (tmp_path / "var").exists() and not (tmp_path / "research").exists()
+
+
+def test_qa3r2_08_manifest_with_invalid_snapshot_id_is_rejected(snap):
+    res, tmp = snap
+    for bad in ("../../outside", "SNAP-TEST\n", None):
+        m = dict(res.manifest, snapshot_id=bad)
+        p = tmp / "bad.json"
+        p.write_text(json.dumps(m))
+        with pytest.raises(SnapshotError, match="snapshot_id no válido"):
+            PartitionLoader(p, tmp / "var" / "snapshots", tmp / "access.jsonl")
+        with pytest.raises(SnapshotError, match="snapshot_id no válido"):
+            verify_snapshot(p, tmp / "var" / "snapshots")
+
+
+def test_qa3r2_08_ineffective_sealing_is_detected_and_warned(tmp_path, monkeypatch):
+    # Simula root o un sistema de archivos que ignora 0o000: el proceso puede leer OOS/LOCKBOX.
+    monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k: True)
+    with pytest.warns(SN.SealingWarning, match="no es efectivo"):
+        res = build(tmp_path)
+    assert len(res.sealing_warnings) == 2 and all("no es efectivo" in w for w in res.sealing_warnings)
+    root = tmp_path / "var" / "snapshots"
+    for call in (lambda: verify_snapshot(res.manifest_path, root),
+                 lambda: PartitionLoader(res.manifest_path, root, tmp_path / "access.jsonl")):
+        with pytest.warns(SN.SealingWarning) as rec:
+            call()
+        assert sorted(str(w.message).split(":")[0] for w in rec) == ["lockbox", "oos"]
+        assert all("no es efectivo" in str(w.message) for w in rec)
+
+
+def test_qa3r2_08_cli_verify_reports_ineffective_sealing(tmp_path, monkeypatch, capsys):
+    from swingpilot.research import cli
+    res = build(tmp_path)
+    monkeypatch.setattr(cli, "MANIFEST_DIR", res.manifest_path.parent)
+    monkeypatch.setattr(cli, "DATA_ROOT", tmp_path / "var" / "snapshots")
+    os.rename(res.manifest_path, res.manifest_path.with_name("SNAP-0042.json"))
+    m = json.loads(res.manifest_path.with_name("SNAP-0042.json").read_text())
+    m["snapshot_id"] = "SNAP-0042"
+    res.manifest_path.with_name("SNAP-0042.json").write_text(json.dumps(m))
+    os.rename(res.data_dir, res.data_dir.with_name("SNAP-0042"))
+    if not ROOT:
+        assert cli.main(["verify-snapshot", "--id", "SNAP-0042"]) == 0      # control: sellado efectivo
+        assert "AVISO" not in capsys.readouterr().err
+    monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k: True)
+    assert cli.main(["verify-snapshot", "--id", "SNAP-0042"]) == 1
+    err = capsys.readouterr().err
+    assert "AVISO de sellado" in err and "lockbox" in err and "oos" in err
+
+
+@pytest.mark.parametrize("entry", ["verify", "loader"])
+def test_qa3r2_08_leftover_readable_mode_is_resealed(snap, entry):
+    res, tmp = snap
+    path = res.data_dir / "lockbox.parquet"
+    os.chmod(path, 0o400)                           # residuo de una lectura interrumpida
+    with pytest.warns(SN.SealingWarning, match="lockbox: modo 0o400"):
+        if entry == "verify":
+            verify_snapshot(res.manifest_path, tmp / "var" / "snapshots")
+        else:
+            _loader(res, tmp)
+    assert _mode(path) == 0
+    assert _mode(res.data_dir / "oos.parquet") == 0
+
+
+def test_qa3r2_08_effective_sealing_emits_no_warning(snap, recwarn):
+    if ROOT:
+        pytest.skip("root ignora los permisos de archivo")
+    res, tmp = snap
+    verify_snapshot(res.manifest_path, tmp / "var" / "snapshots")
+    _loader(res, tmp)
+    assert not [w for w in recwarn if issubclass(w.category, SN.SealingWarning)]
+    assert res.sealing_warnings == []
+
+
+_KILL_DURING_READ = """
+import os, sys
+from pathlib import Path
+sys.path.insert(0, {unit!r})
+import test_snapshot as T
+import swingpilot.research.partitions as P
+def die(*a, **k):
+    os._exit(9)                           # SIGKILL simulado a mitad de la lectura autorizada
+P.pq.read_table = die
+tmp = Path({tmp!r})
+reg = T.ExperimentRegistry(tmp / "registry.jsonl", tmp / "decisions")
+loader = P.PartitionLoader(tmp / "research" / "snapshots" / "SNAP-TEST.json", tmp / "var" / "snapshots",
+                           tmp / "access.jsonl", registry=reg)
+loader.load_final(T.grant(), "lockbox")
+"""
+
+
+def test_qa3r2_08_kill_during_authorized_read_leaves_partition_sealed(snap):
+    import subprocess
+    res, tmp = snap
+    reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
+    _advance_to_oos(reg)
+    script = _KILL_DURING_READ.format(unit=str(Path(__file__).parent), tmp=str(tmp))
+    proc = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=120)
+    assert proc.returncode == 9, proc.stderr
+    assert reg.is_consumed("SNAP-TEST", "lockbox", "EXP-0900")    # el consumo se registró antes de leer
+    assert _mode(res.data_dir / "lockbox.parquet") == 0           # sin residuo 0o400 tras la muerte
+
+
+@pytest.mark.parametrize("part", ["oos", "lockbox"])
+def test_qa3r2_08_authorized_read_still_verifies_hash_and_reseals(snap, part):
+    res, tmp = snap
+    reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
+    _advance_to_oos(reg)
+    loader = _loader(res, tmp, reg)
+    df = loader.load_final(grant(part=part), part)
+    assert len(df) == res.manifest["files"][part]["rows"]
+    assert _mode(res.data_dir / f"{part}.parquet") == 0

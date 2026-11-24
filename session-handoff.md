@@ -1,5 +1,14 @@
 # session-handoff.md — SwingPilot Harness
 
+## IMPL-3 (2026-11-24) — QA3R2-08 aprobado en su alcance actual (CONDICIONADO); commit en develop, sin push
+
+**Hecho:** corrección autorizada de QA3R2-08 (FEAT-015). Detección del sellado no efectivo (`SealingWarning`; `verify-snapshot` → código 1), re-sellado de OOS/LOCKBOX con modo alterado, lectura autorizada con re-sellado inmediato (SIGKILL ya no deja 0o400), id `SNAP-NNNN` obligatorio en la CLI y `fullmatch` en `build_snapshot`/`load_manifest`. 28 regresiones (26 fallan con `f04a2d1`).
+**Verificar:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 546 passed, 5 skipped. Validadores → OK.
+**Aprobado por el propietario (2026-11-24) en su alcance actual** y congelado en un commit en develop, sin push. **QA3R2-08 CONDICIONADO, no cerrado:** falta decidir y resolver el comportamiento ante sellado no efectivo (hoy solo avisa). Archivos: `src/swingpilot/research/{snapshot,partitions,cli}.py`, `tests/unit/test_snapshot.py`, `harness/verification/IMPL-3_QA_ronda2.md`, `progress.md`, `session-handoff.md`.
+**Sin cambios:** FEAT-015 en READY_FOR_REVIEW; cortes, SNAP-0001, OOS/LOCKBOX reales, contratos y esquema del manifiesto intactos. QA3R2-02/03 ya estaban corregidas (`04dc2ea`).
+**Pendientes registrados:** QA3R2-08 condicionado (sellado no efectivo: avisar o bloquear); observación de QA3R2-04 sobre el estado destino en la línea de transición (sin analizar ni implementar).
+**Siguiente acción autorizada:** ninguna. Esperar indicación del propietario.
+
 ## IMPL-3 (2026-11-24) — QA3R2-04 corregido y aprobado (commit en develop, sin push)
 
 **Hecho:** corrección autorizada de QA3R2-04 (FEAT-015). `create()`/`claim_partition()` validan `EXP-NNNN`; las decisiones se comprueban con una línea exacta `AUTORIZA: EXP-NNNN [<oos|lockbox> <SNAP-…>]` en lugar de por subcadena; decisión ilegible → denegada. 48 regresiones (45 fallan con `e375a18`).

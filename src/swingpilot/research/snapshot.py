@@ -24,6 +24,18 @@ DEC-005 P10; DEC-017 Q46; TC-ML-015, TC-ML-017).
   temporal. Si el proceso muere sin poder deshacer, queda un directorio de datos sin
   manifiesto: no es consumible, y el siguiente intento lo aparta como
   `.incomplete-<id>-<marca>` (sin borrarlo) y lo deja anotado en el manifiesto nuevo.
+- Sellado (QA3R2-08): el modo 0o000 solo protege si el sistema lo aplica. Como root, o en un
+  sistema de archivos sin permisos POSIX (p. ej. FAT/NTFS montados, algunos recursos de red),
+  el proceso sigue pudiendo leer OOS y LOCKBOX. `enforce_sealing` lo comprueba con `os.access`
+  al construir la snapshot, al verificarla y al abrir un `PartitionLoader`, y emite
+  `SealingWarning`; no bloquea, porque el control principal es la autorización en proceso de
+  `PartitionLoader`. Si un archivo sellado tiene otro modo (p. ej. 0o400 porque el proceso
+  murió con SIGKILL durante una lectura), se vuelve a sellar a 0o000 y se avisa. La lectura
+  autorizada abre el archivo y lo vuelve a sellar antes de hashearlo y parsearlo, de modo que
+  la ventana con 0o400 se reduce a dos `chmod` seguidos.
+- Identificadores (QA3R2-08): `valid_snapshot_id` usa `fullmatch` (sin salto de línea final).
+  `load_manifest` rechaza un manifiesto cuyo `snapshot_id` no sea válido, porque de él se
+  deriva la ruta de los datos.
 """
 import hashlib
 import json
@@ -33,7 +45,8 @@ import re
 import shutil
 import stat
 import tempfile
-from dataclasses import dataclass
+import warnings
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -53,13 +66,43 @@ SNAPSHOT_INTERVALS = ("1d", "4h", "1h")
 MANIFEST_SCHEMA_VERSION = "1.2.0"           # 1.2.0: incomplete_build_quarantined (QA3R2-02)
 COLUMNS = ["interval", "open_time", "close_time", "open", "high", "low", "close", "volume"]
 DAY_MS = 86_400_000
-SNAPSHOT_ID = re.compile(r"^SNAP-[0-9]{4}$|^SNAP-TEST[A-Z0-9-]*$")
+SNAPSHOT_ID = re.compile(r"^SNAP-[0-9]{4}$|^SNAP-TEST[A-Z0-9-]*$")   # usar con fullmatch (QA3R2-08)
 MODE_READONLY = stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH
 MODE_SEALED = 0
 
 
 class SnapshotError(RuntimeError):
     pass
+
+
+class SealingWarning(UserWarning):
+    """El sellado 0o000 de OOS/LOCKBOX no es efectivo o se encontró alterado (QA3R2-08)."""
+
+
+def valid_snapshot_id(snapshot_id) -> bool:
+    return isinstance(snapshot_id, str) and SNAPSHOT_ID.fullmatch(snapshot_id) is not None
+
+
+def enforce_sealing(data_dir: Path, files: dict) -> list[str]:
+    """Vuelve a sellar OOS/LOCKBOX si su modo no es 0o000 y comprueba que el proceso no puede
+    leerlos. Devuelve los avisos (también emitidos como SealingWarning). No lee su contenido."""
+    notes = []
+    for part in SEALED:
+        path = Path(data_dir) / files[part]["file"]
+        if not path.exists():
+            continue
+        mode = stat.S_IMODE(os.stat(path).st_mode)
+        if mode != MODE_SEALED:
+            os.chmod(path, MODE_SEALED)
+            notes.append(f"{part}: modo {oct(mode)} en lugar de 0o000; se volvió a sellar "
+                         "(posible lectura interrumpida)")
+        if os.access(path, os.R_OK):
+            notes.append(f"{part}: el sellado 0o000 no es efectivo, el proceso puede leer el archivo "
+                         "(root o sistema de archivos sin permisos POSIX); solo queda el control de "
+                         "PartitionLoader")
+    for note in notes:
+        warnings.warn(note, SealingWarning, stacklevel=2)
+    return notes
 
 
 def sha256_file(path: Path) -> str:
@@ -117,6 +160,7 @@ class SnapshotResult:
     manifest: dict
     manifest_path: Path
     data_dir: Path
+    sealing_warnings: list[str] = field(default_factory=list)
 
 
 def check_new_lockbox(cuts: dict[str, int], consumed_lockboxes: list[dict]) -> None:
@@ -132,7 +176,7 @@ def check_new_lockbox(cuts: dict[str, int], consumed_lockboxes: list[dict]) -> N
 def build_snapshot(client: BinancePublicClient, snapshot_id: str, data_root: Path, manifest_dir: Path, *,
                    consumed_lockboxes: list[dict], start_date: str = START_DATE,
                    now=lambda: datetime.now(timezone.utc)) -> SnapshotResult:
-    if not SNAPSHOT_ID.match(snapshot_id):
+    if not valid_snapshot_id(snapshot_id):
         raise SnapshotError(f"identificador de snapshot no válido: {snapshot_id!r}")
     data_root, manifest_dir = Path(data_root), Path(manifest_dir)
     data_dir = data_root / snapshot_id
@@ -208,7 +252,7 @@ def build_snapshot(client: BinancePublicClient, snapshot_id: str, data_root: Pat
         _remove_tree(data_dir if renamed else tmp_dir)
         tmp_manifest.unlink(missing_ok=True)
         raise
-    return SnapshotResult(manifest, manifest_path, data_dir)
+    return SnapshotResult(manifest, manifest_path, data_dir, enforce_sealing(data_dir, manifest["files"]))
 
 
 def _remove_tree(directory: Path) -> None:
@@ -249,15 +293,20 @@ def _manifest(client, snapshot_id, downloaded_at, server_ms, start_date, range_s
 
 
 def load_manifest(manifest_path: Path) -> dict:
-    return json.loads(Path(manifest_path).read_text())
+    m = json.loads(Path(manifest_path).read_text())
+    if not valid_snapshot_id(m.get("snapshot_id")):
+        raise SnapshotError(f"manifiesto con snapshot_id no válido: {m.get('snapshot_id')!r}")
+    return m
 
 
 def verify_snapshot(manifest_path: Path, data_root: Path) -> dict[str, str]:
     """Recalcula el SHA-256 de `train_val` y falla si difiere del manifiesto (TC-ML-015).
 
     OOS y LOCKBOX no se verifican aquí: hashearlos es leerlos. Se verifican dentro de
-    `PartitionLoader.load_final`, con autorización y registro (QA3-06)."""
+    `PartitionLoader.load_final`, con autorización y registro (QA3-06). Sí comprueba su
+    sellado sin leerlos (QA3R2-08)."""
     m = load_manifest(manifest_path)
+    enforce_sealing(Path(data_root) / m["snapshot_id"], m["files"])
     info = m["files"]["train_val"]
     actual = sha256_file(Path(data_root) / m["snapshot_id"] / info["file"])
     if actual != info["sha256"]:

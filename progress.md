@@ -1329,3 +1329,19 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Siguiente:** revisión y aprobación del propietario.
 
 **Aprobación del propietario (2026-11-24):** «Apruebo las correcciones de QA3R2-04 y las 48 pruebas nuevas. Autorizo exclusivamente congelar los cambios actuales mediante un commit en develop, sin push.» FEAT-015 se mantiene en READY_FOR_REVIEW. Las cuatro observaciones adicionales (estado destino en la línea de transición, ids de antecedentes, `SNAPSHOT_ID.match`, formato en decisiones reales) quedan sin implementar. Sin cambios en SNAP-0001, cortes ni contratos.
+
+---
+
+## 2026-11-24 | FASE 2 | IMPL-3: corrección de QA3R2-08 (FEAT-015) | COMPLETADO — PENDIENTE DE APROBACIÓN
+
+**Autorización del propietario:** «Autorizo corregir QA3R2-08 de FEAT-015». Base `f04a2d1`. (Antes, la petición de corregir QA3R2-02/03 no produjo cambios: ya estaban corregidas y aprobadas en `04dc2ea`; 4 regresiones pasan.)
+
+**Código:** `src/swingpilot/research/snapshot.py` (`SealingWarning`, `valid_snapshot_id`, `enforce_sealing`, `SnapshotResult.sealing_warnings`, validación en `load_manifest`), `partitions.py` (comprobación del sellado al abrir; lectura sellada con re-sellado inmediato) y `cli.py` (id `SNAP-NNNN` obligatorio; avisos de sellado; `verify-snapshot` → 1 si el sellado no es efectivo).
+
+**Pruebas:** 28 regresiones en `tests/unit/test_snapshot.py`; con `f04a2d1` fallan 26 y pasan 2 controles. Suite: 546 passed, 5 skipped; validadores OK. Detalle en `harness/verification/IMPL-3_QA_ronda2.md` §Corrección de QA3R2-08.
+
+**Sin cambios:** estado de FEAT-015 (READY_FOR_REVIEW), `feature_list.json`, cortes, SNAP-0001 (no creada), OOS/LOCKBOX reales, contratos, esquema del manifiesto. Sin commit ni push. $0 de IA. Sub-agentes: 0.
+
+**Siguiente:** revisión y aprobación del propietario.
+
+**Aprobación del propietario (2026-11-24):** «Apruebo los cambios implementados de QA3R2-08 y las 28 pruebas adicionales en su alcance actual. Autorizo exclusivamente registrar esta aprobación y congelar los cambios mediante un commit en develop, sin push.» **QA3R2-08 queda CONDICIONADO, no cerrado definitivamente:** falta resolver el comportamiento ante sellado no efectivo (hoy solo avisa). FEAT-015 se mantiene en READY_FOR_REVIEW. Sin nuevas correcciones; sin cambios en contratos, cortes ni SNAP-0001.

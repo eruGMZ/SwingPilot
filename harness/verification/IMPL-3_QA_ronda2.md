@@ -89,3 +89,25 @@ Las rondas de QA permitidas están agotadas (2 de 2). Cualquier corrección post
 **Suite:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 518 passed, 5 skipped (470 + 48). Validadores → OK.
 
 **Riesgos residuales / para decisión del propietario:** (1) La línea de transición no incluye el estado destino: un mismo `AUTORIZA: EXP-NNNN` vale para OOS_EVALUATION, APPROVED y los terminales que decide el propietario desde HUMAN_REVIEW. Exigir `AUTORIZA: EXP-NNNN <ESTADO>` cerraría esa ambigüedad, pero queda fuera de lo autorizado. (2) Los ids de antecedentes no se validan; no abren particiones ni respaldan modelos. (3) `SNAPSHOT_ID.match` en `snapshot.py`/CLI admite un salto de línea final (parte de QA3R2-08, sin tocar). (4) Las decisiones reales de `docs/decisions` no usan aún la gramática; DEC-018 prohíbe evaluar OOS/LOCKBOX en IMPL-3, así que hoy no hay ninguna autorización real afectada.
+
+---
+
+## Corrección de QA3R2-08 (2026-11-24, Orquestador; sin nueva ronda de QA)
+
+**Autorización del propietario:** «Autorizo corregir QA3R2-08 de FEAT-015». Base `f04a2d1`. Sin cambios de cortes, SNAP-0001, OOS/LOCKBOX reales ni contratos; FEAT-015 sigue en READY_FOR_REVIEW. El esquema del manifiesto no cambia (1.2.0).
+
+| Parte del hallazgo | Corrección |
+|---|---|
+| Sellado no efectivo (root, FS sin POSIX) sin detectar | `snapshot.enforce_sealing` comprueba con `os.access(R_OK)` cada archivo sellado al construir, al verificar y al abrir un `PartitionLoader`, y emite `SealingWarning`. La construcción lo devuelve en `SnapshotResult.sealing_warnings`. `verify-snapshot` lo imprime como «AVISO de sellado» y termina con código 1. No bloquea la carga: el control principal sigue siendo la autorización en proceso. |
+| SIGKILL dentro de `_read` deja 0o400 | La lectura autorizada abre el archivo y lo vuelve a sellar antes de hashear y parsear desde el contenido ya leído: la ventana con 0o400 se reduce a dos `chmod` seguidos. Además, `enforce_sealing` vuelve a sellar a 0o000 cualquier OOS/LOCKBOX con otro modo y lo avisa, sin leer su contenido. |
+| `verify-snapshot --id` no valida el id | La CLI exige `SNAP-NNNN` (`fullmatch`) en ambos comandos antes de tocar nada; si no se cumple, termina con código 2. `build_snapshot` usa `valid_snapshot_id` (`fullmatch`; antes `match` admitía un salto de línea final). `load_manifest` rechaza un `snapshot_id` inválido, porque de él sale la ruta de los datos. |
+
+**Pruebas de regresión (28 nuevas, `test_snapshot.py`):** `test_qa3r2_08_cli_rejects_malformed_snapshot_id` (18: 9 ids × 2 comandos), `…_build_rejects_snapshot_id_with_trailing_newline`, `…_manifest_with_invalid_snapshot_id_is_rejected`, `…_ineffective_sealing_is_detected_and_warned` (`os.access` simulado), `…_cli_verify_reports_ineffective_sealing`, `…_leftover_readable_mode_is_resealed` (2), `…_effective_sealing_emits_no_warning` (control), `…_kill_during_authorized_read_leaves_partition_sealed` (subproceso terminado con `os._exit` durante la lectura) y `…_authorized_read_still_verifies_hash_and_reseals` (2 controles).
+
+**Con `f04a2d1`:** fallan 26 y pasan los 2 controles de lectura autorizada. La CLI llama a `build_snapshot`/`verify_snapshot` con los 9 ids inválidos en ambos comandos. `build_snapshot` acepta `SNAP-TEST\n`. Un manifiesto con `snapshot_id` `../../outside` se carga. Tras la muerte durante la lectura, el LOCKBOX queda en 0o400. `verify-snapshot` termina con 0 aunque el sellado no sea efectivo, y no existe aviso alguno. **Corregido:** 28/28.
+
+**Suite:** `.venv/bin/pytest -q -p no:cacheprovider tests` → 546 passed, 5 skipped (518 + 28). Validadores → OK.
+
+**Riesgos residuales:** (1) Con el sellado no efectivo solo se avisa; bloquear (Fail-Closed estricto) impediría construir o usar snapshots como root y queda a decisión del propietario. (2) Entre los dos `chmod` de una lectura autorizada sigue habiendo una ventana mínima. (3) La lectura autorizada carga OOS/LOCKBOX completos en memoria (pocos MB con BTC/USDT 1d/4h/1h). (4) `SNAPSHOT_ID` sigue admitiendo `SNAP-TEST*` en la API de Python (pruebas); la CLI solo acepta `SNAP-NNNN`.
+
+**Aprobación del propietario (2026-11-24):** cambios y 28 pruebas aprobados en su alcance actual. **Estado de QA3R2-08: CONDICIONADO**, no cerrado definitivamente hasta resolver el comportamiento ante sellado no efectivo (riesgo residual 1).
