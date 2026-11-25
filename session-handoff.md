@@ -1,5 +1,16 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: conciliación documental consolidada de D-1..D-5 (no iniciada)
+
+**Base:** commit «docs(impl-3): record owner disposition of N-3 external rewrite risk» en `develop` (sin push; comprobar con `git status -sb`). Contrato **v1.10**; `feature_list.json` **v1.21.1**, sin cambios (se concilia en la reconciliación documental consolidada).
+**Disposiciones del propietario de la reverificación consolidada:**
+- **N-1:** CORREGIDO (`f8e8861`) y ACEPTADO; pendiente de reverificación independiente focalizada (`IMPL-3_N-1_correccion.md`).
+- **N-2:** ACEPTADO (opción A; riesgo residual de disponibilidad); pendiente de revisión independiente focalizada de la disposición (`IMPL-3_N-2_disposicion.md`). Condición operativa para P5: confirmar corrupción persistente bajo bloqueo exclusivo o con escritores en reposo; un error transitorio no desencadena la recuperación.
+- **N-3:** ACEPTADO (opción A; riesgo residual de integridad fuera del protocolo append-only; sin CR); pendiente de revisión independiente focalizada de la disposición (`harness/verification/IMPL-3_N-3_disposicion.md`). Excepción acotada a toda afirmación general de que todas las rutas del evaluador fallan cerrando o usan solo registros validados. Condiciones: sin reescritura/sustitución/truncamiento externos; una modificación externa sospechada impide confiar en resultados favorables hasta reconciliar; conservar el registro y aplicar la autorización de P5 (PENDING, sin implementar); se conserva la obligación de `confirmatory_status` consistente en HUMAN_REVIEW; ELIGIBLE_FOR_HUMAN_REVIEW no es aprobación. Sin tamper-evidence criptográfico.
+**Evidencia:** validadores OK (código 0); sin pruebas ni sondas nuevas en las disposiciones de N-2 y N-3; registro real `07efad20…` sin cambios.
+**Sin resolver:** D-1..D-5 (siguiente: conciliación documental consolidada, incluida `feature_list.json`), estado de cada hallazgo QA-CR020-01..06, O3 y O4 tras la reverificación, D2, CONF-009, CONF-010; observación separada de `_marker_error`. Obligaciones de O3/O4, S1–S4 y conciliación manual (P5) PENDING se conservan.
+**Siguiente acción autorizada:** ninguna. Esperar instrucciones del propietario.
+
 ## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: evaluación de solo lectura de N-3 (no iniciada)
 
 **Base:** commit «docs(impl-3): record owner disposition of N-2 concurrent read risk» en `develop` (sin push; comprobar con `git status -sb`). Contrato **v1.10**; `feature_list.json` **v1.21.1**, sin cambios (conciliación documental consolidada posterior).
