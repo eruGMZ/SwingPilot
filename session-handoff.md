@@ -1,5 +1,13 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: evaluación y disposición del propietario de N-2 (no iniciada)
+
+**Base:** commit «fix(research): validate mandatory deviation evidence before persistence» en `develop` (sin push; comprobar con `git status -sb`). Contrato **v1.10**; `feature_list.json` **v1.21.1**, sin cambios.
+**N-1:** CORREGIDO y ACEPTADO por el propietario; **pendiente de reverificación independiente focalizada** (la aceptación no la sustituye). Detalle: `harness/verification/IMPL-3_N-1_correccion.md` (§7 limitaciones residuales conservadas; §8 aceptación).
+**Evidencia:** 43 pruebas nuevas; suite 870 passed, 5 skipped; validadores OK; registro real `07efad20…` sin cambios.
+**Sin resolver:** N-2 (siguiente; evaluación de solo lectura y decisión del propietario antes de cualquier cambio), N-3, D-1..D-5, D2, CONF-009, CONF-010; observación separada de `_marker_error`. Obligaciones de O3/O4, S1–S4 y conciliación manual PENDING se conservan.
+**Siguiente acción autorizada:** ninguna. Esperar instrucciones del propietario.
+
 ## PUNTO DE REANUDACIÓN (2026-11-25) — reverificación independiente consolidada PRESERVADA; esperar decisiones del propietario
 
 **Base:** reverificación sobre `2625ee9`; evidencia preservada en el commit «docs(impl-3): preserve independent CR-020 consolidated reverification evidence» (sin push; comprobar con `git status -sb`). Contrato **v1.10**; `feature_list.json` **v1.21.1**, sin cambios.

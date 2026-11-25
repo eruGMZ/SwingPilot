@@ -839,6 +839,11 @@ class ExperimentRegistry:
                         or new_dev.get("config_id") != config_id:
                     raise EvaluationRequestRejected("el constructor no devolvió la DEVIATION de esta configuración; "
                                                     "solicitud rechazada, nada escrito")
+                why = self._deviation_output_error(new_dev, experiment_id, sha, records)   # N-1
+                if why:
+                    raise EvaluationRequestRejected(
+                        f"DEVIATION obligatoria de {experiment_id}/{config_id} no válida: {why}; "
+                        "solicitud rechazada, nada escrito")
             if ce_idx is not None and (planned or dev_idx is not None) and \
                     self._certifies_all(records, experiment_id, config_id, records[dev_idx] if dev_idx is not None
                                         else None):
@@ -881,6 +886,40 @@ class ExperimentRegistry:
                 raise PersistenceUncertainError(f"{experiment_id}/{config_id}: sin marcador válido tras escribir; "
                                                 "la evaluación no empieza")
             return again[ce2]
+
+    def _deviation_output_error(self, rec: dict, experiment_id: str, sha: str, records: list[dict]) -> str | None:
+        """N-1 (CR-020 §C.3.2; CR-021 §D.3, §D.4 paso 1): validación COMPLETA, sin efectos y antes de
+        escribir, de la DEVIATION que devuelve el constructor. Solo reutiliza las validaciones de
+        ORQ-017-01 (`preregistration._deviation_shape_error`, `_registry_exposure`) y `informed_by_error`;
+        el llamador tiene el bloqueo y `records` es el estado actual. None = válida."""
+        from .preregistration import _deviation_shape_error, _registry_exposure   # local: import circular
+        if rec.get("experiment_id") != experiment_id:
+            return "experiment_id distinto del de la solicitud"
+        if rec.get("field") != "trials_count":
+            return "field debe ser trials_count"
+        why = _deviation_shape_error(rec)
+        if why:
+            return why
+        if "informed_by" not in rec:
+            return "falta «informed_by» (obligatorio en las desviaciones nuevas, R2)"
+        if rec["preregistration_sha256"] != sha:
+            return "el SHA-256 del preregistro no coincide con el de PREREGISTERED"
+        if any(r.get("kind") == "DEVIATION" and r.get("deviation_id") == rec["deviation_id"] for r in records):
+            return "deviation_id ya consta en el registro"
+        why = self.informed_by_error(rec["informed_by"], records)
+        if why:
+            return f"informed_by no verificable: {why}"
+        try:
+            consumed = _registry_exposure(self, experiment_id)
+        except Exception as exc:
+            return f"exposición del registro no verificable: {exc}"
+        if rec["after_oos"] != (consumed or bool(rec["access_log_evidence"])):
+            return "after_oos no coincide con la cronología del registro"
+        try:
+            _serialize({"at_utc": self._now(), **rec})
+        except (TypeError, ValueError) as exc:
+            return f"no serializable: {exc!r}"
+        return None
 
     def _certifies_all(self, records: list[dict], experiment_id: str, config_id: str, dev: dict | None) -> bool:
         """¿Hay un marcador válido del par que certifique la evaluación y, si `dev`, esa DEVIATION?

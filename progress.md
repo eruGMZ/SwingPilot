@@ -1772,3 +1772,18 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Validación:** `validate_{manifest,requirements,gates}.py` → código 0 (ver cierre). Registro real sin cambios (SHA-256 `07efad20…`).
 **Sin cambios:** informe y sondas originales, evidencia de correcciones, `feature_list.json`, código, pruebas, contratos, conflictos, FEAT, gates. Sin push; sub-agentes: 0.
 **Siguiente acción autorizada:** ninguna. Esperar decisiones del propietario sobre N-1..N-3, D-1..D-5, estados de hallazgos, D2, CONF-009/010.
+
+## 2026-11-25 | FASE 2 | IMPL-3: corrección de N-1 (validación completa de la DEVIATION del constructor antes de escribir) | IMPLEMENTADO — pendiente de revisión del propietario
+
+**Autorización del propietario (2026-11-25):** corrección de N-1 sin CR; no incluye N-2, N-3, D-1..D-5 ni `_marker_error`; sin commit ni push.
+**Hecho:** `ExperimentRegistry._deviation_output_error` (importación local de `_deviation_shape_error` y `_registry_exposure`; `informed_by_error`) invocada en `begin_configuration_evaluation` bajo el bloqueo y antes de escribir; salida inválida → `EvaluationRequestRejected`. Protocolo de escritura/`fsync`/marcador/reintento sin cambios. Detalle y trazabilidad: `harness/verification/IMPL-3_N-1_correccion.md`.
+**Evidencia:** 43 pruebas nuevas (`tests/unit/test_n1_deviation_prewrite_validation.py`); contra la base 30 failed (comportamiento) y 13 passed (preventivas/control); con la corrección 43 passed; regresiones CR-021/CR-020 → 130 passed; suite completa → 870 passed, 5 skipped; validadores → 0; registro real SHA-256 `07efad20…` sin cambios.
+**Archivos (sin commit):** `src/swingpilot/research/experiments.py`, `tests/unit/test_n1_deviation_prewrite_validation.py`, `harness/verification/IMPL-3_N-1_correccion.md`, `progress.md`, `session-handoff.md`.
+**Sin cambios:** contrato v1.10, `feature_list.json` v1.21.1, estados de FEAT y conflictos, gates, D2 (pendiente), informe y sondas preservados. Sub-agentes: 0.
+**Siguiente acción autorizada:** ninguna. Esperar la revisión del propietario (commit y push solo con su indicación).
+
+## 2026-11-25 | FASE 2 | IMPL-3: N-1 aceptado por el propietario y congelado en commit | CORREGIDO Y ACEPTADO — pendiente de reverificación independiente focalizada
+
+**Autorización del propietario (2026-11-25):** acepta la implementación de N-1 y su evidencia de regresión; autoriza un único commit. La aceptación no es reverificación independiente (anotado en `harness/verification/IMPL-3_N-1_correccion.md` §8). Limitaciones residuales conservadas.
+**Sin cambios:** contrato v1.10, `feature_list.json` v1.21.1, FEAT, conflictos, gates; D2 pendiente. Suite no reejecutada (solo documental). Registro real `07efad20…` sin cambios. Sin push; sub-agentes: 0.
+**Siguiente acción autorizada:** ninguna. Próximo punto de control: evaluación y disposición del propietario de N-2 (no iniciada).
