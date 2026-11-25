@@ -1,5 +1,14 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: decisiones de cierre del propietario sobre CR-020, CONF-009, CONF-010 y D2 (no iniciadas)
+
+**Base:** `eac0fa7` en `develop` (= `origin/develop` según la referencia local al auditar) más la preservación documental de la reverificación focalizada, **sin commit** (comprobar con `git status -sb`). Contrato **v1.10**; `feature_list.json` **v1.21.2** sin cambios.
+**Reverificación independiente focalizada:** `harness/verification/IMPL-3_CR-020_reverificacion_focalizada.md` (scripts en `IMPL-3_CR-020_reverificacion_focalizada_sondas/`) — **CONFORME CON OBSERVACIONES**, sin disconformidades contractuales: N-1 conforme (corregido y verificado), disposiciones de N-2 y N-3 conformes, D-1..D-5 conformes. Informe aceptado por el propietario como evidencia; **no es cierre formal**.
+**Recomendaciones del auditor (no decisiones):** ocho hallazgos originales, CONF-009 y D2 elegibles para cierre formal con obligaciones conservadas; CONF-010: mantener OPEN o cerrar solo trasladando O3/O4 a un control trazable previo al pipeline.
+**Obligaciones conservadas:** O3 y O4 antes de habilitar el pipeline de evaluación; S1–S4; P5 PENDING con las condiciones de `IMPL-3_N-2_disposicion.md` §3 y `IMPL-3_N-3_disposicion.md` §4; `confirmatory_status` consistente en HUMAN_REVIEW; N-3 como excepción acotada; N-1 no retroactiva; observación de `_marker_error` abierta. FEAT-017 IN_PROGRESS; CONF-009 y CONF-010 OPEN; D2 pendiente de cierre; FEAT, criterios, conflictos y gates sin cambios.
+**Verificación:** validadores → código 0; registro real `07efad20…` sin cambios; pruebas funcionales no reejecutadas (solo documental).
+**Siguiente acción autorizada:** ninguna. Esperar la revisión del propietario y su autorización de commit. D3–D7 no iniciadas.
+
 ## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: reverificación independiente focalizada de N-1 y revisión de N-2, N-3 y D-1..D-5 (no iniciada)
 
 **Base:** commit «docs(impl-3): reconcile CR-020 reverification findings and dispositions» en `develop` (sin push; comprobar con `git status -sb`; antes del commit `develop` = `origin/develop` en `95ae440`). Contrato **v1.10**; `feature_list.json` **v1.21.2** (parche solo documental).
