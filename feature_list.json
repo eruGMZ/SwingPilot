@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "1.20.0",
+    "version": "1.21.0",
     "phase": "FASE 2",
     "status": "IMPL-3_EN_CURSO",
     "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5 y cerrada (2026-11-20). Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md). IMPL-3 (Integración cuantitativa, FEAT-015..022) registrada desde el contrato v1.5 con status PENDING; planificación aprobada (DEC-017); implementación parcial autorizada (DEC-018, 2026-11-20): FEAT-015/016/017/019 IN_PROGRESS, FEAT-018/020/021/022 BLOCKED.",
@@ -1798,7 +1798,7 @@
             "QA-CR020-05": "RESUELTO por solapamiento con CR-021, VERIFICADO por el implementador (`9026797`) y aceptado por el propietario; reverificación independiente PENDIENTE",
             "QA-CR020-06": "CONCILIADO documentalmente (2026-11-24; `feature_list.json` v1.19.0 y notas añadidas en `implementation/conflict_register.md`), VERIFICADO por el implementador (JSON válido; validadores OK; comparación con `9026797`) y ACEPTADO por el propietario (2026-11-24); reverificación independiente PENDIENTE (exactitud documental, preservación de la evidencia histórica y coherencia de los estados registrados)",
             "QA-CR020-O3": "ACEPTADO por el propietario (2026-11-24; cuatro disposiciones: limitación residual de TC-ML-020 con verificación de la contabilidad de escenarios de costes antes de habilitar el pipeline de evaluación; limitación histórica permanente de la evidencia de A2; sintaxis de P10 con responsabilidad del propietario sobre la justificación sustantiva y ninguna reducción del registro real autorizada; criterio aprobado de P11 con el comportamiento Unicode sin verificar ni certificar); sin cambios funcionales, de pruebas ni contractuales; reverificación independiente PENDIENTE (`harness/verification/IMPL-3_QA-CR020-O3_evaluacion.md`)",
-            "QA-CR020-O4": "sin resolver"
+            "QA-CR020-O4": "ACEPTADO por el propietario (2026-11-25; opción A): riesgo residual metodológico aceptado, sin cambios funcionales, de pruebas ni contractuales; el registro del inicio de evaluación sigue sujeta a las puertas contractuales de ciclo de vida y autorización, la recuperación de Train+Val de un par ya certificado no tiene una puerta de estado adicional, la recuperación repetida no incrementa el conteo, el cargador no distingue recuperación de evidencia de reevaluación y los cambios sustantivos bajo un `config_id` existente no se garantiza detectarlos; evaluación basada en inspección de código, sin pruebas nuevas; obligación operativa abierta antes de habilitar el pipeline de evaluación de investigación (sin autorización de implementación); distinta de la observación O4 antigua sobre la conservación versionada de la evidencia; reverificación independiente PENDIENTE (`harness/verification/IMPL-3_QA-CR020-O4_evaluacion.md`)"
           }
         }
       ],

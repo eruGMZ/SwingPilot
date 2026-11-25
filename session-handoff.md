@@ -1,6 +1,21 @@
 # session-handoff.md — SwingPilot Harness
 
-## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: QA-CR020-O4 (ninguna implementación ni enmienda documental autorizada)
+## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente sesión: reverificación independiente consolidada de QA-CR020-01..06, O3 y O4 (no iniciada; requiere autorización expresa)
+
+**Base:** commit «docs(impl-3): record owner disposition of QA-CR020-O4» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push; comprobar con `git status -sb`). Contrato **v1.10** sin cambios; `feature_list.json` **v1.21.0**.
+**Última evidencia:** suite funcional → 827 passed, 5 skipped (registrada en `9026797`; no reejecutada, solo cambios documentales). JSON válido; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK. Registro real sin cambios (SHA-256 `07efad20…`).
+
+**Estado de los hallazgos de la QA independiente de CR-020** (`harness/verification/IMPL-3_CR-020_QA_independiente.md`, sin modificar): QA-CR020-01..06 y O3 resueltos o aceptados por el propietario; **QA-CR020-O4: ACEPTADO por el propietario (opción A, 2026-11-25); todos pendientes de reverificación independiente.** Ninguna observación queda sin disposición.
+
+**QA-CR020-O4** (`harness/verification/IMPL-3_QA-CR020-O4_evaluacion.md`): riesgo residual metodológico aceptado, sin cambios funcionales, de pruebas ni contractuales. El registro del inicio de evaluación sigue sujeto a las puertas de ciclo de vida y autorización; la recuperación de Train+Val de un par certificado no tiene puerta de estado adicional; la recuperación repetida no incrementa el conteo; el cargador no distingue recuperación de evidencia de reevaluación; los cambios sustantivos bajo un `config_id` existente no se garantiza detectarlos; evaluación basada en inspección de código, sin pruebas nuevas. **Obligación operativa abierta (no autoriza implementación):** antes de habilitar el pipeline de evaluación de investigación, verificar que las configuraciones sustantivamente modificadas no puedan tratarse como repeticiones idénticas para eludir la contabilidad. Distinta de la O4 antigua (conservación versionada de la evidencia).
+
+**Obligación de reverificación independiente de QA-CR020-O4:** registro fiel a la evaluación y a las fuentes; la obligación operativa consta como abierta, no implementada; no se presenta evidencia ejecutada donde solo hubo inspección de código; no se confunde con la O4 antigua. Las obligaciones de QA-CR020-01..06 y O3 se conservan en los puntos de reanudación anteriores.
+
+**Estado general:** D2 pendiente de cierre; CONF-009 y CONF-010 OPEN (CONF-009 con reevaluación obligatoria antes del cierre de FEAT-017); CONF-011 RESOLVED; FEAT-015 DONE; FEAT-017 IN_PROGRESS; D3–D7 PENDIENTES; SNAP-0001 no creada; gates sin cambios.
+**Restricciones vigentes:** sin particiones reales, experimentos, SNAP-0001 ni IA; registro real solo lectura; commit y push solo con indicación del propietario.
+**Siguiente acción autorizada:** ninguna. Esperar instrucciones del propietario (la reverificación consolidada no está iniciada).
+
+## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: QA-CR020-O4 (sustituido por el punto de reanudación superior)
 
 **Base:** commit «docs(impl-3): record owner disposition of QA-CR020-O3» en `develop` (HEAD). Al empezar esta sesión se comprobó localmente, sin `fetch`, que `develop` = `origin/develop` en `c70f593` (0 por delante, 0 por detrás); la indicación «1 commit por delante» de puntos anteriores quedó desactualizada. Comprobar el estado actual con `git status -sb`. Contrato **v1.10** sin cambios; `feature_list.json` **v1.20.0**.
 **Última evidencia:** suite funcional → 827 passed, 5 skipped (registrada en `9026797`; no reejecutada, solo cambios documentales). Pruebas dirigidas de O3 (`-k "tc_ml_020 or tc_ml_021"` → 26 passed; `-k a2` → 7 passed). JSON válido; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK. Registro real sin cambios (SHA-256 `07efad20…`, sin reducciones).
