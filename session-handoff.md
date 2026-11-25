@@ -1,6 +1,25 @@
 # session-handoff.md — SwingPilot Harness
 
-## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: QA-CR020-O3 (ninguna implementación ni enmienda documental autorizada)
+## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: QA-CR020-O4 (ninguna implementación ni enmienda documental autorizada)
+
+**Base:** commit «docs(impl-3): record owner disposition of QA-CR020-O3» en `develop` (HEAD). Al empezar esta sesión se comprobó localmente, sin `fetch`, que `develop` = `origin/develop` en `c70f593` (0 por delante, 0 por detrás); la indicación «1 commit por delante» de puntos anteriores quedó desactualizada. Comprobar el estado actual con `git status -sb`. Contrato **v1.10** sin cambios; `feature_list.json` **v1.20.0**.
+**Última evidencia:** suite funcional → 827 passed, 5 skipped (registrada en `9026797`; no reejecutada, solo cambios documentales). Pruebas dirigidas de O3 (`-k "tc_ml_020 or tc_ml_021"` → 26 passed; `-k a2` → 7 passed). JSON válido; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK. Registro real sin cambios (SHA-256 `07efad20…`, sin reducciones).
+
+**Estado de los hallazgos de la QA independiente de CR-020** (`harness/verification/IMPL-3_CR-020_QA_independiente.md`, sin modificar):
+- QA-CR020-01..05: CORREGIDOS o verificados y aceptados por el propietario; pendientes de reverificación independiente (obligaciones en el punto siguiente).
+- QA-CR020-06: conciliado, verificado por el implementador y aceptado; pendiente de reverificación independiente.
+- **QA-CR020-O3: ACEPTADO por el propietario (cuatro disposiciones); pendiente de reverificación independiente** (`harness/verification/IMPL-3_QA-CR020-O3_evaluacion.md`). Condiciones vigentes: verificar la contabilidad correcta de los escenarios de costes antes de habilitar el pipeline de evaluación de investigación; limitación permanente de la evidencia previa de A2 (no reconstruir ni presentar evidencia posterior como original); toda reducción futura de procedencia exige evidencia que respalde `DOCUMENTED_NOT_EVALUATED` y **no se autoriza ninguna reducción del registro real**; el comportamiento Unicode de la línea de autorización no está verificado ni certificado.
+- **QA-CR020-O4: SIN RESOLVER — siguiente trabajo.**
+
+**QA-CR020-O4 (OBS, nota; para la sesión siguiente):** según el informe §3, el cargador no considera el estado del experimento: un par registrado puede seguir cargando Train+Val cuando el experimento ya está en un estado terminal (`src/swingpilot/research/partitions.py`; el informe cita `:129-151`, que puede haberse desplazado). El informe señala que el contrato no lo prohíbe. Antes de cualquier cambio: evaluación de solo lectura y decisión del propietario; no inferir requisitos nuevos; no ampliar a otros hallazgos.
+
+**Obligación de reverificación independiente de QA-CR020-O3:** el registro de la disposición es fiel a la evaluación y a la evidencia citada; ningún documento presenta evidencia posterior como original (A2); el registro real no tiene reducciones; la condición de TC-ML-020 consta como obligación abierta; el comportamiento Unicode no se presenta como certificado. Las demás obligaciones (QA-CR020-01..06) se conservan en el punto de reanudación anterior.
+
+**Estado general:** D2 pendiente de cierre; CONF-009 y CONF-010 OPEN (CONF-009 con reevaluación obligatoria antes del cierre de FEAT-017); CONF-011 RESOLVED; FEAT-015 DONE; FEAT-017 IN_PROGRESS; D3–D7 PENDIENTES; SNAP-0001 no creada; gates sin cambios.
+**Restricciones vigentes:** sin particiones reales, experimentos, SNAP-0001 ni IA; registro real solo lectura; commit y push solo con indicación del propietario.
+**Siguiente acción autorizada:** ninguna. Esperar instrucciones del propietario (ninguna implementación ni enmienda documental autorizada para QA-CR020-O4).
+
+## PUNTO DE REANUDACIÓN (2026-11-24) — siguiente sesión: QA-CR020-O3 (sustituido por el punto de reanudación superior)
 
 **Base:** commit «docs(impl-3): reconcile CR-020 implementation evidence and resolve QA-CR020-06» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push; comprobar con `git status -sb`). Contrato **v1.10** y `feature_list.json` **v1.19.0** sin cambios.
 **Última evidencia:** suite funcional → 827 passed, 5 skipped (registrada en `9026797`; no reejecutada desde entonces, solo cambios documentales). Tras la conciliación de QA-CR020-06: JSON válido; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK. Registro real sin cambios (SHA-256 `07efad20…`).
