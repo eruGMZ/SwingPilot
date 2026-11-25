@@ -1763,3 +1763,12 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Validación:** JSON válido; `validate_manifest.py`, `validate_requirements.py`, `validate_gates.py` → código 0; suite funcional no ejecutada.
 **Sin cambios:** estados de FEAT y de conflictos, gates, contrato v1.10, evidencia histórica, código funcional, pruebas, registro real. Sin enmiendas de commits anteriores, sin reverificación iniciada, sin push. Sub-agentes: 0.
 **Siguiente acción autorizada:** ninguna. Punto de reanudación sin cambios: reverificación independiente consolidada de QA-CR020-01..06, O3 y O4 (no iniciada).
+
+## 2026-11-25 | FASE 2 | IMPL-3: preservación de la reverificación independiente consolidada de CR-020 (base `2625ee9`) | PRESERVADO — pendiente de decisiones del propietario
+
+**Autorización del propietario (2026-11-25):** acepta la recepción del informe (CONFORME CON OBSERVACIONES); **no** es cierre final de hallazgos, D2 ni conflictos. Autoriza solo preservar la evidencia.
+**Preservado:** `harness/verification/IMPL-3_CR-020_reverificacion_consolidada.md` (informe en español; distingue evidencia original, evidencia nueva, recomendaciones y decisiones pendientes; registra N-1, N-2, N-3 y D-1..D-5 sin resolverlos, incluido el escenario de vista mixta ELIGIBLE de N-3 y su limitación a la reescritura fuera del protocolo append-only); `harness/verification/IMPL-3_CR-020_reverificacion_sondas/` (sondas sintéticas portables, `prepare_strace.py`/`p_strace_child.py` y `strace_CR-021_orden_escritura_fsync.txt`).
+**Limitaciones:** salidas de las sondas transcritas en el informe, no conservadas en bruto; el strace preservado es una regeneración saneada (el original contenía rutas de la máquina); fallos de `fsync` simulados; cargador con `_read` sintético. Para comprobar la portabilidad se ejecutaron `p_builder.py` y la traza strace; no se reejecutó la suite ni se investigó más.
+**Validación:** `validate_{manifest,requirements,gates}.py` → código 0 (ver cierre). Registro real sin cambios (SHA-256 `07efad20…`).
+**Sin cambios:** informe y sondas originales, evidencia de correcciones, `feature_list.json`, código, pruebas, contratos, conflictos, FEAT, gates. Sin push; sub-agentes: 0.
+**Siguiente acción autorizada:** ninguna. Esperar decisiones del propietario sobre N-1..N-3, D-1..D-5, estados de hallazgos, D2, CONF-009/010.

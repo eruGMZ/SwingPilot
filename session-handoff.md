@@ -1,5 +1,14 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-25) — reverificación independiente consolidada PRESERVADA; esperar decisiones del propietario
+
+**Base:** reverificación sobre `2625ee9`; evidencia preservada en el commit «docs(impl-3): preserve independent CR-020 consolidated reverification evidence» (sin push; comprobar con `git status -sb`). Contrato **v1.10**; `feature_list.json` **v1.21.1**, sin cambios.
+**Resultado del revisor:** CONFORME CON OBSERVACIONES para QA-CR020-01..06, O3 y O4 (informe: `harness/verification/IMPL-3_CR-020_reverificacion_consolidada.md`; sondas y strace: `harness/verification/IMPL-3_CR-020_reverificacion_sondas/`). El propietario acepta la **recepción**; no es cierre de hallazgos, D2 ni conflictos.
+**Sin resolver (decisión del propietario):** N-1 (el constructor de la DEVIATION solo se comprueba por `kind` y `config_id` en `begin_configuration_evaluation`), N-2 (lecturas sin `flock`: falsa corrupción transitoria), N-3 (vista mixta del evaluador solo ante reescritura fuera del protocolo append-only), D-1..D-5 (inconsistencias documentales), estado de cada hallazgo, D2, CONF-009, CONF-010.
+**Se conservan abiertas:** obligaciones de O3 y O4 previas al pipeline; S1–S4 en el despliegue; conciliación manual PENDING.
+**Evidencia:** suite 827 passed, 5 skipped (reverificación; no reejecutada para la preservación); validadores OK; registro real SHA-256 `07efad20…` sin cambios.
+**Siguiente acción autorizada:** ninguna. Esperar instrucciones del propietario.
+
 ## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente sesión: reverificación independiente consolidada de QA-CR020-01..06, O3 y O4 (no iniciada; requiere autorización expresa)
 
 **Base:** commit «docs(impl-3): record owner disposition of QA-CR020-O4» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push; comprobar con `git status -sb`). Contrato **v1.10** sin cambios; `feature_list.json` **v1.21.1** (v1.21.0 + conciliación aislada de `evidence.pending` de FEAT-017 para O3 y O4).
