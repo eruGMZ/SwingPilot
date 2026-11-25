@@ -109,7 +109,7 @@ def gate(reg, tmp, eid=X1, cfg="A"):
     """Puerta del cargador de Train+Val con `_read` sintético: (resultado, motivo, lecturas)."""
     loader = PartitionLoader.__new__(PartitionLoader)
     loader.registry, loader.access_log = reg, Path(tmp) / f"access-{eid}-{cfg}.jsonl"
-    loader.manifest = {"snapshot_id": "SNAP-TEST"}
+    loader.manifest = {"snapshot_id": "SNAP-TEST", "kind": "development"}
     reads = []
     loader._read = lambda part: reads.append(part) or pd.DataFrame({"interval": ["1d"]})
     try:
@@ -126,7 +126,7 @@ def proc_gate(reg, eid=X1, cfg="A"):
             "from swingpilot.research.experiments import ExperimentRegistry as R;"
             "from swingpilot.research.partitions import PartitionLoader as L;"
             f"r=R(Path({str(reg.path)!r}),Path({str(reg.decisions_dir)!r}));l=L.__new__(L);l.registry=r;"
-            f"l.access_log=Path({str(reg.path.parent / 'proc-access.jsonl')!r});l.manifest={{'snapshot_id':'SNAP-TEST'}};"
+            f"l.access_log=Path({str(reg.path.parent / 'proc-access.jsonl')!r});l.manifest={{'snapshot_id':'SNAP-TEST','kind':'development'}};"
             "l._read=lambda p: pd.DataFrame({'interval':['1d']})\n"
             f"try:\n l.load_train_val_for_configuration({eid!r},{cfg!r});print('DELIVERED')\n"
             "except Exception:\n print('DENIED')")

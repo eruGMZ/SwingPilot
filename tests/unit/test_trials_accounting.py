@@ -479,7 +479,7 @@ def test_tc_ml_023_loader_requires_registered_pair(reg, tmp_path):
     frozen_experiment(reg)
     loader = PartitionLoader.__new__(PartitionLoader)             # sin snapshot: solo la puerta del cargador
     loader.registry, loader.access_log = reg, tmp_path / "access.jsonl"
-    loader.manifest = {"snapshot_id": "SNAP-TEST"}
+    loader.manifest = {"snapshot_id": "SNAP-TEST", "kind": "development"}
     loader._read = lambda part: (_ for _ in ()).throw(AssertionError("no debía leer datos"))
     with pytest.raises(PartitionAccessError, match="sin inicio de evaluación"):
         loader.load_train_val_for_configuration("EXP-0101", "A")

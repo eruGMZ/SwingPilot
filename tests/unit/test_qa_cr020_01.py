@@ -59,7 +59,7 @@ def loader_for(reg, tmp_path):
     """Solo la puerta del cargador: `_read` sintético que anota cada lectura."""
     loader = PartitionLoader.__new__(PartitionLoader)
     loader.registry, loader.access_log = reg, tmp_path / "access.jsonl"
-    loader.manifest = {"snapshot_id": "SNAP-TEST"}
+    loader.manifest = {"snapshot_id": "SNAP-TEST", "kind": "development"}
     loader.reads = []
     loader._read = lambda part: loader.reads.append(part) or pd.DataFrame({"interval": ["1d"]})
     return loader

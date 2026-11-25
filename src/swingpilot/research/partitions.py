@@ -22,6 +22,15 @@ TC-ML-001, TC-ML-007, TC-ML-012, TC-ML-016, TC-ML-019).
   (root o sistema de archivos sin permisos POSIX), tampoco para `train_val`; `load_final` lo
   vuelve a comprobar ANTES de registrar el consumo, de modo que un bloqueo nunca consume la
   partición.
+- CR-023 (bloque B2): los cargadores son sensibles a `kind`. Los de desarrollo
+  (`load_train_val_for_configuration`, `_load_train_val_for_inspection`,
+  `split_train_validation`) rechazan una snapshot `evaluation` con PartitionAccessError,
+  anotado y sin leer datos. `load_final` deniega (partición no presente) sobre una snapshot
+  `development`; sobre una `evaluation` conserva el mecanismo vigente (autorización,
+  OOS_EVALUATION, re-comprobación del sellado, consumo atómico y registro sin campos nuevos) y
+  exige que la partición pedida y el experimento coincidan con el `window_id` del manifiesto.
+  NO implementados aquí (B6): la lectura del `context` junto con su partición, la regla
+  OOS-antes-que-LOCKBOX y las comprobaciones V.
 - DEC-018: en IMPL-3 no se evalúan OOS ni LOCKBOX; ninguna autorización real se emite.
 - CR-020 (§C.3.2) y A2 (opción B del propietario): `load_train_val_for_configuration` solo
   entrega Train+Val si el par (experimento, configuración) está en la evidencia VALIDADA del
@@ -50,7 +59,18 @@ import pyarrow
 import pyarrow.parquet as pq
 
 from .preregistration import evaluation_evidence_error
-from .snapshot import MODE_SEALED, SEALED, SealingError, enforce_sealing, load_manifest, sha256_file
+from .snapshot import (KIND_DEVELOPMENT, KIND_EVALUATION, MODE_SEALED, SEALED, SEALED_FILES, SealingError,
+                       enforce_sealing, load_manifest, sha256_file)
+
+
+# B2-01 (revisión del propietario, 2026-11-25): restricción temporal Fail-Closed. Una snapshot de
+# evaluación sintética con esquema 2.0.0 y el mecanismo de autorización vigente bastarían para
+# que `load_final` registrara PARTITION_CONSUMED y leyera la partición sin las comprobaciones de
+# CR-023 previstas para B6 (elegibilidad V1–V8, consumo por ventana, OOS antes que LOCKBOX,
+# context). Hasta B6 se deniega siempre, después de las comprobaciones vigentes y antes de
+# `claim_partition`. No es configurable en ejecución; solo las pruebas del mecanismo histórico
+# la desactivan. B6 debe sustituirla por las comprobaciones reales y retirarla.
+_FINAL_ACCESS_BLOCKED_UNTIL_B6 = True
 
 
 class PartitionAccessError(PermissionError):
@@ -105,7 +125,7 @@ class PartitionLoader:
     def _read(self, partition: str) -> pd.DataFrame:
         info = self.manifest["files"][partition]
         path = self.data_dir / info["file"]
-        sealed = partition in SEALED
+        sealed = partition in SEALED_FILES
         if sealed:
             # QA3R2-08: se abre y se vuelve a sellar de inmediato; hash y parseo usan el
             # descriptor ya abierto, así un SIGKILL durante la lectura no deja el archivo en 0o400.
@@ -123,9 +143,20 @@ class PartitionLoader:
             raise PartitionAccessError(f"{partition}: SHA-256 no coincide con el manifiesto")
         return pq.read_table(path).to_pandas()
 
+    def _require_development(self, experiment_id: str | None) -> None:
+        """Los cargadores de desarrollo solo aceptan `kind: development` (CR-023 §C.6.5): una
+        snapshot de evaluación, o un manifiesto sin `kind`, se rechaza, se anota y no se lee
+        (Fail-Closed)."""
+        kind = self.manifest.get("kind")
+        if kind != KIND_DEVELOPMENT:
+            reason = f"el cargador de desarrollo rechaza snapshots kind={kind!r} (CR-023)"
+            self._log("train_val", False, reason, experiment_id)
+            raise PartitionAccessError(f"acceso a train_val denegado: {reason}")
+
     def _load_train_val_for_inspection(self, interval: str | None = None) -> pd.DataFrame:
         """Uso interno: inspección de la integridad de la snapshot (FEAT-015). No es una vía de
         evaluación; las evaluaciones usan `load_train_val_for_configuration` (CR-020, A2)."""
+        self._require_development(None)
         self._log("train_val", True, "desarrollo", None)
         df = self._read("train_val")
         return df[df["interval"] == interval].reset_index(drop=True) if interval else df
@@ -135,6 +166,7 @@ class PartitionLoader:
         """Train+Val para evaluar una configuración (CR-020 §C.3.2): solo si el inicio de su
         evaluación consta de forma duradera en el registro (relectura). Si no consta, o el
         registro falta o es ilegible, no se entregan datos y se anota el rechazo."""
+        self._require_development(experiment_id)
         reason = None
         if self.registry is None:
             reason = "sin registro de experimentos"
@@ -157,6 +189,8 @@ class PartitionLoader:
         return df[df["interval"] == interval].reset_index(drop=True) if interval else df
 
     def split_train_validation(self, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Train = primeros 5/7 y Validation = últimos 2/7 por fecha (corte del manifiesto)."""
+        self._require_development(None)
         cut = self.manifest["cuts_ms"]["train_end"]
         return (df[df["open_time"] < cut].reset_index(drop=True),
                 df[df["open_time"] >= cut].reset_index(drop=True))
@@ -184,6 +218,8 @@ class PartitionLoader:
     def _deny_reason(self, grant: FinalEvaluationGrant | None, partition: str) -> str | None:
         if partition not in SEALED:
             return "partición desconocida"
+        if self.manifest.get("kind") == KIND_DEVELOPMENT:
+            return f"la partición {partition} no existe en una snapshot de desarrollo (kind: development)"
         if grant is None:
             return "sin autorización de evaluación final"
         if grant.partition != partition or grant.snapshot_id != self.manifest["snapshot_id"]:
@@ -206,4 +242,14 @@ class PartitionLoader:
                 return f"{partition} ya consumido (evaluación única)"
         except Exception as exc:
             return f"registro de experimentos ilegible, corrupto o incoherente: {exc!r}"
+        if self.manifest.get("kind") != KIND_EVALUATION:                  # Fail-Closed: sin kind válido
+            return "el manifiesto no es de una snapshot de evaluación (kind)"
+        wid = self.manifest.get("window_id")
+        if wid != f"{grant.experiment_id}/{partition.upper()}":
+            return f"la partición pedida no coincide con la ventana del manifiesto ({wid!r})"
+        if partition not in self.manifest.get("files", {}):
+            return f"la partición {partition} no consta en el manifiesto"
+        if _FINAL_ACCESS_BLOCKED_UNTIL_B6:            # B2-01: antes del consumo y de toda lectura
+            return ("evaluación final bloqueada hasta B6: faltan las comprobaciones de elegibilidad y de "
+                    "consumo por ventana de CR-023 (§C.6.4, §C.9)")
         return None
