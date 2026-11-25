@@ -2,7 +2,7 @@
 
 ## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente sesión: reverificación independiente consolidada de QA-CR020-01..06, O3 y O4 (no iniciada; requiere autorización expresa)
 
-**Base:** commit «docs(impl-3): record owner disposition of QA-CR020-O4» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push; comprobar con `git status -sb`). Contrato **v1.10** sin cambios; `feature_list.json` **v1.21.0**.
+**Base:** commit «docs(impl-3): record owner disposition of QA-CR020-O4» en `develop` (HEAD; 1 commit por delante de `origin/develop` hasta que el propietario haga push; comprobar con `git status -sb`). Contrato **v1.10** sin cambios; `feature_list.json` **v1.21.1** (v1.21.0 + conciliación aislada de `evidence.pending` de FEAT-017 para O3 y O4).
 **Última evidencia:** suite funcional → 827 passed, 5 skipped (registrada en `9026797`; no reejecutada, solo cambios documentales). JSON válido; `python3 scripts/validate_{manifest,requirements,gates}.py` → OK. Registro real sin cambios (SHA-256 `07efad20…`).
 
 **Estado de los hallazgos de la QA independiente de CR-020** (`harness/verification/IMPL-3_CR-020_QA_independiente.md`, sin modificar): QA-CR020-01..06 y O3 resueltos o aceptados por el propietario; **QA-CR020-O4: ACEPTADO por el propietario (opción A, 2026-11-25); todos pendientes de reverificación independiente.** Ninguna observación queda sin disposición.
