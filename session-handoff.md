@@ -1,5 +1,14 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: reverificación independiente focalizada de N-1 y revisión de N-2, N-3 y D-1..D-5 (no iniciada)
+
+**Base:** commit «docs(impl-3): reconcile CR-020 reverification findings and dispositions» en `develop` (sin push; comprobar con `git status -sb`; antes del commit `develop` = `origin/develop` en `95ae440`). Contrato **v1.10**; `feature_list.json` **v1.21.2** (parche solo documental).
+**Aceptación del propietario (2026-11-25):** conciliación documental D-1..D-5 aceptada y congelada en un commit. Es una aceptación **documental**: no es verificación independiente ni cierre formal.
+**Distinción vigente:** corrección de implementación ≠ aceptación del propietario ≠ reverificación independiente ≠ cierre formal. N-1 corregido (`f8e8861`) y aceptado, pendiente de reverificación focalizada; N-2 (`06d55aa`) y N-3 (`95ae440`) aceptados como riesgos residuales, pendientes de revisión de sus disposiciones; D-1..D-5 conciliados, pendientes de revisión. Ningún hallazgo, D2, CONF-009, CONF-010 ni FEAT-017 está formalmente cerrado.
+**Obligaciones conservadas:** O3 y O4 antes de habilitar el pipeline de evaluación; S1–S4; P5 PENDING con las condiciones de `IMPL-3_N-2_disposicion.md` §3 y `IMPL-3_N-3_disposicion.md` §4; `confirmatory_status` consistente en HUMAN_REVIEW; N-3 como excepción acotada; D2 pendiente de cierre. FEAT, criterios de aceptación, `evidence.covered`, conflictos y gates sin cambios.
+**Verificación:** JSON válido; validadores → código 0; registro real `07efad20…` sin cambios; suite no reejecutada (solo documental).
+**Siguiente acción autorizada:** ninguna. Esperar instrucciones del propietario (la revisión independiente no está iniciada).
+
 ## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: conciliación documental consolidada de D-1..D-5 (no iniciada)
 
 **Base:** commit «docs(impl-3): record owner disposition of N-3 external rewrite risk» en `develop` (sin push; comprobar con `git status -sb`). Contrato **v1.10**; `feature_list.json` **v1.21.1**, sin cambios (se concilia en la reconciliación documental consolidada).

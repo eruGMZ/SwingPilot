@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "1.21.1",
+    "version": "1.21.2",
     "phase": "FASE 2",
     "status": "IMPL-3_EN_CURSO",
     "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5 y cerrada (2026-11-20). Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md). IMPL-3 (Integración cuantitativa, FEAT-015..022) registrada desde el contrato v1.5 con status PENDING; planificación aprobada (DEC-017); implementación parcial autorizada (DEC-018, 2026-11-20): FEAT-015/016/017/019 IN_PROGRESS, FEAT-018/020/021/022 BLOCKED.",
-    "last_updated": "2026-11-24",
+    "last_updated": "2026-11-25",
     "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-3..IMPL-6 se registran al iniciarlas. READY_FOR_REVIEW = criterios con implementación, prueba y evidencia; pasa a DONE tras revisión independiente (QA o propietario), porque ningún agente aprueba su propio trabajo (AGENTS.md). DONE-PARTIAL = criterios de IMPL-1 cumplidos con dependencias explícitas de fases posteriores (criterio del propietario, 2026-11-19); no bloquea la salida de IMPL-1."
   },
   "features": [
@@ -1730,8 +1730,9 @@
         "pending": [
           "AC-017-10 bloqueado: documentación de EXP-0001 (DEC-018 decisión 4)",
           "AC-017-11: backtest piloto en Train tras el preregistro (depende de AC-017-10 y de la snapshot definitiva)",
-          "AC-017-3, AC-017-8 y AC-017-13 en su redacción del contrato v1.8 (CR-020, DEC-021), enmendada por CR-021 (v1.9) y CR-022 (v1.10): implementación aceptada por el propietario; TC-ML-020..024 con pruebas ejecutables y ejecuciones registradas (ver `cr020.evidence`); verificación independiente de CR-020 CONFORME CON OBSERVACIONES sobre `f2f05a9` (ver `qa_reviews`); reverificación independiente de las correcciones QA-CR020-01..05 PENDIENTE; QA-CR020-O3 y O4 aceptados por el propietario, con limitaciones residuales documentadas y reverificación independiente PENDIENTE. La cobertura registrada en `covered` sigue correspondiendo a la redacción anterior (conteo por experimentos) y no acredita la nueva",
-          "CR-021 (DEC-023; contrato v1.9): requisitos de TC-ML-020 y TC-ML-023 (EVALUATION_PERSISTED, I2a/I2b, P1–P5) implementados en `0051014` con la adaptación de pruebas ejecutables de §G.5, aceptados por el propietario; reverificación independiente PENDIENTE (QA-CR020-03 CORREGIDO y aceptado; ver `cr021`)"
+          "AC-017-3, AC-017-8 y AC-017-13 en su redacción del contrato v1.8 (CR-020, DEC-021), enmendada por CR-021 (v1.9) y CR-022 (v1.10): implementación aceptada por el propietario; TC-ML-020..024 con pruebas ejecutables y ejecuciones registradas (ver `cr020.evidence`); verificación independiente de CR-020 CONFORME CON OBSERVACIONES sobre `f2f05a9` (ver `qa_reviews`); reverificación independiente consolidada de QA-CR020-01..06, O3 y O4 REALIZADA sobre `2625ee9` (CONFORME CON OBSERVACIONES; informe y sondas preservados en `67195da`; recepción aceptada por el propietario; no es cierre de hallazgos, de D2 ni de conflictos; ver `qa_reviews`); QA-CR020-06 conciliado y aceptado; QA-CR020-O3 y O4 aceptados por el propietario con limitaciones residuales y obligaciones operativas abiertas. Observaciones de la reverificación: N-1 CORREGIDO (`f8e8861`) y aceptado por el propietario, pendiente de reverificación independiente focalizada; N-2 (`06d55aa`) y N-3 (`95ae440`) aceptados por el propietario como riesgos residuales (disponibilidad; integridad fuera del protocolo append-only), pendientes de revisión independiente focalizada de cada disposición; D-1..D-5 conciliados documentalmente (v1.21.2), pendientes de revisión independiente. Cierre formal de los hallazgos, de D2, CONF-009, CONF-010 y FEAT-017: NO decidido. La cobertura registrada en `covered` sigue correspondiendo a la redacción anterior (conteo por experimentos) y no acredita la nueva",
+          "CR-021 (DEC-023; contrato v1.9): requisitos de TC-ML-020 y TC-ML-023 (EVALUATION_PERSISTED, I2a/I2b, P1–P5) implementados en `0051014` con la adaptación de pruebas ejecutables de §G.5, aceptados por el propietario; reverificación independiente consolidada REALIZADA con observaciones (`67195da`; QA-CR020-03 conforme con observaciones, N-2 aceptado por el propietario en `06d55aa`); cierre formal no decidido (QA-CR020-03 CORREGIDO y aceptado; ver `cr021`)",
+          "Obligaciones abiertas conservadas: verificación de la contabilidad de escenarios de coste (O3) y de las modificaciones sustantivas bajo un `config_id` existente (O4) antes de habilitar el pipeline de evaluación de investigación; supuestos S1–S4 en el despliegue; procedimiento de conciliación manual P5 PENDIENTE, con las condiciones operativas de `harness/verification/IMPL-3_N-2_disposicion.md` §3 y `IMPL-3_N-3_disposicion.md` §4 (confirmar la corrupción persistente bajo bloqueo exclusivo o con escritores en reposo; conservar el registro como evidencia; autorización explícita del propietario por operación; ninguna reescritura, sustitución ni truncamiento externos); `confirmatory_status(..., selection_inputs=…)` consistente obligatorio antes de aprobar en HUMAN_REVIEW (ELIGIBLE_FOR_HUMAN_REVIEW no es aprobación); N-3 como excepción acotada a toda afirmación general de que todas las rutas del evaluador fallan cerrando o usan solo registros validados; D2 pendiente de cierre"
         ],
         "parameters_not_fixed_by_contract": "Definición del Sharpe, línea base ingenua, parámetros del bootstrap y umbral de probabilidad del Deflated Sharpe: campos obligatorios del preregistro, sin valor por defecto en el código"
       },
@@ -1800,6 +1801,36 @@
             "QA-CR020-O3": "ACEPTADO por el propietario (2026-11-24; cuatro disposiciones: limitación residual de TC-ML-020 con verificación de la contabilidad de escenarios de costes antes de habilitar el pipeline de evaluación; limitación histórica permanente de la evidencia de A2; sintaxis de P10 con responsabilidad del propietario sobre la justificación sustantiva y ninguna reducción del registro real autorizada; criterio aprobado de P11 con el comportamiento Unicode sin verificar ni certificar); sin cambios funcionales, de pruebas ni contractuales; reverificación independiente PENDIENTE (`harness/verification/IMPL-3_QA-CR020-O3_evaluacion.md`)",
             "QA-CR020-O4": "ACEPTADO por el propietario (2026-11-25; opción A): riesgo residual metodológico aceptado, sin cambios funcionales, de pruebas ni contractuales; el registro del inicio de evaluación sigue sujeta a las puertas contractuales de ciclo de vida y autorización, la recuperación de Train+Val de un par ya certificado no tiene una puerta de estado adicional, la recuperación repetida no incrementa el conteo, el cargador no distingue recuperación de evidencia de reevaluación y los cambios sustantivos bajo un `config_id` existente no se garantiza detectarlos; evaluación basada en inspección de código, sin pruebas nuevas; obligación operativa abierta antes de habilitar el pipeline de evaluación de investigación (sin autorización de implementación); distinta de la observación O4 antigua sobre la conservación versionada de la evidencia; reverificación independiente PENDIENTE (`harness/verification/IMPL-3_QA-CR020-O4_evaluacion.md`)"
           }
+        },
+        {
+          "scope": "Reverificación independiente consolidada de CR-020 (QA-CR020-01..06, O3 y O4); no es una tercera ronda de QA de IMPL-3. Registrada por la conciliación documental D-1..D-5 (v1.21.2); supera el texto «reverificación independiente PENDIENTE» de las entradas anteriores, que se conservan como históricas",
+          "date": "2026-11-25",
+          "report": "harness/verification/IMPL-3_CR-020_reverificacion_consolidada.md",
+          "probes": "harness/verification/IMPL-3_CR-020_reverificacion_sondas/",
+          "base": "2625ee9",
+          "preserved_in": "67195da",
+          "verdict": "CONFORME CON OBSERVACIONES",
+          "recorded_executions": [
+            "suite completa (una vez) → 827 passed, 5 skipped; cinco archivos CR-020/021/022 → 130 passed; validadores → código 0 (resultados del revisor; el informe es la fuente autoritativa)"
+          ],
+          "owner_acceptance": "recepción del informe aceptada (2026-11-25); no es cierre de hallazgos, de D2 ni de conflictos",
+          "reverification_results": {
+            "QA-CR020-01": "Conforme con observaciones (N-1)",
+            "QA-CR020-02": "Conforme",
+            "QA-CR020-03": "Conforme con observaciones (N-2)",
+            "QA-CR020-04": "Conforme",
+            "QA-CR020-05": "Conforme con observaciones (N-3)",
+            "QA-CR020-06": "Conforme con observaciones (D-1..D-5)",
+            "QA-CR020-O3": "Conforme con observaciones",
+            "QA-CR020-O4": "Conforme (disposición)"
+          },
+          "dispositions": {
+            "N-1": "CORREGIDO (`f8e8861`; `harness/verification/IMPL-3_N-1_correccion.md`) y aceptado por el propietario (2026-11-25); pendiente de reverificación independiente focalizada",
+            "N-2": "ACEPTADO por el propietario (opción A; riesgo residual de disponibilidad; `06d55aa`; `harness/verification/IMPL-3_N-2_disposicion.md`); pendiente de revisión independiente focalizada de la disposición",
+            "N-3": "ACEPTADO por el propietario (opción A; riesgo residual de integridad fuera del protocolo append-only; `95ae440`; `harness/verification/IMPL-3_N-3_disposicion.md`); pendiente de revisión independiente focalizada de la disposición",
+            "D-1..D-5": "CONCILIADOS documentalmente en `feature_list.json` v1.21.2, `implementation/conflict_register.md`, `progress.md` y `session-handoff.md` (2026-11-25); pendientes de revisión independiente"
+          },
+          "distinction": "corrección de implementación ≠ aceptación del propietario ≠ reverificación independiente ≠ cierre formal; ninguna de las dos últimas se ha concedido para N-1..N-3 ni D-1..D-5, y no se decide el cierre formal de ningún hallazgo, de D2, CONF-009, CONF-010 ni FEAT-017"
         }
       ],
       "cr020": {
@@ -1836,7 +1867,7 @@
               "executions": [
                 "suite completa → 778 passed, 5 skipped (el documento de evidencia no registra el comando literal de esta ejecución); validadores OK"
               ],
-              "regression_vs_base": "Frente a la implementación anterior a la corrección: 7 failed, 5 passed; 2 defectos de comportamiento genuinos y 5 fallos por cambio de interfaz. Esta evidencia previa no es reproducible desde el historial (QA-CR020-O3, sin resolver)",
+              "regression_vs_base": "Frente a la implementación anterior a la corrección: 7 failed, 5 passed; 2 defectos de comportamiento genuinos y 5 fallos por cambio de interfaz. Esta evidencia previa no es reproducible desde el historial (QA-CR020-O3: constaba «sin resolver» al registrarse; ACEPTADO después por el propietario el 2026-11-24 como limitación histórica permanente, sin reconstruir ni presentar evidencia posterior como original; ver `qa_reviews`)",
               "owner_acceptance": "aceptada (2026-11-24)",
               "independent_verification": "comportamiento de FEAT-015 conservado según la QA independiente (`f2f05a9`)",
               "source": "harness/verification/IMPL-3_CR-020_implementacion.md §8–§9"

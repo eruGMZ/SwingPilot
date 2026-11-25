@@ -1805,3 +1805,23 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Validación:** `validate_{manifest,requirements,gates}.py` → código 0. Sin pruebas ni sondas. Registro real `07efad20…` sin cambios.
 **Sin cambios:** informe y sondas, código, pruebas, contrato v1.10, `feature_list.json` v1.21.1 (se concilia después), FEAT, conflictos, gates, D2 pendiente. Sin push; sub-agentes: 0.
 **Siguiente acción autorizada:** ninguna. Próximo punto de control: conciliación documental consolidada de D-1..D-5 (no iniciada).
+
+## 2026-11-25 | FASE 2 | IMPL-3: conciliación documental consolidada D-1..D-5 (reverificación independiente consolidada de CR-020) | APLICADA SIN COMMIT — pendiente de revisión del propietario
+
+**Autorización del propietario (2026-11-25):** conciliar D-1..D-5 y consolidar las referencias de evidencia diferidas de FEAT-017; `feature_list.json` v1.21.1 → **v1.21.2** (parche solo documental). Sin cambios funcionales, de pruebas, de contrato ni de sondas.
+**Resolución (documentos inspeccionados antes; ninguna discrepancia estaba ya conciliada):**
+- **D-1:** `feature_list.json`, FEAT-017, `cr020.evidence` (A2): «QA-CR020-O3, sin resolver» → se conserva que constaba así al registrarse y se registra su aceptación por el propietario (2026-11-24) como limitación histórica permanente.
+- **D-2:** `implementation/conflict_register.md`, CONF-010: nota nueva añadida (2026-11-25); la nota anterior y las entradas previas se conservan; O3 y O4 aceptados con obligaciones abiertas; CONF-010 sigue **OPEN**; severidad sin reevaluar.
+- **D-3:** `evidence.pending` de FEAT-017 reconciliado con los ocho hallazgos originales, el resultado de la reverificación independiente consolidada (`67195da`) y las disposiciones de N-1 (`f8e8861`), N-2 (`06d55aa`) y N-3 (`95ae440`); nueva entrada de `qa_reviews` con resultados y disposiciones; nuevo elemento de `pending` con las obligaciones abiertas conservadas. Se distinguen corrección de implementación, aceptación del propietario, reverificación independiente y cierre formal (ninguno decidido para N-1..N-3, D-1..D-5, D2, CONF-009, CONF-010 ni FEAT-017).
+- **D-4:** `metadata.last_updated` = 2026-11-25.
+- **D-5:** verificado con `git status -sb` al iniciar esta conciliación: `develop` = `origin/develop` en `95ae440`. El punto de reanudación de `session-handoff.md` se reconcilia con ese estado; los cambios de esta conciliación están sin commit y no se afirma sincronización posterior.
+**Sin cambios:** estados de FEAT y `acceptance_criteria_status` (comparados con `HEAD`), `evidence.covered`, criterios de aceptación, demás FEAT idénticas, estados de conflictos, gates, D2 pendiente, contrato v1.10, informes y sondas históricos, código, pruebas, registro real (SHA-256 `07efad20…`).
+**Validación:** JSON válido; `validate_{manifest,requirements,gates}.py` → código 0; suite no reejecutada (solo documental). Sin push; sub-agentes: 0.
+**Siguiente acción autorizada:** ninguna. Esperar la revisión del propietario (commit solo con su indicación). Próximo punto de control: reverificación independiente focalizada de N-1 y revisión de las disposiciones de N-2 y N-3 y de la conciliación documental (no iniciada).
+
+## 2026-11-25 | FASE 2 | IMPL-3: conciliación documental D-1..D-5 aceptada por el propietario y congelada en commit | ACEPTADA (documental) — pendiente de revisión independiente
+
+**Autorización del propietario (2026-11-25):** acepta la conciliación documental consolidada de D-1..D-5 y autoriza un único commit. `feature_list.json` permanece en **v1.21.2** (parche solo documental).
+**Distinción:** esta aceptación es **documental**; **no** es verificación independiente ni cierre formal. D-1..D-5, N-1 (reverificación focalizada), N-2 y N-3 (revisión de las disposiciones) siguen pendientes de revisión independiente; no se cierran hallazgos, D2, CONF-009, CONF-010 ni FEAT-017.
+**Conservado:** resultados de la conciliación, evidencia histórica, limitaciones residuales y obligaciones operativas pendientes (O3, O4, S1–S4, P5 PENDING con sus condiciones, `confirmatory_status` en HUMAN_REVIEW, N-3 como excepción acotada). Sin cambios en contrato v1.10, FEAT, criterios de aceptación, `acceptance_criteria_status`, `evidence.covered`, conflictos ni gates. Registro real `07efad20…` sin cambios. Suite no reejecutada (solo documental). Sin push; sub-agentes: 0.
+**Siguiente acción autorizada:** ninguna. Próximo punto de control: reverificación independiente focalizada de N-1 y revisión de N-2, N-3 y D-1..D-5 (no iniciada).
