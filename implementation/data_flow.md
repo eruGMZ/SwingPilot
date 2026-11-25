@@ -1,8 +1,8 @@
-# SwingPilot — Data Flow v1.10
+# SwingPilot — Data Flow v1.11
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.10 (CR-022, DEC-024, 2026-11-24: la influencia de una prueba posterior se acredita solo con la cita del par exacto; sin cambios en este documento) — v1.9 (CR-021, DEC-023, 2026-11-24: durabilidad confirmada como condición de acceso a datos; sin cambios en este documento) — v1.8 (CR-020, DEC-021, 2026-11-24: contabilidad de pruebas de REQ-G-P17; sin cambios en este documento) — v1.7 (CR-019, DEC-020, 2026-11-20: evento PROPOSAL_NORMALIZATION_REJECTED) — v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.11 (CR-023, DEC-025, 2026-11-25: particiones de evaluación prospectivas y frontera de independencia verificable; nota en §3) — v1.10 (CR-022, DEC-024, 2026-11-24: la influencia de una prueba posterior se acredita solo con la cita del par exacto; sin cambios en este documento) — v1.9 (CR-021, DEC-023, 2026-11-24: durabilidad confirmada como condición de acceso a datos; sin cambios en este documento) — v1.8 (CR-020, DEC-021, 2026-11-24: contabilidad de pruebas de REQ-G-P17; sin cambios en este documento) — v1.7 (CR-019, DEC-020, 2026-11-20: evento PROPOSAL_NORMALIZATION_REJECTED) — v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -271,6 +271,8 @@ Modo Research:
 ```
 
 **Restricción crítica:** Los datos de cada partición están segregados. No puede existir contaminación entre Train, Validation, OOS y LOCKBOX. Las transformaciones y selección se ajustan SOLO con datos de la partición permitida.
+
+**Particiones prospectivas (CR-023, DEC-025):** Train y Validation (5:2) forman la región de desarrollo (snapshot de desarrollo, hasta `D_dev`). OOS y LOCKBOX son ventanas de calendario posteriores a una frontera de independencia `B` declarada antes de que existan sus datos, con el diseño congelado antes de `B` y un único experimento confirmatorio por frontera. Cada ventana se descarga tras su cierre en una snapshot de evaluación propia (`context` solo para calentar indicadores, más la partición), sellada, autorizada y consumida una sola vez; el LOCKBOX exige la OOS consumida y la continuidad de su contexto. Los cargadores de desarrollo no aceptan snapshots de evaluación. Comprobaciones por etapa, contaminación y elegibilidad: REQ-G-103, REQ-G-109, REQ-G-P23 y `harness/change_requests/CR-023_particiones-prospectivas-frontera-independencia.md`.
 
 ---
 

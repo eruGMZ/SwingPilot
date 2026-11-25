@@ -1,8 +1,8 @@
-# SwingPilot — API Contracts v1.10
+# SwingPilot — API Contracts v1.11
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.10 (CR-022, DEC-024, 2026-11-24: la influencia de una prueba posterior se acredita solo con la cita del par exacto; sin cambios en este documento) — v1.9 (CR-021, DEC-023, 2026-11-24: durabilidad confirmada como condición de acceso a datos; sin cambios en este documento) — v1.8 (CR-020, DEC-021, 2026-11-24: contabilidad de pruebas de REQ-G-P17; sin cambios en este documento) — v1.7 (CR-019, DEC-020, 2026-11-20: evento PROPOSAL_NORMALIZATION_REJECTED) — v1.6 (CR-018, DEC-019, 2026-11-20) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.11 (CR-023, DEC-025, 2026-11-25: elegibilidad confirmatoria en el uso operativo; §B.0.4 código `ELIGIBILITY_UNDETERMINED` y §B.7 `NO_APPROVED_STRATEGY` con `reason_detail`) — v1.10 (CR-022, DEC-024, 2026-11-24: la influencia de una prueba posterior se acredita solo con la cita del par exacto; sin cambios en este documento) — v1.9 (CR-021, DEC-023, 2026-11-24: durabilidad confirmada como condición de acceso a datos; sin cambios en este documento) — v1.8 (CR-020, DEC-021, 2026-11-24: contabilidad de pruebas de REQ-G-P17; sin cambios en este documento) — v1.7 (CR-019, DEC-020, 2026-11-20: evento PROPOSAL_NORMALIZATION_REJECTED) — v1.6 (CR-018, DEC-019, 2026-11-20) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -308,7 +308,7 @@ Aplican a `REGIME_CLASSIFIED`, `ML_INFERENCE_COMPLETED`, `STRATEGY_CANDIDATE`, `
 | `missing_data` | lista de cadenas | Sí | Datos faltantes detectados; vacía si no hay. Nunca se inventan |
 | `error` | objeto \| null | Sí | `{code, message}` si `result_status = ERROR`; null en otro caso |
 
-4. **Códigos de error** (`error.code`): `DATA_UNAVAILABLE` (falta la última vela cerrada esperada), `DATA_STALE`, `DATA_INCONSISTENT` (duplicados, huecos o timestamps fuera de orden), `UPSTREAM_ERROR` (un evento previo del ciclo en ERROR), `SPEC_NOT_FOUND`, `INVALID_STOP_REQUEST` (B.6), `INTERNAL_ERROR`.
+4. **Códigos de error** (`error.code`): `DATA_UNAVAILABLE` (falta la última vela cerrada esperada), `DATA_STALE`, `DATA_INCONSISTENT` (duplicados, huecos o timestamps fuera de orden), `UPSTREAM_ERROR` (un evento previo del ciclo en ERROR), `SPEC_NOT_FOUND`, `INVALID_STOP_REQUEST` (B.6), `INTERNAL_ERROR`, `ELIGIBILITY_UNDETERMINED` (solo Strategy Engine; CR-023, DEC-025: un fallo técnico —registro corrupto, evidencia requerida ilegible o incoherente, fallo interno— impide determinar la elegibilidad confirmatoria de una estrategia APPROVED, REQ-G-P23; `stage = STRATEGY_EVALUATION`; cambio aditivo, §8).
 5. **Insuficiencia:** `INSUFFICIENT_DATA` cuando hay datos válidos pero no alcanzan (p. ej., menos velas que el periodo del indicador más largo). Siempre con `missing_data` no vacío.
 6. **Sin puntuación de confianza para decidir** (CR-011). Los valores descriptivos (márgenes, mediciones) son informativos y ningún consumidor los usa para ponderar.
 7. **Determinismo:** misma entrada (`data_refs`) y mismas versiones (`engine_version`, `spec_version`) dan el mismo payload, salvo `message_id` y `timestamp_utc` (TC-AC-07).
@@ -472,7 +472,7 @@ El piloto aprobado usa trailing stop por ATR. En vivo, subir el stop es una **mo
 
 - **`reason_code`:**
   - `NO_CANDIDATE`: ninguna estrategia elegible produjo señal (TC-FLOW-001).
-  - `NO_APPROVED_STRATEGY`: no hay estrategias APPROVED para el modo actual (DEC-017 Q43: estado esperado en IMPL-3 en vivo).
+  - `NO_APPROVED_STRATEGY`: no hay estrategias APPROVED **con elegibilidad confirmatoria vigente** (REQ-G-P23, CR-023) para el modo actual (DEC-017 Q43: estado esperado en IMPL-3 en vivo). `reason_detail` ∈ `NONE_APPROVED` (no hay ninguna APPROVED), `CONFIRMATORY_ELIGIBILITY_LOST` (las APPROVED existentes no son elegibles por una determinación metodológica válida: no confirmatorias o contaminadas). Una estrategia APPROVED no elegible figura en `evaluated_strategies` con `result = NOT_ELIGIBLE`; si quedan otras elegibles, el ciclo sigue con ellas. **Un fallo técnico que impide determinar la elegibilidad no es `NO_APPROVED_STRATEGY`:** es un error técnico (`ELIGIBILITY_UNDETERMINED`, B.0.4 y B.7.1). En ambos casos no hay entradas nuevas; la determinación de elegibilidad solo afecta a la evaluación de entradas, y `STRATEGY_EXIT_SIGNAL` y `STOP_ADJUSTMENT_REQUESTED` de las posiciones abiertas se siguen evaluando y emitiendo (CR-023 §D.8).
   - `MULTIPLE_ENTRY_CANDIDATES`: 2 o más candidatos de entrada, aunque coincidan (CR-011, TC-FLOW-004).
   - `EXIT_SIGNAL_PRIORITY`: hubo señal de salida; el candidato de entrada se re-evalúa en el ciclo siguiente (TC-FLOW-006).
   - `PRE_PHASE3_BLOCK`: control previo a la Fase 3 (REQ-G-096). `reason_detail` ∈ `OPEN_POSITION`, `LOSS_STREAK_LOCK`, `MONTHLY_DRAWDOWN_LOCK`, `MONTHLY_TRADE_LIMIT_LOCK`, `DATA_UNAVAILABLE`, `EXCHANGE_DESYNC`, `MANUAL_REVIEW`, `SAFE_MODE`, `AI_BUDGET_CAP`.

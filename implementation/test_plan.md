@@ -1,8 +1,8 @@
-# SwingPilot — Test Plan v1.10
+# SwingPilot — Test Plan v1.11
 
 **Producido por:** MERGER — FASE 1  
 **Fecha:** 2026-11-13  
-**Estado:** v1.10 (CR-022, DEC-024, 2026-11-24: la influencia de una prueba posterior se acredita solo con la cita del par exacto; TC-ML-024 actualizada) — v1.9 (CR-021, DEC-023, 2026-11-24: durabilidad confirmada como condición de acceso a datos; TC-ML-020 y TC-ML-023 actualizadas) — v1.8 (CR-020, DEC-021, 2026-11-24: contabilidad de pruebas de REQ-G-P17; TC-ML-006 actualizada y TC-ML-020..024 nuevas) — v1.7 (CR-019, DEC-020, 2026-11-20: evento PROPOSAL_NORMALIZATION_REJECTED) — v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
+**Estado:** v1.11 (CR-023, DEC-025, 2026-11-25: particiones de evaluación prospectivas y frontera de independencia verificable; TC-ML-009, TC-ML-014, TC-ML-015, TC-ML-016 y TC-ML-019 actualizadas y TC-ML-025..028 nuevas) — v1.10 (CR-022, DEC-024, 2026-11-24: la influencia de una prueba posterior se acredita solo con la cita del par exacto; TC-ML-024 actualizada) — v1.9 (CR-021, DEC-023, 2026-11-24: durabilidad confirmada como condición de acceso a datos; TC-ML-020 y TC-ML-023 actualizadas) — v1.8 (CR-020, DEC-021, 2026-11-24: contabilidad de pruebas de REQ-G-P17; TC-ML-006 actualizada y TC-ML-020..024 nuevas) — v1.7 (CR-019, DEC-020, 2026-11-20: evento PROPOSAL_NORMALIZATION_REJECTED) — v1.6 (CR-018, DEC-019) — v1.5 — v1.0 APROBADO por el propietario (G3, 2026-11-18: "APRUEBO EL CONTRATO TÉCNICO v1.0"); v1.1 aplicó CR-011 (DEC-011); v1.2 aplicó CR-012 (DEC-012); v1.3 aplicó CR-013 (DEC-013); v1.4 aplicó CR-015 (DEC-014) y v1.5 aplica CR-016 (DEC-015), todas aprobadas el 2026-11-19; incorpora CR-001..CR-013, CR-015 y CR-016. Cambios posteriores solo mediante solicitud de cambio aprobada y versionado
 
 ---
 
@@ -271,9 +271,9 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Input: expectancy de los últimos 20 trades por debajo del límite inferior del IC OOS, o PSI > 0.25
 - Expected: modelo suspendido; no se reentrena automáticamente (REQ-G-P21)
 
-### TC-ML-009 — Promoción a producción (REQ-G-P23)
-- Input: intento de usar un modelo en producción
-- Expected: solo con estado HUMAN_REVIEW → APPROVED y hash de datos+código+parámetros registrado; en otro caso, rechazado
+### TC-ML-009 — Promoción a producción (REQ-G-P23, CR-023)
+- Input: intento de usar un modelo en producción; **CR-023:** modelo o estrategia APPROVED cuyo experimento pasa después a no confirmatorio o contaminado; registro o almacén de preregistros corrupto o ilegible en el momento de la promoción
+- Expected: solo con estado HUMAN_REVIEW → APPROVED y hash de datos+código+parámetros registrado; en otro caso, rechazado. **CR-023:** la elegibilidad se recalcula en la promoción; no elegible → promoción rechazada y registrada con motivo metodológico; elegibilidad no determinable → rechazada y registrada como fallo técnico, con su causa; el registro APPROVED histórico no se reescribe
 
 ### TC-ML-010 — Registro de experimentos rechazados
 - Input: experimento REJECTED o INCONCLUSIVE
@@ -291,17 +291,17 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Input: preregistro de un experimento; intento de cambiar longitudes de ventana, embargo, step size, frecuencia de roll o nº de ventanas tras ver resultados OOS
 - Expected: el preregistro contiene esos campos congelados; el cambio posterior se registra como desviación y el experimento deja de ser confirmatorio
 
-### TC-ML-014 — Cálculo del histórico mínimo (REQ-G-103, CR-011)
-- Input: preregistro con tasa de trades del backtest piloto estimada solo con datos de Train; histórico disponible menor al requerido
-- Expected: el preregistro documenta el histórico mínimo calculado con la tasa real; si no alcanza 2 ventanas WF + OOS + LOCKBOX, documenta la limitación y propone ajuste; el experimento no pasa de DESIGN; la estimación no usa OOS ni LOCKBOX
+### TC-ML-014 — Cálculo del histórico mínimo (REQ-G-103, CR-011, CR-023)
+- Input: preregistro con tasa de trades del backtest piloto estimada solo con datos de Train; región de desarrollo menor a la requerida; **CR-023:** experimento piloto de tasa (`confirmatory_eligible = false`, `TRADE_RATE_PILOT`, `TRAIN_ONLY`)
+- Expected: el preregistro documenta `H_dev,min = max(38; 100/r)` y `L ≥ k·30/r` por ventana con la tasa real; si la región de desarrollo no alcanza, documenta la limitación y propone ajuste; el experimento no pasa de DESIGN; la estimación no usa OOS ni LOCKBOX. **CR-023:** el piloto de tasa se congela sin el cálculo con `r`; solo recibe la porción Train (Validation y snapshots de evaluación denegadas); nunca es confirmatorio ni transita a OOS_EVALUATION; sus pares cuentan según REQ-G-P17
 
-### TC-ML-015 — Snapshot sellada y particiones (REQ-G-109, CR-013)
-- Input: snapshot descargada y particionada
-- Expected: tres archivos Parquet (`train_val`, `oos`, `lockbox`) con SHA-256 propio registrado; fechas de corte idénticas para 1d, 4h y 1h; modificar un archivo hasheado se detecta; la versión de la librería escritora queda registrada
+### TC-ML-015 — Snapshot sellada y particiones (REQ-G-109, CR-013, CR-023)
+- Input: snapshot de desarrollo y snapshots de evaluación (OOS y LOCKBOX) descargadas
+- Expected: **CR-023:** la snapshot de desarrollo tiene solo `train_val` hasta `D_dev`, con corte Train:Validation 5:2 por fecha; cada snapshot de evaluación tiene `context` y su partición (`oos` o `lockbox`), sin `train_val`; cada archivo con SHA-256 propio registrado; cortes y límites idénticos para 1d, 4h y 1h; modificar un archivo hasheado se detecta; la versión de la librería escritora queda registrada; el manifiesto registra `kind`, `window_id`, límites, referencia a la snapshot de desarrollo y digests canónicos
 
-### TC-ML-016 — LOCKBOX no cargado en desarrollo (REQ-G-109, CR-013)
-- Input: ejecución de desarrollo, entrenamiento y Walk-Forward
-- Expected: `lockbox.parquet` no se abre ni se lee; `oos.parquet` solo en la evaluación final única; las características de OOS pueden leer la cola de `train_val`, nunca al revés
+### TC-ML-016 — Datos de evaluación no cargados en desarrollo (REQ-G-109, CR-013, CR-023)
+- Input: ejecución de desarrollo, entrenamiento y Walk-Forward; intento de pasar una snapshot de evaluación a un cargador de desarrollo
+- Expected: `lockbox.parquet`, `oos.parquet` y `context.parquet` no se abren ni se leen en desarrollo; solo en la evaluación final única, bajo su autorización y su consumo; el cargador de desarrollo rechaza `kind: evaluation`; las características de una ventana pueden leer el `train_val` de desarrollo y su `context`, nunca datos posteriores a la ventana
 
 ### TC-ML-017 — Huecos como NaN (REQ-G-109, CR-013)
 - Input: snapshot con velas faltantes
@@ -311,9 +311,9 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 - Input: velas que (a) tocan el stop dentro de la vela, (b) abren por debajo del stop, (c) tocan stop y TP en la misma vela, (d) señal en la vela cerrada
 - Expected: (a) relleno al precio del stop con slippage 0.10% adverso; (b) relleno a la apertura con slippage adverso; (c) se asume el stop primero; (d) entrada a la apertura de la vela siguiente; ninguna regla cambia tras ver resultados OOS
 
-### TC-ML-019 — LOCKBOX consumido (REQ-G-109, CR-013)
-- Input: snapshot nueva tras haber evaluado un LOCKBOX
-- Expected: el LOCKBOX evaluado queda registrado como consumido; no se reutiliza como LOCKBOX; solo datos posteriores al final de la snapshot anterior pueden formar un LOCKBOX nuevo; la declaración de régimen y el criterio con todas las ventanas WF constan en el preregistro
+### TC-ML-019 — LOCKBOX consumido (REQ-G-109, CR-013, CR-023)
+- Input: snapshot nueva tras haber evaluado un LOCKBOX; **CR-023:** frontera nueva tras ventanas reservadas, consumidas o contaminadas
+- Expected: el LOCKBOX evaluado queda registrado como consumido; no se reutiliza como LOCKBOX; solo datos posteriores al final de la snapshot anterior pueden formar un LOCKBOX nuevo; la declaración de régimen y el criterio con todas las ventanas WF constan en el preregistro. **CR-023:** una frontera nueva corresponde a un experimento nuevo y su `B` es posterior al fin de toda ventana anterior reservada, consumida o contaminada; una ventana consumida o contaminada nunca vuelve a ser ventana de evaluación
 
 ### TC-ML-020 — Unidad del conteo y doble conteo (REQ-G-P17, CR-020, CR-021)
 - Input: ideas, configuraciones no evaluadas, rechazadas y abandonadas; corridas idénticas; escenarios de costes puros y usados para seleccionar; pares planificados y evaluados antes y después de congelar; repetición nativa de una configuración de antecedente
@@ -334,6 +334,22 @@ Derivados de TRACEABILITY_MATRIX.md y RISK_POLICY.md (DEC-001):
 ### TC-ML-024 — Pruebas posteriores a la congelación (REQ-G-P17, CR-020, CR-022)
 - Input: pruebas de otros experimentos posteriores a la congelación, con y sin puntos de decisión posteriores del experimento evaluado; varias configuraciones posteriores del mismo experimento de las que se cita solo una; referencias `provenance_id` (CR-022)
 - Expected: NO RELEVANTE solo con las cinco evidencias positivas (registro legible; preregistro vinculado por SHA-256; selección presente y reproducible con resultados recuperables y hash coincidente; todos los pares evaluados planificados; `informed_by` válido en las decisiones posteriores): se informa y el conteo congelado no cambia. RELEVANTE: conteo de evaluación = congelado + pares relevantes, con el congelado conservado. INDETERMINADA → INCONCLUSIVE si falta el registro de selección, el archivo de resultados o su hash, o si `informed_by` falta o cita referencias inexistentes o posteriores; `informed_by` vacío en una desviación posterior → INDETERMINADA; `DEVIATION` histórico sin `informed_by` se conserva sin reescribir y se trata como ausente; un conteo de evaluación mayor no evita INCONCLUSIVE si hubo desviación o selección fuera de la regla. **CR-022 (DEC-024):** solo cita una prueba posterior la referencia exacta de su par; una configuración no citada del mismo experimento se clasifica por separado (NO RELEVANTE tras una selección reproducible; INDETERMINADA → INCONCLUSIVE si una desviación posterior no la cita); una referencia `provenance_id` no cita ninguna prueba posterior; cada par relevante suma una vez
+
+### TC-ML-025 — Frontera de independencia, congelación y requisitos por etapa (REQ-G-103, REQ-G-109, CR-023)
+- Input: congelaciones con preregistro no recuperable, con hash distinto del almacén o con archivo sustituido; campos de CR-023 §C.5 ausentes; `B` no alineada a las 00:00 UTC, no posterior a `D_dev`, a una exposición inventariada o a una ventana anterior; ventanas solapadas con otro preregistro congelado (P3); inventario que no cita un DEVIATION de independencia existente; DEVIATION de cualquier campo posterior a PREREGISTERED en un experimento confirmatorio con frontera; cada etapa ET-1..ET-10 con y sin la evidencia que le corresponde; ventana consumida y no consumida en cada etapa
+- Expected: cada etapa exige solo sus comprobaciones (CR-023 §C.9); la falta de un manifiesto de evaluación no bloquea ET-1..ET-3; una comprobación requerida ausente, incoherente o no verificable impide la etapa (Fail-Closed); V4-pre (ventana no consumida; LOCKBOX con la OOS consumida) en ET-4..ET-6 y V4-post (exactamente un consumo autorizado del dueño, sin reutilización prohibida) en ET-7..ET-10; una denegación registrada no cuenta como consumo; DEVIATION posterior a PREREGISTERED → no confirmatorio aunque no haya consumo; el almacén nunca sobrescribe ni borra; los huérfanos se conservan sin autoridad
+
+### TC-ML-026 — Contaminación registrada y su alcance (REQ-G-103, REQ-G-104, CR-023)
+- Input: DEVIATION del campo `independence_boundary` bien y mal formados (ventana ajena, `evidence` vacío o mal formado, `exposure_started_at` anterior al inicio de la ventana, `UNKNOWN`); registro en cada etapa, incluido un estado terminal y tras APPROVED; experimentos cuyas ventanas intersectan y no intersectan el periodo contaminado; DEVIATION de otros campos y de otros experimentos; puntos de decisión posteriores para CR-022
+- Expected: mal formado → registro incoherente (Fail-Closed); el dueño de la ventana queda afectado en cualquier estado; un experimento sin intersección no queda afectado; el periodo contaminado no puede volver a ser ventana de evaluación y las congelaciones posteriores deben citarlo; `UNKNOWN` se trata como anterior a todo consumo; la posición del registro solo determina la etapa de descubrimiento (antes de ET-5 sin autorización; entre ET-5 y ET-6 denegación sin consumo; tras ET-6 no confirmatorio; tras APPROVED bloqueo en ET-9 y ET-10 sin reescribir APPROVED); los DEVIATION de otros campos conservan su semántica («válidas y ajenas: se ignoran»); el conteo de CR-020 y la relevancia por par exacto de CR-022 no cambian
+
+### TC-ML-027 — Snapshots de evaluación, contexto y cierre de ventana (REQ-G-109, CR-023)
+- Input: construcción de la snapshot de la OOS y del LOCKBOX con contexto coincidente y con discrepancias en `[D_dev, B)` y en `[B, B + L_oos)`; LOCKBOX sin la OOS consumida; snapshot de desarrollo que alcanzaría una ventana reservada; señales en la última vela de la ventana y posición abierta al cierre; stop o TP tocados en la última vela
+- Expected: el digest canónico se registra por archivo e intervalo antes de sellar; con coincidencia exacta de digests, filas y huecos se construye el LOCKBOX; con discrepancia la construcción se aborta sin archivos sellados y el LOCKBOX queda bloqueado; `oos.parquet` nunca se abre ni se autoriza de nuevo; sin la OOS consumida → denegado; la snapshot de desarrollo que alcanzaría una ventana reservada → rechazada; el contexto no produce resultados; una señal con entrada posterior a la ventana no se ejecuta; la posición abierta se cierra al cierre de la última vela cerrada con slippage 0.10% adverso y comisión max(real, 0.10%), sin leer datos posteriores, marcada `forced_window_close`, contada en P15 e informada por separado; stop o TP en esa vela → reglas vigentes (stop primero)
+
+### TC-ML-028 — Elegibilidad confirmatoria en la promoción y el uso operativo (REQ-G-P23, CR-023, CR-018)
+- Input: estrategia APPROVED elegible; APPROVED que pasa a no confirmatoria o contaminada (determinación válida); registro corrupto, preregistro no recuperable, manifiesto incoherente o fallo interno al determinar la elegibilidad; en cada caso, con y sin posición abierta y con y sin otras estrategias elegibles
+- Expected: elegible → evaluación normal; no elegible por determinación válida → estrategia excluida (`evaluated_strategies.result = NOT_ELIGIBLE`) y, si no queda ninguna elegible, `NO_SETUP` con `NO_APPROVED_STRATEGY` y `reason_detail = CONFIRMATORY_ELIGIBILITY_LOST`; fallo técnico → `STRATEGY_CANDIDATE` con `result_status = ERROR`, `error.code = ELIGIBILITY_UNDETERMINED`, `stage = STRATEGY_EVALUATION` y sobre `FAILED` (B.7.1), nunca `NO_SETUP`; en ambos casos cero entradas nuevas y cero llamadas a LLM; `STRATEGY_EXIT_SIGNAL` y `STOP_ADJUSTMENT_REQUESTED` de las posiciones abiertas se siguen emitiendo; el stop en el exchange, los cierres protectores, la reconciliación y el modo seguro no se ven afectados; el registro APPROVED no se reescribe; la clasificación queda en la auditoría
 
 ---
 
