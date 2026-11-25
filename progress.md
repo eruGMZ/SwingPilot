@@ -1787,3 +1787,12 @@ Sin cambios en código funcional ni contratos. Sin commit ni push. $0 de IA. Sub
 **Autorización del propietario (2026-11-25):** acepta la implementación de N-1 y su evidencia de regresión; autoriza un único commit. La aceptación no es reverificación independiente (anotado en `harness/verification/IMPL-3_N-1_correccion.md` §8). Limitaciones residuales conservadas.
 **Sin cambios:** contrato v1.10, `feature_list.json` v1.21.1, FEAT, conflictos, gates; D2 pendiente. Suite no reejecutada (solo documental). Registro real `07efad20…` sin cambios. Sin push; sub-agentes: 0.
 **Siguiente acción autorizada:** ninguna. Próximo punto de control: evaluación y disposición del propietario de N-2 (no iniciada).
+
+## 2026-11-25 | FASE 2 | IMPL-3: disposición del propietario de N-2 (lecturas sin bloqueo) | ACEPTADO (opción A) — pendiente de revisión independiente focalizada de la disposición
+
+**Autorización del propietario (2026-11-25):** acepta el comportamiento actual de lectura sin `flock` como riesgo residual de disponibilidad, sin cambios funcionales, de pruebas ni contractuales. Registrado: sin requisito vinculante de bloqueo de lectura; denegaciones Fail-Closed transitorias; sin mutación persistente, acceso no autorizado, cambio de conteo ni transición irreversible automática en las rutas evaluadas; posibles entradas persistentes `allowed=False` en el registro de accesos (no son exposición); N-1 no cambia materialmente el comportamiento; evaluación basada en evidencia preservada e inspección de código, sin sondas nuevas.
+**Condición operativa obligatoria para P5 (PENDING; no se autoriza su implementación):** confirmar la corrupción persistente con una lectura consistente bajo el bloqueo exclusivo o con los escritores en reposo; conservar el registro afectado como evidencia; autorización explícita del propietario por operación; un único error transitorio no desencadena la recuperación.
+**Documento:** `harness/verification/IMPL-3_N-2_disposicion.md` (cifras medidas solo en el informe consolidado preservado).
+**Validación:** `validate_{manifest,requirements,gates}.py` → código 0. Sin pruebas ni sondas. Registro real `07efad20…` sin cambios.
+**Sin cambios:** informe y sondas, código, pruebas, contrato v1.10, `feature_list.json` v1.21.1 (se concilia después), FEAT, conflictos, gates, D2 pendiente. Sin push; sub-agentes: 0.
+**Siguiente acción autorizada:** ninguna. Próximo punto de control: evaluación de solo lectura de N-3 (no iniciada).

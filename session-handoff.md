@@ -1,5 +1,14 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: evaluación de solo lectura de N-3 (no iniciada)
+
+**Base:** commit «docs(impl-3): record owner disposition of N-2 concurrent read risk» en `develop` (sin push; comprobar con `git status -sb`). Contrato **v1.10**; `feature_list.json` **v1.21.1**, sin cambios (conciliación documental consolidada posterior).
+**N-1:** CORREGIDO (`f8e8861`) y ACEPTADO por el propietario; pendiente de reverificación independiente focalizada.
+**N-2:** ACEPTADO por el propietario (opción A: riesgo residual de disponibilidad; sin cambios funcionales, de pruebas ni contractuales); pendiente de revisión independiente focalizada de la disposición (`harness/verification/IMPL-3_N-2_disposicion.md`). **Condición operativa obligatoria para P5 (PENDING, sin autorizar su implementación):** confirmar la corrupción persistente con una lectura consistente bajo el bloqueo exclusivo o con los escritores en reposo; conservar el registro afectado como evidencia; autorización explícita del propietario por operación; un único error transitorio de lectura incompleta no desencadena la recuperación manual. Las cifras medidas constan solo en el informe consolidado preservado.
+**Evidencia:** validadores OK (código 0); sin pruebas ni sondas nuevas; registro real `07efad20…` sin cambios.
+**Sin resolver:** N-3 (siguiente; evaluación de solo lectura y decisión del propietario antes de cualquier cambio), D-1..D-5, D2, CONF-009, CONF-010; observación separada de `_marker_error`. Obligaciones de O3/O4, S1–S4 y conciliación manual PENDING se conservan.
+**Siguiente acción autorizada:** ninguna. Esperar instrucciones del propietario.
+
 ## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: evaluación y disposición del propietario de N-2 (no iniciada)
 
 **Base:** commit «fix(research): validate mandatory deviation evidence before persistence» en `develop` (sin push; comprobar con `git status -sb`). Contrato **v1.10**; `feature_list.json` **v1.21.1**, sin cambios.
