@@ -1960,3 +1960,36 @@ Condiciones del propietario:
 - **R2:** el manifiesto y el cargador del LOCKBOX se resuelven de forma perezosa, solo tras una evaluación OOS favorable, preservando la autorización humana explícita.
 - La forma del registro no cambia. La protección de procedencia opera dentro del modelo de proceso confiable y no es tamper-evident frente a un proceso Python comprometido.
 - **Estado:** resoluciones registradas; la implementación de R1/R2 no se ha realizado ni verificado en esta entrada. Sin cambios de código, contrato, FEAT ni gates; sin commit ni push.
+
+## 2026-11-26 | FASE 2 | IMPL-3: CR-023 decisión 5 (HUMAN_REVIEW → APPROVED) y atestación complementaria ET-8 | DECIDIDO POR EL PROPIETARIO — registro documental B8.0; sin cambios de contrato, código ni pruebas
+
+**Base:** `a762f72`. Interpreta CR-023 §C.9 (matriz ET-8; V1, V6, V7; V4-post) sin modificarla. Complementa la decisión 2, que difirió ET-8 a B8 sin fijar gramática.
+
+**Regla (APROBADA).** `HUMAN_REVIEW → APPROVED` exige (i) ET-8 en `ELIGIBLE` y (ii) autorización humana explícita, ambas **revalidadas dentro del bloqueo del registro** sobre registros releídos con `_load`. Sin anulaciones (overrides) de ningún tipo. Las aprobaciones históricas se conservan sin reinterpretar.
+
+**Gramática (APROBADA; solo texto, sin implementar):** una línea exacta en el documento del `decision_ref` de la aprobación:
+`AUTORIZA: APROBACION EXP-NNNN SHA256=<prereg_hash> OOS=<evaluation_hash> LOCKBOX=<evaluation_hash> V1=CONFIRMADA V6=CONFIRMADA V7=CONFIRMADA`
+- ASCII estricto con `fullmatch` y los rechazos de la decisión 1; solo `CONFIRMADA`; hashes en 64 hex minúsculas; una sola línea por experimento en todo `docs/decisions`, y debe constar en el documento del `decision_ref` de la aprobación (duplicada, ausente, mal formada o sin ligadura → denegación técnica).
+- Ligadura: `EXP-NNNN` y `SHA256` = preregistro congelado y verificado; `OOS` y `LOCKBOX` = hashes de evaluación verificados contra evidencia congelada y persistida. No colisiona con `ATESTACION`, `FRONTERA`, `PUBLICACION`, `LIBERACION` ni `_AUTHORIZATION`.
+
+**HALLAZGO — AMBIGÜEDAD BLOQUEANTE (no se inventa mecanismo):** no existe un «evaluation_hash» autoritativo en la persistencia vigente.
+- `EVALUATION_PERSISTED` / `CONFIGURATION_EVALUATED` (CR-021) cubren solo la partición `train_val` y la evidencia de acceso a Train+Val (`_evaluation_record_error`: `partition == "train_val"`); no atan resultados OOS/LOCKBOX.
+- `PARTITION_CONSUMED` (OOS/LOCKBOX) conserva su forma (`snapshot_id`, `partition`, `experiment_id`, `snapshot_last_open_time`, `decision_ref`, `actor`): sin hash.
+- B7 (`window_evaluation.py`): `WindowOutcome`/`FinalWindowsResult` no se persisten ni llevan hash; el módulo nunca escribe en el registro. Los únicos digests ligados a la ventana son los `canonical_digest` por archivo del manifiesto de la snapshot de evaluación y los `digests` de `FinalWindowProvenance` (R1): son digests de **datos**, no del resultado de la evaluación, y son varios por ventana.
+- Por tanto «OOS=<evaluation_hash>» y «LOCKBOX=<evaluation_hash>» no tienen referente único. Candidatos, sin elegir: (a) digest de contenido de la snapshot/manifiesto de la ventana (requiere definir un digest de manifiesto, hoy inexistente a nivel de manifiesto); (b) hash canónico del `WindowOutcome` (requiere un registro persistido nuevo y un cambio de la forma del registro, que CR-023 C.6.4 prohíbe sin CR). Cualquiera de ambos exige decisión del propietario y, probablemente, enmienda contractual.
+- Posible conflicto contractual: C.9 limita V1/V6/V7 a «existencia y sintaxis», y la matriz no menciona hashes de evaluación; exigirlos añade ligadura nueva, no solo sintaxis (análogo a la decisión 2, pero hoy sin dato persistido que verificar).
+
+**Efecto:** la implementación de B8 queda **bloqueada** hasta que el propietario resuelva qué es `<evaluation_hash>` y cómo se persiste. Sin ello, ET-8 no puede verificar el vínculo con «evidencia congelada y persistida».
+**Sin cambios:** contrato v1.11, `feature_list.json` v1.23.0, código, pruebas, FEAT, gates, registro real; `_FINAL_ACCESS_BLOCKED_UNTIL_B6` y obligaciones (O3/O4, CONF-010, P5, S1–S4) conservados; D3 ABIERTA, D4 bloqueada; sin sub-agentes, commit ni push.
+
+## 2026-11-26 | FASE 2 | IMPL-3: aplicación contractual de CR-024 (contrato v1.12) | DOCUMENTAL — sin código, pruebas ejecutables, subagentes, commit ni push
+
+**Base:** `a762f72`. CR-024 aprobada por el propietario; resuelve el bloqueo de B8.0 definiendo `evaluation_hash` y su persistencia.
+**Contrato v1.11 → v1.12** (`requirements.md`, `architecture.md`, `api_contracts.md`, `data_flow.md`, `test_plan.md`); **`feature_list.json` v1.23.0 → v1.24.0**.
+- **Requisitos modificados:** REQ-G-104, REQ-G-106, REQ-G-109, REQ-G-P23 (REQ-G-P17, REQ-G-103 sin cambios). Texto exacto verificado antes de enmendar.
+- **Criterios:** AC-015-7, AC-015-9, AC-017-1, AC-017-8, AC-017-9, AC-017-14, AC-019-2 enmendados; AC-017-15 nuevo (FEAT-017). **Pruebas:** TC-ML-007, 012, 019, 025, 027 enmendadas; TC-ML-029 nueva.
+- **Precisiones:** la clave `$f64` queda reservada (un `dict` ordinario que la use se rechaza); `evaluator_version` no acredita las fuentes del evaluador; un fallo de persistencia tras emitirse el resultado técnico da `PersistenceUncertainError` sin éxito, sin reevaluación ni reversión y con la ventana en `CONSUMED_NO_RESULT`/`EVIDENCE_ONLY`.
+- **CR-023:** notas de vigencia añadidas (§C.6.4/§H, §C.9 V4-pre/ET-4/ET-8, B7); texto original conservado. **CR-021 (Train+Val):** semántica sin cambios.
+- **Corrección de notas de reanudación:** las menciones a B6 y a `_FINAL_ACCESS_BLOCKED_UNTIL_B6` en `session-handoff.md` se anotaron como obsoletas (B6/B7 implementados; la constante no existe), sin borrar el historial.
+- **`research/README.md`:** `WINDOW_RESULT_PERSISTED` documentado como contrato v1.12, aún no implementado.
+**Pendientes:** implementación y verificación independiente de CR-024; P5 de CR-021; O3/O4; D6 diferida; D3 ABIERTA; D4 bloqueada. **B8 permanece bloqueada.** Ningún FEAT cerrado; la evidencia registrada no acredita CR-024.

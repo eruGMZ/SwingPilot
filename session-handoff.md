@@ -1,15 +1,28 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-26) — CR-024 aplicada contractualmente (contrato v1.12); B8 sigue bloqueada
+
+**Base:** `a762f72`; cambios documentales **sin commit**. CR-024 (aprobada por el propietario) aplicada: contrato v1.12, `feature_list.json` v1.24.0 (REQ-G-104/106/109/P23; AC-015-7, AC-015-9, AC-017-1, AC-017-8, AC-017-9, AC-017-14, AC-017-15 nuevo, AC-019-2; TC-ML-007/012/019/025/027 y TC-ML-029 nueva). Detalle en `progress.md` (entrada CR-024).
+**Estado vigente:** B1–B7 de CR-023 implementados; el acceso final no está bloqueado por `_FINAL_ACCESS_BLOCKED_UNTIL_B6` (no existe). **B8 bloqueada** hasta implementar y verificar CR-024 (módulo de persistencia de resultados, `IssuedWindowResult`, `WINDOW_RESULT_PERSISTED`, ET-4/5/6/`resolve_lockbox`, CLI de recuperación): requiere autorización separada. No se ejecutó código, pruebas ni subagentes.
+**Pendientes:** implementación y verificación independiente de CR-024; P5 de CR-021 (PENDIENTE); O3/O4; D6 diferida; CONF-010 OPEN; D3 ABIERTA; D4 bloqueada; SNAP-0001 no creada. Ningún FEAT cerrado.
+**Siguiente acción autorizada:** ninguna hasta la revisión del propietario. Sin commit ni push.
+
+## PUNTO DE REANUDACIÓN (2026-11-26) — CR-023 decisión 5 / atestación ET-8 (B8.0) registrada; B8 bloqueada por ambigüedad
+
+**Base:** `a762f72`; cambios documentales **sin commit**. Regla aprobada: `HUMAN_REVIEW → APPROVED` exige ET-8 ELIGIBLE y `AUTORIZA: APROBACION EXP-NNNN SHA256=… OOS=… LOCKBOX=… V1/V6/V7=CONFIRMADA` (ASCII estricto, única por experimento, ligada al `decision_ref`), revalidada bajo el bloqueo del registro; sin overrides; aprobaciones históricas intactas. Detalle en `progress.md` (entrada 2026-11-26, decisión 5).
+**BLOQUEO:** no existe `evaluation_hash` autoritativo persistido (CR-021 cubre solo `train_val`; `PARTITION_CONSUMED` sin hash; B7 no persiste resultados). Requiere decisión del propietario (¿digest de snapshot/manifiesto o hash del resultado con registro nuevo?) y posible enmienda de contrato. No implementar B8 hasta resolverlo.
+**Se conservan:** `_FINAL_ACCESS_BLOCKED_UNTIL_B6`; O3/O4; CONF-010 OPEN; P5 PENDIENTE; D3 ABIERTA; D4 bloqueada; SNAP-0001 no creada. **[Nota de corrección 2026-11-26 (CR-024): la mención de B6 y de `_FINAL_ACCESS_BLOCKED_UNTIL_B6` está obsoleta; B6 y B7 se implementaron (`8a50604`, `a762f72`) y esa constante no existe en `src/` ni en `tests/`. Texto original conservado.]**
+
 ## PUNTO DE REANUDACIÓN (2026-11-26) — CR-023 decisiones 2 y 3 registradas; entrada para B6
 
 **Base:** `804880a`. Decisión 2 (gramática `AUTORIZA: ATESTACION`, ligada a la grant, única, reutiliza V1; sustituye el dict `attestations`; ET-8 diferida a B8) y decisión 3 (resolvedor snapshot→ventana por manifiestos verificados; credencial interna obligatoria para escribir consumos con precedente `FreezeCheck`; ET-4 rechaza manifiestos duplicados; publicación y claim de ET-6 serializados por el bloqueo del registro) APROBADAS; detalle y compatibilidad en `progress.md` (entrada 2026-11-26, decisiones 2 y 3). Sin conflicto contractual; forma de `PARTITION_CONSUMED`, C2 y CR-020/021/022 preservados.
 **Para B6:** implementar solo con autorización expresa; incluye ajuste de B5 (duplicados y publicación bajo bloqueo) y adaptación de pruebas por el cambio de firma de `claim_partition`. Los cambios documentales de esta entrada están **sin commit**.
-**Se conservan:** `_FINAL_ACCESS_BLOCKED_UNTIL_B6`; O3/O4; CONF-010 OPEN; P5 PENDIENTE; D3 ABIERTA; D4 bloqueada; B6–B9 sin iniciar; SNAP-0001 no creada.
+**Se conservan:** `_FINAL_ACCESS_BLOCKED_UNTIL_B6`; O3/O4; CONF-010 OPEN; P5 PENDIENTE; D3 ABIERTA; D4 bloqueada; B6–B9 sin iniciar; SNAP-0001 no creada. **[Nota de corrección 2026-11-26 (CR-024): la mención de B6 y de `_FINAL_ACCESS_BLOCKED_UNTIL_B6` está obsoleta; B6 y B7 se implementaron (`8a50604`, `a762f72`) y esa constante no existe en `src/` ni en `tests/`. Texto original conservado.]**
 
 ## PUNTO DE REANUDACIÓN (2026-11-26) — CR-023 B5 implementado sin commit; siguiente: revisión del propietario
 
 **Base:** `e908472` más B5 **sin commit** (comprobar con `git status -sb`). Detalle y disposiciones B5-02, B5-03A y B5-03B en `progress.md` (entrada 2026-11-26, bloque B5). Contrato v1.11; `feature_list.json` v1.23.0 sin cambios.
-**Se conservan:** bloqueo de acceso final hasta B6; O3/O4; CONF-010 OPEN; P5 PENDIENTE; B6–B9 sin iniciar; SNAP-0001 no creada.
+**Se conservan:** bloqueo de acceso final hasta B6; O3/O4; CONF-010 OPEN; P5 PENDIENTE; B6–B9 sin iniciar; SNAP-0001 no creada. **[Nota de corrección 2026-11-26 (CR-024): la mención de B6 y de `_FINAL_ACCESS_BLOCKED_UNTIL_B6` está obsoleta; B6 y B7 se implementaron (`8a50604`, `a762f72`) y esa constante no existe en `src/` ni en `tests/`. Texto original conservado.]**
 **Siguiente acción autorizada:** ninguna hasta la revisión del propietario. Sin push.
 
 ## PUNTO DE REANUDACIÓN (2026-11-26) — CR-023 decisión 1 registrada; entrada para B4
@@ -23,7 +36,7 @@
 
 **Base:** `2b825b0` en `develop` (= `origin/develop`, comprobado con Git el 2026-11-26): B3 **ya está commiteado y publicado** (corrige la referencia anterior «`8629d0f` más B3 sin commit»). Contrato **v1.11**; `feature_list.json` **v1.23.0** sin cambios.
 **Hecho:** B3 implementado (detalle y Decisión 4 —inventario mínimo obligatorio de exposiciones— en `progress.md`, entrada 2026-11-26). Suite 1197 passed, 5 skipped; validadores → código 0; registro real `07efad20…` sin cambios.
-**Se conservan:** bloqueo de acceso final hasta B6; O3/O4; cuatro decisiones abiertas restantes; CONF-010 OPEN; P5 de CR-021 PENDIENTE; S1–S4; D3 ABIERTA; D4 bloqueada; B4–B9 sin iniciar.
+**Se conservan:** bloqueo de acceso final hasta B6; O3/O4; cuatro decisiones abiertas restantes; CONF-010 OPEN; P5 de CR-021 PENDIENTE; S1–S4; D3 ABIERTA; D4 bloqueada; B4–B9 sin iniciar. **[Nota de corrección 2026-11-26 (CR-024): la mención de B6 y de `_FINAL_ACCESS_BLOCKED_UNTIL_B6` está obsoleta; B6 y B7 se implementaron (`8a50604`, `a762f72`) y esa constante no existe en `src/` ni en `tests/`. Texto original conservado.]**
 **Siguiente acción autorizada:** ninguna. Los cambios documentales de la decisión 1 están sin commit.
 
 ## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: revisión del propietario de la aplicación contractual de CR-023 (DEC-025); sin commit

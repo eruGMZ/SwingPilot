@@ -344,3 +344,13 @@ Reevaluación de CONF-009 antes del cierre de FEAT-017; CONF-010 OPEN con O3 y O
 - **Revisión 2 (2026-11-25):** P1–P8 y R1–R5; snapshots de evaluación con `context`; piloto de tasa; `B` en la declaración del experimento; congelación completa; `DEVIATION` de independencia; preguntas U1–U2.
 - **Revisión final focalizada (2026-11-25):** U1 (REQ-G-P23, §B.7, AC-019-2, AC-020-2) y U2 (almacén; O4 independiente); F1 (V1–V8), F2 (alcance por periodo; sustituye el alcance de la revisión 2, que invalidaba todo experimento congelado no terminal), F3 (matriz ET-1..ET-10), F4 (digest canónico y continuidad).
 - **Aprobación (2026-11-25, DEC-025)** con las correcciones obligatorias **C1** (V4-pre/V4-post) y **C2** (`NOT_ELIGIBLE` → `NO_SETUP`/`NO_APPROVED_STRATEGY`/`CONFIRMATORY_ELIGIBILITY_LOST`; `UNDETERMINABLE` → `ERROR`/`ELIGIBILITY_UNDETERMINED`; se retira `CONFIRMATORY_ELIGIBILITY_INDETERMINATE` de la revisión final), incorporadas antes de la aplicación contractual.
+
+---
+
+## Notas de vigencia (CR-024, contrato v1.12; el texto original de CR-023 se conserva)
+
+- **§C.6.4 y §H («sin cambios de tipos de registro»):** vigente salvo `WINDOW_RESULT_PERSISTED`, tipo añadido por CR-024 §B.4. `PARTITION_CONSUMED`, `EVALUATION_PERSISTED` y `trials.py` no cambian.
+- **§C.9, V4-pre del LOCKBOX y ET-4 («OOS consumida»):** enmendados; el LOCKBOX exige el OOS consumido **y** favorable autoritativo en ET-4, ET-5, ET-6 y `resolve_lockbox`. La continuidad de §C.6.5 no cambia.
+- **§C.9, ET-8 y la frase «V1, V6 y V7 solo verifican existencia y sintaxis»:** ampliados; ET-8 verifica además los `evaluation_hash` de OOS y LOCKBOX (CR-024 §B.8). V4-post, la gramática y la unicidad de la decisión 5 no cambian.
+- **B7 («no escribe en el registro»):** se conserva para `evaluate_window`; la persistencia vive en un módulo de orquestación.
+- **CR-021 (Train+Val):** semántica sin cambios.

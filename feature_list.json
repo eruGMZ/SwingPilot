@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "1.23.0",
+    "version": "1.24.0",
     "phase": "FASE 2",
     "status": "IMPL-3_EN_CURSO",
     "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5 y cerrada (2026-11-20). Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md). IMPL-3 (Integración cuantitativa, FEAT-015..022) registrada desde el contrato v1.5 con status PENDING; planificación aprobada (DEC-017); implementación parcial autorizada (DEC-018, 2026-11-20): FEAT-015/016/017/019 IN_PROGRESS, FEAT-018/020/021/022 BLOCKED.",
-    "last_updated": "2026-11-25",
+    "last_updated": "2026-11-26",
     "note": "Solo se registran funcionalidades derivadas del contrato aprobado. Las fases IMPL-3..IMPL-6 se registran al iniciarlas. READY_FOR_REVIEW = criterios con implementación, prueba y evidencia; pasa a DONE tras revisión independiente (QA o propietario), porque ningún agente aprueba su propio trabajo (AGENTS.md). DONE-PARTIAL = criterios de IMPL-1 cumplidos con dependencias explícitas de fases posteriores (criterio del propietario, 2026-11-19); no bloquea la salida de IMPL-1."
   },
   "features": [
@@ -1215,9 +1215,9 @@
         "AC-015-4 Huecos como NaN sin interpolar; conteo de huecos por intervalo y partición en el manifiesto (TC-ML-017)",
         "AC-015-5 Parquet fuera de Git (var/snapshots/<snapshot_id>/); en el repositorio, manifiesto JSON con snapshot_id, timestamp de descarga, parámetros de descarga, fechas de corte, filas por archivo, SHA-256 por archivo y versiones de las librerías escritoras (DEC-017 Q46)",
         "AC-015-6 Comando de verificación que recalcula los SHA-256 y falla si un archivo difiere del manifiesto; los archivos hasheados no se reescriben (TC-ML-015)",
-        "AC-015-7 El cargador rechaza abrir lockbox.parquet salvo en una evaluación final única registrada y autorizada por el propietario; oos.parquet solo en la evaluación final única; context.parquet se rige por las mismas reglas que su partición y solo se lee junto con ella, bajo la misma autorización y el mismo consumo; los cargadores de desarrollo rechazan las snapshots de evaluación; la autorización del LOCKBOX exige la OOS del mismo experimento consumida; todo intento queda registrado (TC-ML-001, TC-ML-016; CR-023, DEC-025)",
+        "AC-015-7 El cargador rechaza abrir lockbox.parquet salvo en una evaluación final única registrada y autorizada por el propietario; oos.parquet solo en la evaluación final única; context.parquet se rige por las mismas reglas que su partición y solo se lee junto con ella, bajo la misma autorización y el mismo consumo; los cargadores de desarrollo rechazan las snapshots de evaluación; la autorización del LOCKBOX exige la OOS del mismo experimento consumida y con resultado favorable autoritativo (CR-024, contrato v1.12); todo intento queda registrado (TC-ML-001, TC-ML-016; CR-023, DEC-025)",
         "AC-015-8 Pruebas locales sin red (respuestas REST simuladas) para paginación, huecos, cortes y hashes; la descarga real es un paso manual opt-in, sin costo de API",
-        "AC-015-9 Una snapshot de evaluación por ventana, construida solo tras el cierre de la ventana, con el preregistro congelado, recuperable y coincidente, la confirmación del propietario, sellado 0o000 de context y partición, contigüidad del context con D_dev y manifiesto con kind, window_id, límites, referencia a la snapshot de desarrollo y digest canónico de contenido por archivo e intervalo; la del LOCKBOX exige la OOS consumida y que su contexto reproduzca los digests, filas y huecos del manifiesto de la OOS sin abrir oos.parquet (discrepancia ⇒ construcción abortada sin archivos sellados); ninguna snapshot de desarrollo contiene datos de una ventana reservada no consumida ni liberada (REQ-G-109; CR-023 §C.6, DEC-025; TC-ML-027)"
+        "AC-015-9 Una snapshot de evaluación por ventana, construida solo tras el cierre de la ventana, con el preregistro congelado, recuperable y coincidente, la confirmación del propietario, sellado 0o000 de context y partición, contigüidad del context con D_dev y manifiesto con kind, window_id, límites, referencia a la snapshot de desarrollo y digest canónico de contenido por archivo e intervalo; la del LOCKBOX exige la OOS consumida con resultado favorable autoritativo (CR-024) y que su contexto reproduzca los digests, filas y huecos del manifiesto de la OOS sin abrir oos.parquet (discrepancia ⇒ construcción abortada sin archivos sellados); ninguna snapshot de desarrollo contiene datos de una ventana reservada no consumida ni liberada (REQ-G-109; CR-023 §C.6, DEC-025; TC-ML-027)"
       ],
       "test_cases": [
         "TC-ML-001",
@@ -1393,7 +1393,7 @@
       "depends_on_later_phases": [],
       "notes": "DEC-013/CR-013; DEC-017 Q46. CERRADA como DONE por el propietario (2026-11-24) con AC-015-1..8 definitivos; QA3R2-02/03/04/08 resueltos; riesgos residuales y controles de despliegue diferidos aceptados; condiciones de reapertura en reopening_conditions; SNAP-0001 y la validación metodológica de las particiones fuera del cierre técnico. REABIERTA de forma focalizada (DONE → IN_PROGRESS) el 2026-11-25 por CR-023/DEC-025 (contrato v1.11): AC-015-1, AC-015-3, AC-015-7 y el nuevo AC-015-9; la disposición DONE bajo v1.10 se conserva como histórica (ver reopening).",
       "blocked_by": [],
-      "acceptance_criteria_status": "AC-015-2, AC-015-4, AC-015-5, AC-015-6 y AC-015-8: DEFINITIVOS — aprobados formalmente por el propietario (2026-11-24), sin cambios. AC-015-1, AC-015-3 y AC-015-7 enmendados y AC-015-9 añadido por CR-023 (DEC-025, 2026-11-25; contrato v1.11): pendientes de implementación, verificación independiente y aprobación del propietario",
+      "acceptance_criteria_status": "AC-015-2, AC-015-4, AC-015-5, AC-015-6 y AC-015-8: DEFINITIVOS — aprobados formalmente por el propietario (2026-11-24), sin cambios. AC-015-1, AC-015-3 y AC-015-7 enmendados y AC-015-9 añadido por CR-023 (DEC-025, 2026-11-25; contrato v1.11): pendientes de implementación, verificación independiente y aprobación del propietario CR-024 (contrato v1.12): AC-015-7 y AC-015-9 enmendados (OOS favorable autoritativo para el LOCKBOX); implementación y verificación independiente PENDIENTES.",
       "authorization": {
         "authorized_by": "DEC-018 (2026-11-20)",
         "scope": "completa"
@@ -1694,20 +1694,21 @@
         "DEC-025"
       ],
       "acceptance_criteria": [
-        "AC-017-1 Registro de experimentos con los 12 estados (IDEA..APPROVED/REJECTED/INCONCLUSIVE) y transiciones condicionadas; ninguna transición a APPROVED sin HUMAN_REVIEW del propietario; la IA no puede aprobar (REQ-G-104, REQ-G-107)",
+        "AC-017-1 Registro de experimentos con los 12 estados (IDEA..APPROVED/REJECTED/INCONCLUSIVE) y transiciones condicionadas; ninguna transición a APPROVED sin HUMAN_REVIEW del propietario; la IA no puede aprobar (REQ-G-104, REQ-G-107) CR-024 (contrato v1.12): la aprobación exige además ET-8 con los evaluation_hash de OOS y LOCKBOX verificados (AC-017-15)",
         "AC-017-2 Experimentos REJECTED o INCONCLUSIVE se conservan con sus resultados; el registro es append-only (TC-ML-010)",
         "AC-017-3 Preregistro con los campos de REQ-G-103 (incluidas ventanas WF, embargo, step, roll, nº de ventanas, modelo de ejecución, hash de la snapshot, conteo de huecos y declaración de régimen) que se congela con hash antes de cualquier evaluación confirmatoria; un cambio posterior queda como desviación y el experimento deja de ser confirmatorio; incluye además la contabilidad de pruebas congelada (conteo histórico documentado, cotas conservadoras, configuraciones nativas evaluadas y configuraciones planificadas con su identificador) y la regla determinista `candidate_selection_rule` (REQ-G-103, CR-020; TC-ML-013, TC-ML-022); CR-023 (DEC-025): en un experimento confirmatorio con frontera, el diseño completo de CR-023 §C.5 (versiones y SHA-256 de estrategia y configuraciones, conditioning_components, independence_boundary con ventanas, regla de parada de calendario y posiciones abiertas, inventario de exposición) se congela antes de B; el contenido exacto se guarda antes de PREREGISTERED en el almacén recuperable research/preregistrations/<experiment_id>/<sha256>.json (sin sobrescritura; falta o incoherencia ⇒ Fail-Closed; no satisface por sí solo O4); un DEVIATION de cualquier campo posterior a PREREGISTERED lo hace no confirmatorio (TC-ML-025)",
         "AC-017-4 Histórico mínimo de la región de desarrollo H_dev,min = max(38; 100/r) y longitud de cada ventana prospectiva L ≥ k·30/r (k ≥ 1 congelado), con r estimada solo con Train en un piloto de tasa; si la región de desarrollo no alcanza, el experimento no pasa de DESIGN; el piloto de tasa (confirmatory_eligible = false, TRADE_RATE_PILOT, TRAIN_ONLY) está exento del cálculo con r, solo recibe Train, nunca es confirmatorio y sus pares cuentan según CR-020 (REQ-G-103, REQ-G-106; CR-023; TC-ML-014)",
         "AC-017-5 Walk-Forward solo dentro de Train+Val: 24 m entrenamiento → 2 m embargo → 6 m prueba, paso 6 m, ≥ 2 ventanas; ninguna observación de entrenamiento en el embargo o la prueba (REQ-G-106, TC-ML-011)",
         "AC-017-6 Modelo de ejecución del backtest: entrada a la apertura de la vela siguiente a la señal; stop dentro de la vela al precio del stop con slippage 0.10% adverso; hueco a la apertura con slippage adverso; stop primero si toca stop y TP; comisión max(real, 0.10%) por lado; resultados bruto, costos y neto separados (REQ-G-109, REQ-G-142, TC-ML-018)",
         "AC-017-7 Indicadores sin look-ahead (prueba de truncado: el valor en t no cambia al añadir datos posteriores) y normalización ajustada solo con la partición permitida (REQ-G-102, TC-ML-002, TC-ML-003)",
-        "AC-017-8 Evaluador de aceptación implementado y probado con datos sintéticos: muestra mínima, PF ≥ 1.3, expectancy ≥ 0.10 R, DD ≤ 20%, Sharpe OOS ≥ 0.8, IC bootstrap 95% > 0, línea base ingenua, corrección por número de configuraciones evaluadas con el conteo congelado y reconstruido, incluidos los antecedentes declarados (REQ-G-P17, CR-020, CR-021; TC-ML-004..006, TC-ML-020..024)",
-        "AC-017-9 OOS y LOCKBOX de evaluación única; LOCKBOX consumido queda registrado y no se reutiliza (TC-ML-007, TC-ML-012, TC-ML-019); CR-023 (DEC-025): ventanas OOS y LOCKBOX de calendario fijas, sin ampliación ni reevaluación (insuficiencia ⇒ INCONCLUSIVE y ventana consumida); una ventana consumida o contaminada nunca vuelve a ser ventana de evaluación y toda frontera nueva es posterior a ella; consecuencias de CR-023 §D.1 (TC-ML-019, TC-ML-026)",
+        "AC-017-8 Evaluador de aceptación implementado y probado con datos sintéticos: muestra mínima, PF ≥ 1.3, expectancy ≥ 0.10 R, DD ≤ 20%, Sharpe OOS ≥ 0.8, IC bootstrap 95% > 0, línea base ingenua, corrección por número de configuraciones evaluadas con el conteo congelado y reconstruido, incluidos los antecedentes declarados (REQ-G-P17, CR-020, CR-021; TC-ML-004..006, TC-ML-020..024) CR-024: todos los veredictos y fallos del evaluador se persisten como resultado canónico (AC-017-15); un resultado no canonicalizable se convierte en TECHNICAL/UNDETERMINABLE con metrics = None",
+        "AC-017-9 OOS y LOCKBOX de evaluación única; LOCKBOX consumido queda registrado y no se reutiliza (TC-ML-007, TC-ML-012, TC-ML-019); CR-023 (DEC-025): ventanas OOS y LOCKBOX de calendario fijas, sin ampliación ni reevaluación (insuficiencia ⇒ INCONCLUSIVE y ventana consumida); una ventana consumida o contaminada nunca vuelve a ser ventana de evaluación y toda frontera nueva es posterior a ella; consecuencias de CR-023 §D.1 (TC-ML-019, TC-ML-026); CR-024 (contrato v1.12): el resultado de cada ventana se persiste una sola vez y de forma inmutable (AC-017-15; TC-ML-007, TC-ML-012, TC-ML-019, TC-ML-029); sin OOS favorable autoritativo el LOCKBOX queda bloqueado",
         "AC-017-10 Piloto Trend Following H4 (DEC-017 Q43), incluido su piloto de tasa: NO se completa ni se preregistra hasta (a) la documentación de EXP-0001 (D1), (b) la integridad metodológica de las particiones (cierre de D3, CR-023, nivel I1) y (c) la snapshot de desarrollo creada y verificada físicamente (D4, nivel I2) (DEC-018 decisión 4, concretada por CR-023 §C.2); la verificación de independencia de las ventanas prospectivas es posterior y específica del experimento (AC-017-14) y no condiciona este criterio",
         "AC-017-11 Backtest piloto de tasa reproducible solo sobre Train, como experimento no confirmatorio y contabilizado según CR-020 y CR-021 (requiere O3 y O4 antes de habilitar el pipeline); Walk-Forward dentro de Train+Val permitido; la evaluación OOS y la del LOCKBOX NO se ejecutan en IMPL-3 sin autorización explícita del propietario (CR-023 §C.3)",
         "AC-017-12 Todo se ejecuta en modo Research, sin órdenes (REQ-G-081)",
         "AC-017-13 El historial de experimentación incluye EXP-0001 y Mean Reversion H1 (REJECTED) como antecedentes declarados por el propietario y los cuenta por configuraciones con su clase de evidencia: Mean Reversion H1, 4 evaluadas documentadas; EXP-0001, 4 como cota conservadora, no verificadas (DEC-018 decisión 4, REQ-G-P17, CR-020)",
-        "AC-017-14 Frontera de independencia y contaminación (CR-023, DEC-025): validez de B (00:00 UTC, publicación de la declaración ≥ 24 h antes como evidencia operativa de Git, posterior a D_dev, a la exposición inventariada y a ventanas anteriores; un experimento confirmatorio por frontera); comprobaciones V1–V8 según la etapa ET-1..ET-10 (V4-pre antes del consumo y V4-post después; CR-023 §C.9); independence_status común a confirmatory_status, cargador, evaluador, HUMAN_REVIEW, promoción y uso; contaminación registrada con DEVIATION del campo independence_boundary del dueño de la ventana, con alcance por periodo (el dueño en cualquier estado; sin efecto sobre experimentos sin intersección) y sin reinterpretar DEVIATION históricos; evidencia ausente, incoherente o no verificable ⇒ Fail-Closed; la exposición externa no declarada no es detectable por software (TC-ML-025, TC-ML-026, TC-ML-027)"
+        "AC-017-14 Frontera de independencia y contaminación (CR-023, DEC-025): validez de B (00:00 UTC, publicación de la declaración ≥ 24 h antes como evidencia operativa de Git, posterior a D_dev, a la exposición inventariada y a ventanas anteriores; un experimento confirmatorio por frontera); comprobaciones V1–V8 según la etapa ET-1..ET-10 (V4-pre antes del consumo y V4-post después; CR-023 §C.9); independence_status común a confirmatory_status, cargador, evaluador, HUMAN_REVIEW, promoción y uso; contaminación registrada con DEVIATION del campo independence_boundary del dueño de la ventana, con alcance por periodo (el dueño en cualquier estado; sin efecto sobre experimentos sin intersección) y sin reinterpretar DEVIATION históricos; evidencia ausente, incoherente o no verificable ⇒ Fail-Closed; la exposición externa no declarada no es detectable por software (TC-ML-025, TC-ML-026, TC-ML-027); CR-024: V4-pre del LOCKBOX exige el OOS consumido y favorable autoritativo en ET-4..ET-6, y ET-8 verifica los evaluation_hash (TC-ML-025, TC-ML-029)",
+        "AC-017-15 Persistencia autoritativa de resultados OOS y LOCKBOX (CR-024, contrato v1.12): documento canónico schema 1 con tipos cerrados (float etiquetado $f64 con la clave reservada; lectura estricta que reserializa a los mismos bytes), evaluator_version derivado por el sistema que no acredita las fuentes del evaluador, evidencia inmutable en almacén separado y marcador WINDOW_RESULT_PERSISTED; solo IssuedWindowResult es persistible; unicidad por experimento y partición; fallo de persistencia tras emitirse el resultado técnico ⇒ PersistenceUncertainError sin reevaluación ni reversión del consumo; estados NOT_CONSUMED, RESULT_VALID, CONSUMED_NO_RESULT, EVIDENCE_ONLY y CORRUPT Fail-Closed; EVIDENCE_ONLY solo por CLI explícito con revalidación de durabilidad; el OOS favorable autoritativo condiciona ET-4, ET-5, ET-6, resolve_lockbox y ET-8 (TC-ML-007, TC-ML-012, TC-ML-019, TC-ML-025, TC-ML-027, TC-ML-029)"
       ],
       "test_cases": [
         "TC-ML-002",
@@ -1730,7 +1731,8 @@
         "TC-ML-024",
         "TC-ML-025",
         "TC-ML-026",
-        "TC-ML-027"
+        "TC-ML-027",
+        "TC-ML-029"
       ],
       "implementation_paths": [
         "src/swingpilot/research/experiments.py",
@@ -1788,7 +1790,7 @@
       "blocked_by": [
         "AC-017-10: documentación de EXP-0001 y comprobación de la integridad de las particiones (DEC-018 decisión 4)"
       ],
-      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20) CR-024 (aprobada 2026-11-26; contrato v1.12): AC-017-1, AC-017-8, AC-017-9 y AC-017-14 enmendados y AC-017-15 nuevo; implementación y verificación independiente PENDIENTES; la evidencia registrada no acredita CR-024.",
       "authorization": {
         "authorized_by": "DEC-018 (2026-11-20)",
         "scope": "infraestructura general; SIN preregistro definitivo del piloto (AC-017-10) ni evaluación OOS/LOCKBOX"
@@ -2085,6 +2087,37 @@
         ],
         "o4_note": "El almacén recuperable de preregistros (CR-023 §C.4.1) no satisface por sí solo O4, que requiere evidencia, verificación y aceptación propias",
         "preserved": "CR-020, CR-021 y CR-022 sin cambios de semántica; CONF-009 (reevaluación antes del cierre de FEAT-017); CONF-010 OPEN; O3 y O4; P5 de CR-021 PENDIENTE; S1–S4; N-2 y N-3; observación de _marker_error; requisitos de HUMAN_REVIEW; cierres de D1, D2 y D8"
+      },
+      "cr024": {
+        "status": "APROBADA (propietario, 2026-11-26) y APLICADA contractualmente (contrato v1.12); implementación y verificación independiente PENDIENTES",
+        "change_request": "harness/change_requests/CR-024_persistencia-autoritativa-resultados-oos-lockbox.md",
+        "acceptance_criteria_affected": [
+          "AC-015-7",
+          "AC-015-9",
+          "AC-017-1",
+          "AC-017-8",
+          "AC-017-9",
+          "AC-017-14",
+          "AC-017-15",
+          "AC-019-2"
+        ],
+        "test_cases": [
+          "TC-ML-007",
+          "TC-ML-012",
+          "TC-ML-019",
+          "TC-ML-025",
+          "TC-ML-027",
+          "TC-ML-029"
+        ],
+        "blocks": "B8 (CR-023 decisión 5) bloqueada hasta implementar y verificar CR-024",
+        "pending": [
+          "Implementación (autorización separada)",
+          "Verificación independiente",
+          "P5 de CR-021",
+          "O3/O4",
+          "D6"
+        ],
+        "preserved": "CR-020, CR-021 (Train+Val), CR-022; forma de PARTITION_CONSUMED; D3 ABIERTA; D4 bloqueada; ningún FEAT cerrado"
       }
     },
     {
@@ -2174,7 +2207,7 @@
       ],
       "acceptance_criteria": [
         "AC-019-1 Registro de modelos: ID + versión no reutilizable, hash de datos + código + parámetros (REQ-G-092, REQ-G-P23)",
-        "AC-019-2 Promoción solo desde HUMAN_REVIEW → APPROVED con registro de aprobación; cualquier otro intento se rechaza y se registra (TC-ML-009). CR-023 (DEC-025): antes de la promoción se recalcula la elegibilidad confirmatoria (confirmatory_status, independence_status y CR-023 §C.9, ET-9); una determinación metodológica válida de no elegibilidad rechaza la promoción con motivo metodológico; un fallo técnico que impide determinarla la rechaza y se registra como fallo técnico con su causa; ningún registro de estado histórico se reescribe (REQ-G-P23; TC-ML-028)",
+        "AC-019-2 Promoción solo desde HUMAN_REVIEW → APPROVED con registro de aprobación; cualquier otro intento se rechaza y se registra (TC-ML-009). CR-023 (DEC-025): antes de la promoción se recalcula la elegibilidad confirmatoria (confirmatory_status, independence_status y CR-023 §C.9, ET-9); una determinación metodológica válida de no elegibilidad rechaza la promoción con motivo metodológico; un fallo técnico que impide determinarla la rechaza y se registra como fallo técnico con su causa; ningún registro de estado histórico se reescribe (REQ-G-P23; TC-ML-028). CR-024 (contrato v1.12): la aprobación HUMAN_REVIEW → APPROVED (ET-8) exige los evaluation_hash verificados de resultados OOS y LOCKBOX favorables autoritativos; ausentes o no verificables la impiden (TC-ML-029)",
         "AC-019-3 Degradación: expectancy de los últimos 20 trades bajo el límite inferior del IC OOS, o PSI > 0.25 → modelo suspendido, Fail-Closed, sin reentrenamiento automático (REQ-G-P21/P22, TC-ML-008)",
         "AC-019-4 Emite ML_INFERENCE_COMPLETED conforme a CR-018 §B.3; sin modelo APPROVED → inference_status = NO_ACTIVE_MODEL y la familia ML-Based no es elegible",
         "AC-019-5 Sin modelo entrenado ni inferencias productivas en IMPL-3; las pruebas usan un modelo de juguete solo dentro de tests/ (DEC-017 Q44)",
@@ -2230,7 +2263,7 @@
         "Esquema del payload de ML_INFERENCE_COMPLETED: no definido (Q45, CR propuesta) → CR-018 (borrador)"
       ],
       "blocked_by": [],
-      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20) CR-024 (contrato v1.12): AC-019-2 ampliado (ET-8 con evaluation_hash); implementación y verificación independiente PENDIENTES.",
       "authorization": {
         "authorized_by": "Propietario, 2026-11-20: «Autorizo iniciar el código de FEAT-018 a FEAT-022»",
         "scope": "código conforme al contrato v1.6"
