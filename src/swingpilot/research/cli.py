@@ -7,7 +7,8 @@
 públicos de Binance (sin credenciales ni costo de API) y fija para siempre `D_dev` y el corte
 Train:Validation 5:2; por eso exige `--d-dev` y `--confirm`. Antes de descargar obtiene las
 ventanas reservadas activas de un proveedor; la fuente autoritativa de esas ventanas está
-pendiente (B5), de modo que hoy el proveedor falla y el comando termina con código 1 sin descargar.
+`reserved_windows_source` (B5: registro y almacén reales, solo lectura); si no es verificable, el comando
+termina con código 1 sin descargar. `build-evaluation` ejecuta ET-4 con `--confirm` obligatorio y todas las comprobaciones del constructor.
 `verify-snapshot` es sensible a `kind`: en desarrollo recalcula el SHA-256 de `train_val`; en
 evaluación solo comprueba el sellado (los archivos sellados no se leen).
 El identificador debe ser SNAP-NNNN.
@@ -25,13 +26,16 @@ from .snapshot import SealingError, SealingWarning, SnapshotError, build_snapsho
 REPO = Path(__file__).resolve().parents[3]
 DATA_ROOT = REPO / "var" / "snapshots"          # fuera de Git (DEC-017 Q46)
 MANIFEST_DIR = REPO / "research" / "snapshots"  # en el repositorio
+REGISTRY_PATH = REPO / "research" / "experiments" / "registry.jsonl"
 CLI_SNAPSHOT_ID = re.compile(r"SNAP-[0-9]{4}")   # con fullmatch; SNAP-TEST* solo en pruebas (QA3R2-08)
 
 
 def reserved_windows_provider() -> list:
-    """Ventanas reservadas ACTIVAS para `build_snapshot`. La fuente autoritativa no existe todavía
-    (B5): falla cerrado en lugar de suponer que no hay ventanas."""
-    raise SnapshotError("fuente autoritativa de ventanas reservadas pendiente (B5)")
+    """Ventanas activas de la fuente autoritativa (registro y almacén reales, solo lectura); Fail-Closed."""
+    from .evaluation_snapshot import reserved_windows_source
+    from .experiments import ExperimentRegistry
+    from .prereg_store import DEFAULT_ROOT, PreregistrationStore
+    return reserved_windows_source(ExperimentRegistry(REGISTRY_PATH), PreregistrationStore(DEFAULT_ROOT))()
 
 
 def main(argv=None) -> int:
@@ -41,6 +45,11 @@ def main(argv=None) -> int:
     b.add_argument("--id", required=True)
     b.add_argument("--d-dev", required=True, dest="d_dev", help="YYYY-MM-DD (UTC, exclusivo)")
     b.add_argument("--confirm", action="store_true")
+    e = sub.add_parser("build-evaluation")                      # ET-4 (B5)
+    e.add_argument("--id", required=True)
+    e.add_argument("--experiment", required=True)
+    e.add_argument("--window", required=True, choices=("OOS", "LOCKBOX"))
+    e.add_argument("--confirm", action="store_true")
     v = sub.add_parser("verify-snapshot")
     v.add_argument("--id", required=True)
     a = ap.parse_args(argv)
@@ -70,10 +79,24 @@ def _run(a) -> int:
             return 2
         windows = reserved_windows_provider()                          # antes de cualquier descarga
         res = build_snapshot(BinancePublicClient(), a.id, DATA_ROOT, MANIFEST_DIR, d_dev=a.d_dev,
-                             reserved_windows=windows)
+                             reserved_windows=windows, injected_only=True)   # `windows` ya es autoritativa
         print(f"snapshot {a.id}: manifiesto {res.manifest_path}")
         for part, info in res.manifest["files"].items():
             print(f"  {part}: {info['rows']} filas, sha256 {info['sha256']}")
+        return 0
+    if a.cmd == "build-evaluation":
+        if not a.confirm:
+            print("build-evaluation sella la ventana de forma permanente: repetir con --confirm", file=sys.stderr)
+            return 2
+        from .evaluation_snapshot import build_evaluation_snapshot
+        from .experiments import ExperimentRegistry
+        from .prereg_store import DEFAULT_ROOT, PreregistrationStore
+        res = build_evaluation_snapshot(BinancePublicClient(), a.id, DATA_ROOT, MANIFEST_DIR,
+                                        registry=ExperimentRegistry(REGISTRY_PATH), store=PreregistrationStore(DEFAULT_ROOT),
+                                        experiment_id=a.experiment, window_id=f"{a.experiment}/{a.window}", confirm=True)
+        print(f"snapshot de evaluación {a.id}: manifiesto {res.manifest_path}")
+        for part, info in res.manifest["files"].items():
+            print(f"  {part}: {info['rows']} filas, sha256 {info['sha256']} (sellado 0o000)")
         return 0
     out = verify_snapshot(MANIFEST_DIR / f"{a.id}.json", DATA_ROOT)
     print(f"OK {out}" if out else "OK sellado verificado (snapshot de evaluación: sin lectura ni hash)")

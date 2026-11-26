@@ -80,7 +80,8 @@ class SmallBinance:
 
 def build(tmp, sid="SNAP-TEST", fb=None, d_dev=D_DEV, windows=()):
     return build_snapshot(BinancePublicClient(transport=fb or SmallBinance()), sid, tmp / "var" / "snapshots",
-                          tmp / "research" / "snapshots", d_dev=d_dev, reserved_windows=list(windows))
+                          tmp / "research" / "snapshots", d_dev=d_dev, reserved_windows=list(windows),
+                          injected_only=True)
 
 
 @pytest.fixture
@@ -1442,13 +1443,16 @@ def test_cli_build_requires_d_dev_and_confirm(monkeypatch, capsys):
     assert called == []
 
 
-def test_cli_build_fails_closed_before_download_while_window_source_is_pending(monkeypatch, tmp_path, capsys):
+def test_cli_build_fails_closed_before_download_when_window_source_is_unverifiable(monkeypatch, tmp_path, capsys):
     from swingpilot.research import cli
+    bad = tmp_path / "registry.jsonl"                                  # B5: la fuente es real; ilegible → bloquea
+    bad.write_text("{no es json\n")
+    monkeypatch.setattr(cli, "REGISTRY_PATH", bad)
     monkeypatch.setattr(cli, "DATA_ROOT", tmp_path / "var")
     monkeypatch.setattr(cli, "MANIFEST_DIR", tmp_path / "man")
     monkeypatch.setattr(cli, "BinancePublicClient", lambda *a, **k: (_ for _ in ()).throw(AssertionError("descargó")))
     assert cli.main(["build-snapshot", "--id", "SNAP-0009", "--d-dev", D_DEV, "--confirm"]) == 1
-    assert "pendiente (B5)" in capsys.readouterr().err
+    assert "no verificable" in capsys.readouterr().err
     assert not (tmp_path / "var").exists() and not (tmp_path / "man").exists()
 
 

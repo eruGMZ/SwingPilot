@@ -1,5 +1,11 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-26) — CR-023 B5 implementado sin commit; siguiente: revisión del propietario
+
+**Base:** `e908472` más B5 **sin commit** (comprobar con `git status -sb`). Detalle y disposiciones B5-02, B5-03A y B5-03B en `progress.md` (entrada 2026-11-26, bloque B5). Contrato v1.11; `feature_list.json` v1.23.0 sin cambios.
+**Se conservan:** bloqueo de acceso final hasta B6; O3/O4; CONF-010 OPEN; P5 PENDIENTE; B6–B9 sin iniciar; SNAP-0001 no creada.
+**Siguiente acción autorizada:** ninguna hasta la revisión del propietario. Sin push.
+
 ## PUNTO DE REANUDACIÓN (2026-11-26) — CR-023 decisión 1 registrada; entrada para B4
 
 **Hecho:** decisión 1 aprobada por el propietario y registrada en `progress.md` (entrada 2026-11-26, «decisión 1»): línea `AUTORIZA: FRONTERA EXP-NNNN SHA256=<64 hex> B=YYYY-MM-DDT00:00:00Z` con gramática estricta, unicidad y ligadura al preregistro; V1 se acredita con una atestación del propietario que debe existir en ET-3 (ET-4 la reutiliza; ET-5 la cita o reafirma), no con fechas de commit; clasificación C2 (metodológica frente a técnica).

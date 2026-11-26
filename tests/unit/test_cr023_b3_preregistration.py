@@ -160,7 +160,8 @@ def dev_snap(tmp_path_factory):
     from swingpilot.research.snapshot import build_snapshot
     tmp = tmp_path_factory.mktemp("devsnap")
     res = build_snapshot(BinancePublicClient(transport=_long_binance()), "SNAP-TEST", tmp / "var" / "snapshots",
-                         tmp / "research" / "snapshots", d_dev=_dev_days(LONG_DEV_DAYS), reserved_windows=[])
+                         tmp / "research" / "snapshots", d_dev=_dev_days(LONG_DEV_DAYS), reserved_windows=[],
+                         injected_only=True)
     return res, tmp / "var" / "snapshots"
 
 

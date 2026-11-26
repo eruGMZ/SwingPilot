@@ -43,6 +43,9 @@ STAGES = {
     "ET-9": ("V2", "V3", "V4post", "V5", "V8"),
     "ET-10": ("V2", "V3", "V4post", "V5", "V8"),
 }
+_LIBERACION = re.compile(rf"AUTORIZA: LIBERACION (EXP-[0-9]{{4}}/(?:OOS|LOCKBOX)) SHA256=({_HEX})", re.ASCII)
+_REINTENTO = re.compile(rf"AUTORIZA: REINTENTO (EXP-[0-9]{{4}}/LOCKBOX) EVIDENCIA=({_HEX})", re.ASCII)
+_DISPOSICION = re.compile(r"AUTORIZA: DISPOSICION (EXP-[0-9]{4}/LOCKBOX) INCONCLUSIVE", re.ASCII)
 
 
 class _Fail(Exception):
@@ -134,6 +137,38 @@ def independence_status(registry, store, experiment_id: str, *, manifest: dict |
     return independence_assessment(registry, store, experiment_id, manifest=manifest)[0]
 
 
+# --- autorizaciones documentales del propietario (B5: C.7.3 y C.6.5) ---------------------------------
+
+def owner_lines(decisions_dir, kind: str, rx, eid: str) -> list[tuple]:
+    """Grupos de las líneas `AUTORIZA: <kind> ...` de `DEC-*.md` que nombran al experimento. Gramática
+    estricta (`fullmatch`, ASCII); una línea que lo nombra y no la cumple → TECH (sin reparación)."""
+    out = []
+    try:
+        for path in sorted(Path(decisions_dir).glob("DEC-*.md")):
+            for line in path.read_bytes().decode("utf-8").split("\n"):
+                if not line.strip().startswith(f"AUTORIZA: {kind}"):
+                    continue
+                m = rx.fullmatch(line)
+                if m and m.group(1).split("/")[0] == eid:
+                    out.append(m.groups())
+                elif not m and eid in line:
+                    _tech(f"{kind}: línea mal formada en {path.name}")
+    except _Fail:
+        raise
+    except Exception as exc:
+        _tech(f"{kind}: documentos de decisión ilegibles: {exc!r}")
+    return out
+
+
+def released_windows(decisions_dir, eid: str, sha: str) -> set[str]:
+    """Ventanas liberadas por el propietario (C.7.3). La línea debe citar el SHA-256 del preregistro
+    congelado; una liberación con otro hash → TECH. Una ventana liberada nunca vuelve a evaluarse."""
+    rel = owner_lines(decisions_dir, "LIBERACION", _LIBERACION, eid)
+    if any(h != sha for _, h in rel):
+        _tech("LIBERACION: el SHA-256 citado no es el del preregistro congelado")
+    return {w for w, _ in rel}
+
+
 # --- V1: declaración de frontera y atestación de publicación -----------------------------------------
 
 def _decision_lines(decisions_dir, eid, with_pub=True) -> tuple[list, list]:
@@ -190,6 +225,14 @@ def _v1(ctx, eid, decisions_dir, full) -> None:
 
 
 # --- V3, V4, V6, V7 ----------------------------------------------------------------------------------
+
+def _no_release(ctx, eid, ddir) -> None:
+    if ddir is None:
+        _tech("RELEASE: sin directorio de decisiones")
+    rel = released_windows(ddir, eid, ctx["sha"])
+    if rel:
+        _meth(f"C.7.3: ventana(s) liberada(s) por el propietario, inelegible(s) para evaluación: {sorted(rel)}")
+
 
 def _v3(registry, eid) -> None:
     devs = _replay(registry, eid)
@@ -296,6 +339,8 @@ def stage_checks(registry, store, experiment_id: str, stage: str, *, decisions_d
         elif name == "V8":
             st, why = independence_assessment(registry, store, eid, manifest=manifest if "V5" in STAGES[stage] else None)
             out[name] = ((OK, "") if st == INDEPENDENT else (METHOD if st == CONTAMINATED else TECH, why))
+    if ctx is not None and stage in ("ET-4", "ET-5", "ET-6", "ET-7", "ET-8", "ET-9", "ET-10"):
+        run("RELEASE", lambda: _no_release(ctx, eid, ddir))
     return out
 
 

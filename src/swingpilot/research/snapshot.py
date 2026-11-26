@@ -63,6 +63,7 @@ import re
 import shutil
 import stat
 import struct
+import sys
 import tempfile
 import warnings
 from collections.abc import Sequence
@@ -322,14 +323,27 @@ def check_reserved_windows(last_open_by_interval: dict[str, int], reserved_windo
 
 def build_snapshot(client: BinancePublicClient, snapshot_id: str, data_root: Path, manifest_dir: Path, *,
                    d_dev: str, reserved_windows: Sequence[ReservedWindow], start_date: str = START_DATE,
+                   reserved_windows_source=None, injected_only: bool = False,
                    now=lambda: datetime.now(timezone.utc)) -> SnapshotResult:
     """Construye la snapshot de DESARROLLO [range_start, d_dev) (CR-023 §C.1). `reserved_windows`
-    son las ventanas ACTIVAS entregadas por quien llama (interfaz inyectada; fuente autoritativa
-    pendiente en B5, no es control operativo). No construye snapshots de evaluación."""
+    son las ventanas ACTIVAS entregadas por quien llama; `reserved_windows_source` (B5,
+    `evaluation_snapshot.reserved_windows_source`) añade las derivadas del registro y del almacén. No construye snapshots de evaluación."""
     if not valid_snapshot_id(snapshot_id):
         raise SnapshotError(f"identificador de snapshot no válido: {snapshot_id!r}")
     d_dev_ms = parse_d_dev(d_dev)
     windows = list(reserved_windows)
+    if injected_only and "pytest" not in sys.modules:   # no es un modo de producción
+        raise SnapshotError("injected_only solo es válido en pruebas: en producción se exige la fuente autoritativa")
+    if reserved_windows_source is None and not injected_only:   # B5-01: sin fuente autoritativa no hay exclusión verificable
+        raise SnapshotError("falta reserved_windows_source (fuente autoritativa de ventanas reservadas, C.6.5); "
+                            "solo las pruebas pueden usar injected_only=True")
+    if reserved_windows_source is not None:   # B5: fuente autoritativa (registro + almacén), Fail-Closed
+        try:
+            windows += list(reserved_windows_source())
+        except SnapshotError:
+            raise
+        except Exception as exc:
+            raise SnapshotError(f"fuente de ventanas reservadas no verificable: {exc!r}") from exc
     if not all(isinstance(w, ReservedWindow) for w in windows):
         raise SnapshotError("reserved_windows debe contener solo ReservedWindow")
     data_root, manifest_dir = Path(data_root), Path(manifest_dir)
