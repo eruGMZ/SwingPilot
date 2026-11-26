@@ -61,6 +61,9 @@ MIN_WF_WINDOWS = 2
 MIN_TRADES_TRAIN_VAL, MIN_TRADES_OOS, MIN_TRADES_LOCKBOX = 100, 30, 30
 
 
+_HARDENED_CLASS = B.CONFIRMATORY   # CR-023 §C.5: clase a la que se aplica la regla endurecida (las pruebas heredadas la desactivan)
+
+
 class PreregistrationError(ValueError):
     pass
 
@@ -857,11 +860,15 @@ def confirmatory_findings(registry, experiment_id: str, *, preregistration=None,
                                                    selection_inputs)
     if why:
         unverified.append(why)
-    lost = bool(after or rule_changes or unplanned or violation)
+    # CR-023 §C.5 (regla endurecida): con independence_boundary.confirmatory_eligible = true, un DEVIATION de
+    # cualquier campo posterior a PREREGISTERED lo hace no confirmatorio, haya o no consumo.
+    hardened = (pre[0].get("evidence") or {}).get("independence_class") == _HARDENED_CLASS
+    any_dev = [d["deviation_id"] for d in devs] if hardened else []
+    lost = bool(after or rule_changes or unplanned or violation or any_dev)
     return {"experiment_id": experiment_id, "preregistration_sha256": sha, "confirmatory": not lost,
             "deviations": devs, "design_deviations_after_oos": after, "selection_rule_changes": rule_changes,
             "unplanned_config_ids": unplanned, "selection": selection, "selection_rule_violation": violation,
-            "unverified": unverified}
+            "hardened_deviations": any_dev, "unverified": unverified}
 
 
 def confirmatory_status(registry, experiment_id: str, *, preregistration=None,

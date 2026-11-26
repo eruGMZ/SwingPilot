@@ -265,3 +265,10 @@ def test_non_selection_design_deviation_before_exposure_keeps_existing_rule(reg)
     fz.record_deviation("metrics", ["sharpe", "pf"], "antes de OOS", registry=reg, informed_by=[])
     st = confirmatory_status(reg, X, preregistration=fz, selection_inputs=inputs)
     assert st["confirmatory"] is True and st["selection_rule_changes"] == []
+
+
+@pytest.fixture(autouse=True)
+def _legacy_confirmatory_rule(monkeypatch):
+    """Conserva la regla vigente de DESIGN_FIELDS fuera de `confirmatory_eligible = true` (CR-023 §C.5);
+    la regla endurecida se prueba en test_cr023_b4_independence.py."""
+    monkeypatch.setattr("swingpilot.research.preregistration._HARDENED_CLASS", None)

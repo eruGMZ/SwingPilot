@@ -32,6 +32,14 @@ WF = {"train_months": 24, "embargo_months": 2, "test_months": 6, "step_months": 
 
 # --- Registro de experimentos (REQ-G-104, REQ-G-107, TC-ML-010) ----------------------------
 
+@pytest.fixture(autouse=True)
+def _legacy_confirmatory_rule(monkeypatch):
+    """Estas pruebas heredadas congelan con la clase CONFIRMATORY como simple resguardo de registro y
+    ejercitan la regla vigente de DESIGN_FIELDS tras la exposición, que CR-023 §C.5 conserva fuera de los
+    experimentos con `confirmatory_eligible = true`. La regla endurecida (B4) se prueba en
+    test_cr023_b4_independence.py."""
+    monkeypatch.setattr("swingpilot.research.preregistration._HARDENED_CLASS", None)
+
 @pytest.fixture
 def reg(tmp_path):
     dec = tmp_path / "decisions"

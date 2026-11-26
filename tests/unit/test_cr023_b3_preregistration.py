@@ -1233,7 +1233,7 @@ INJECTED_NEW = {
 def test_replay_fails_closed_on_a_malformed_independence_record_injected_into_the_registry(env, name):
     fz = _confirmatory_in(env, "PREREGISTERED")
     good = _deviation(fz, env)
-    assert PR.confirmatory_findings(env.reg, "EXP-0201")["confirmatory"] is True
+    assert PR.confirmatory_findings(env.reg, "EXP-0201")["confirmatory"] is False   # B4: regla endurecida (§C.5)
     env.reg._append({**good, "deviation_id": "e" * 32, "new": INJECTED_NEW[name]})   # inyección sin validar
     with pytest.raises(PreregistrationError, match="incoherente"):
         PR.confirmatory_findings(env.reg, "EXP-0201")
@@ -1265,7 +1265,7 @@ def test_independence_deviation_does_not_change_cr020_accounting_or_status(env):
     acc_after, status_after = env.reg.accounting(), confirmatory_findings(env.reg, "EXP-0201")
     assert acc_after == acc_before and env.reg.trials_count() == count_before
     assert env.reg.experiments()["EXP-0201"]["state"] == state_before
-    assert status_after["confirmatory"] is status_before["confirmatory"] is True
+    assert status_before["confirmatory"] is True and status_after["confirmatory"] is False   # B4: regla endurecida (§C.5)
     assert status_after["design_deviations_after_oos"] == [] and status_after["unplanned_config_ids"] == []
     assert [d["deviation_id"] for d in status_after["deviations"]] == [rec["deviation_id"]]
     assert env.reg.certified("EXP-0201", "A") and env.reg.evaluation_recorded("EXP-0201", "A")
