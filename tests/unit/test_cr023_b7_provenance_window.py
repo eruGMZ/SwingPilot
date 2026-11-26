@@ -122,6 +122,11 @@ def test_genuine_oos_to_lockbox_end_to_end(tmp_path, gdev):
     assert oos.verdict == W.FAVORABLE and oos.eligibility == I.ELIGIBLE and oos.trades >= 30
     assert oos.metrics["trials_count"] is not None and oos.metrics["trials_accounting"] is not None
     assert [r["partition"] for r in consumed(reg)] == ["oos"]               # LOCKBOX aún no existe/consumido
+    # CR-024 B.7: el LOCKBOX exige el OOS favorable autoritativo persistido (no el veredicto en memoria)
+    from swingpilot.research import result_store as RST
+    _, issued = W.evaluate_window_issued(odata, Logic(), MODEL, reg, loader.prereg_store, EID,
+                                         manifest=res.manifest, **ctx(reg, loader))
+    reg.persist_window_result(RST.for_registry(reg), issued, manifest_dir=loader.manifest_dir, actor="propietario")
 
     lres, lloader = _build_lockbox(tmp_path, reg, loader)
     ldata = lloader.load_final(grant(part="lockbox", sid="SNAP-0902", ref=REF), "lockbox")

@@ -27,6 +27,7 @@ REPO = Path(__file__).resolve().parents[3]
 DATA_ROOT = REPO / "var" / "snapshots"          # fuera de Git (DEC-017 Q46)
 MANIFEST_DIR = REPO / "research" / "snapshots"  # en el repositorio
 REGISTRY_PATH = REPO / "research" / "experiments" / "registry.jsonl"
+OWNER_ACTOR = "propietario"
 CLI_SNAPSHOT_ID = re.compile(r"SNAP-[0-9]{4}")   # con fullmatch; SNAP-TEST* solo en pruebas (QA3R2-08)
 
 
@@ -52,7 +53,13 @@ def main(argv=None) -> int:
     e.add_argument("--confirm", action="store_true")
     v = sub.add_parser("verify-snapshot")
     v.add_argument("--id", required=True)
+    r = sub.add_parser("recover-window-result")                 # CR-024 B.6: EVIDENCE_ONLY, solo explícito
+    r.add_argument("--experiment", required=True)
+    r.add_argument("--window", required=True, choices=("OOS", "LOCKBOX"))
+    r.add_argument("--confirm", action="store_true")
     a = ap.parse_args(argv)
+    if a.cmd == "recover-window-result":
+        return _recover(a)
     if not CLI_SNAPSHOT_ID.fullmatch(a.id):
         print(f"identificador no válido: {a.id!r} (formato SNAP-NNNN)", file=sys.stderr)
         return 2
@@ -70,6 +77,28 @@ def main(argv=None) -> int:
     for note in resealed:
         print(f"AVISO de sellado: {note}", file=sys.stderr)
     return 1 if resealed and a.cmd == "verify-snapshot" else code
+
+
+def _recover(a, registry_path=None, manifest_dir=None) -> int:
+    """Recuperación EXPLÍCITA de EVIDENCE_ONLY (CR-024 B.6): relee solo la evidencia (sin datos de mercado),
+    revalida su durabilidad y la ligadura bajo el bloqueo del registro y escribe el marcador. Exige --confirm."""
+    from .experiments import ExperimentError, ExperimentRegistry, PersistenceUncertainError
+    from .result_store import for_registry
+    if not a.confirm:
+        print("recover-window-result escribe un marcador permanente: repetir con --confirm", file=sys.stderr)
+        return 2
+    reg = ExperimentRegistry(registry_path or REGISTRY_PATH)
+    try:
+        rec = reg.recover_evidence_only(for_registry(reg), a.experiment, a.window.lower(), actor=OWNER_ACTOR,
+                                    manifest_dir=manifest_dir or MANIFEST_DIR)
+    except PersistenceUncertainError as exc:
+        print(f"ERROR persistencia incierta (sin éxito): {exc}", file=sys.stderr)
+        return 1
+    except ExperimentError as exc:                       # incluye RegistryCorruptError
+        print(f"ERROR de recuperación: {exc}", file=sys.stderr)
+        return 1
+    print(f"OK {a.experiment}/{a.window}: WINDOW_RESULT_PERSISTED evaluation_hash {rec['evaluation_hash']}")
+    return 0
 
 
 def _run(a) -> int:

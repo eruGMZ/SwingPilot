@@ -194,6 +194,8 @@ def make_genuine(tmp, gdev, part="lockbox", sid="SNAP-0901", eid="EXP-0900"):
         env.reg.claim_partition(snapshot_id="SNAP-0900", partition="oos", experiment_id=eid,
                                 snapshot_last_open_time=oos.manifest["range"]["last_open_time_ms"],
                                 decision_ref="DEC-999_eval.md", consumption_check=ok_consumption_check())
+        from cr024_oos import persist_favorable_oos            # CR-024 B.7: ET-4 del LOCKBOX exige OOS favorable persistido
+        persist_favorable_oos(env.reg, tmp / "research" / "snapshots", eid)
         return _build(env, sid, f"{eid}/LOCKBOX", cl)
     finally:
         B5.EID = b5_eid

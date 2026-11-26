@@ -285,6 +285,12 @@ def _mf(env, mdir, sid, win="OOS", *, stem=None, eid=EID, **over):
     return m
 
 
+def _favorable_oos(env, mdir):
+    """CR-024 B.7: OOS favorable genuino persistido (camino real) antes de admitir el LOCKBOX."""
+    from cr024_oos import persist_favorable_oos
+    persist_favorable_oos(env.reg, mdir, EID)
+
+
 def _claim(env, sid, part, ref=_REF, eid=EID):
     env.reg.claim_partition(snapshot_id=sid, partition=part, experiment_id=eid, snapshot_last_open_time=1,
                             decision_ref=ref, consumption_check=ok_consumption_check())
@@ -311,6 +317,8 @@ def test_b62_lockbox_requires_consumed_oos_in_pre_and_post(env, mdir):
     _mf(env, mdir, "SNAP-0011", "LOCKBOX")
     assert _v4(env, mdir, "ET-6", "LOCKBOX")["V4pre"][0] == I.TECH
     _claim(env, "SNAP-0010", "oos")
+    assert _v4(env, mdir, "ET-6", "LOCKBOX")["V4pre"][0] == I.TECH            # CR-024 B.7: consumido, sin OOS favorable persistido
+    _favorable_oos(env, mdir)
     assert _v4(env, mdir, "ET-6", "LOCKBOX")["V4pre"][0] == I.OK
     _claim(env, "SNAP-0011", "lockbox")
     assert _v4(env, mdir, "ET-7", "LOCKBOX")["V4post"][0] == I.OK
@@ -411,6 +419,7 @@ def test_b64_production_check_enforces_manifest_unique_window_and_oos_before_loc
     assert env.reg.consumed_partitions() == []
     assert _real_claim(env, mdir, "SNAP-0010", "oos")["kind"] == "PARTITION_CONSUMED"
     assert _real_claim(env, mdir, "SNAP-0010", "oos") is None                 # ya consumida: contrato previo
+    _favorable_oos(env, mdir)
     assert _real_claim(env, mdir, "SNAP-0020", "lockbox")["partition"] == "lockbox"
 
 

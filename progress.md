@@ -1993,3 +1993,10 @@ Condiciones del propietario:
 - **Corrección de notas de reanudación:** las menciones a B6 y a `_FINAL_ACCESS_BLOCKED_UNTIL_B6` en `session-handoff.md` se anotaron como obsoletas (B6/B7 implementados; la constante no existe), sin borrar el historial.
 - **`research/README.md`:** `WINDOW_RESULT_PERSISTED` documentado como contrato v1.12, aún no implementado.
 **Pendientes:** implementación y verificación independiente de CR-024; P5 de CR-021; O3/O4; D6 diferida; D3 ABIERTA; D4 bloqueada. **B8 permanece bloqueada.** Ningún FEAT cerrado; la evidencia registrada no acredita CR-024.
+
+## 2026-11-26 | FASE 2 | IMPL-3: CR-024 I4 (verificación y documentación de la implementación) | IMPLEMENTADO SIN COMMIT — pendiente de QA independiente
+- **Verificación (exit codes reales):** unit 1429 passed, 0 skips (exit 0, 422 s); security/aislamiento 3 passed, 0 skips (exit 0); validate_gates / validate_manifest / validate_requirements OK (0/0/0).
+- **Integridad:** HEAD `ce49bbf` sin cambios; 19 entradas en `git status` (idénticas al inicio de I4); registro real `research/experiments/registry.jsonl` md5 `8af8e3e0eed4d07d847fd229362ef6a9` intacto; no existe `window_results/`.
+- **Evidencia:** CLI `recover-window-result` explícita (`--confirm`); almacén `research/experiments/window_results/`; gating autoritativo del LOCKBOX; ver `research/README.md`.
+- **Limitación documentada:** el fixture favorable (`tests/unit/cr024_oos.py`) es fabricado; la evidencia E2E genuina se conserva en `test_cr024_i2c_*` y `test_cr024_i3_*`.
+- **Pendientes:** QA independiente (sesión distinta, solo lectura); sin commit/push; ET-8, B8/B9 sin iniciar; D3 abierta, D4 bloqueada; D6 diferida. Ningún FEAT cerrado.

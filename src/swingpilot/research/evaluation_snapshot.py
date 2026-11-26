@@ -285,7 +285,8 @@ def build_evaluation_snapshot(client: BinancePublicClient, snapshot_id: str, dat
             if manifest_path.exists() or data_dir.exists():
                 raise SnapshotError(f"la snapshot {snapshot_id} ya existe: una snapshot no se reescribe")
             try:
-                I._v4({"records": records}, experiment_id, None, False, None, manifest_dir, window_id, et4=True)
+                I._v4({"records": records, "results": I.results_for(registry)}, experiment_id, None, False, None,
+                      manifest_dir, window_id, et4=True)
             except I._Fail as f:
                 raise SnapshotError(f"ET-4 bloqueada (V4-pre/ET-4 duplicado bajo bloqueo): {f.why}") from f
 

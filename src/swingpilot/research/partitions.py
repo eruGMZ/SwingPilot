@@ -106,11 +106,12 @@ def build_consumption_check(manifest_dir=None, *, registry=None, store=None, dec
             if (isinstance(r, dict) and r.get("kind") == "PARTITION_CONSUMED" and r.get("snapshot_id") == snapshot_id
                     and r.get("partition") == partition and (partition == "lockbox" or r.get("experiment_id") == experiment_id)):
                 return None                                  # ya consumida: `claim_partition` devuelve None
-        why = consumption_error(records, manifest_dir, snapshot_id, partition, experiment_id)
-        if why:
-            return f"TECNICA (UNDETERMINABLE): {why}"
         if grant is None or registry is None or bound_manifest is None:
             return "TECNICA (UNDETERMINABLE): credencial sin grant, registro o manifiesto: ligadura imposible"
+        why = consumption_error(records, manifest_dir, snapshot_id, partition, experiment_id,
+                                results=I.results_for(registry) if registry is not None else None)
+        if why:
+            return f"TECNICA (UNDETERMINABLE): {why}"
         if (snapshot_id, partition, experiment_id, decision_ref) != bound:
             return "TECNICA (UNDETERMINABLE): la credencial no está ligada a esta snapshot/partición/experimento/decisión"
         if bound_manifest.get("snapshot_id") != snapshot_id:

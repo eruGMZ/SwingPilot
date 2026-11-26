@@ -299,6 +299,8 @@ def _v4(ctx, eid, manifest, post, decision_ref, manifest_dir=None, window_id=Non
             _tech("V4-pre: la ventana ya tiene un PARTITION_CONSUMED")
         if lockbox and not oos_done:
             _tech("V4-pre: la OOS del experimento debe consumirse antes que el LOCKBOX")
+        if lockbox:
+            _oos_favorable(ctx.get("records") or [], ctx.get("results"), eid)
         return
     if len(cons) != 1:
         _tech(f"V4-post: se exige exactamente un PARTITION_CONSUMED de {wid} (hay {len(cons)})")
@@ -311,7 +313,28 @@ def _v4(ctx, eid, manifest, post, decision_ref, manifest_dir=None, window_id=Non
         _tech("V4-post: falta el consumo de la OOS del LOCKBOX")
 
 
-def consumption_error(records, manifest_dir, snapshot_id, partition, eid) -> str | None:
+def _oos_favorable(records, results, eid) -> None:
+    """CR-024 B.7 (enmienda de V4-pre del LOCKBOX): OOS favorable autoritativo releído del registro y de la
+    evidencia (nunca de la memoria del proceso). Sin almacén, no favorable o incoherente → técnico."""
+    from .experiments import RegistryCorruptError, authoritative_favorable
+    try:
+        ok = authoritative_favorable(records, results, eid, "oos")
+    except RegistryCorruptError as exc:
+        _tech(f"V4-pre: resultado OOS incoherente ({exc})")
+    if not ok:
+        _tech("V4-pre: el LOCKBOX exige un OOS favorable autoritativo persistido (CR-024 B.7)")
+
+
+def results_for(registry):
+    """Almacén de resultados del registro, o None si no es localizable (→ V4-pre del LOCKBOX deniega)."""
+    from .result_store import ResultStoreError, for_registry
+    try:
+        return for_registry(registry)
+    except ResultStoreError:
+        return None
+
+
+def consumption_error(records, manifest_dir, snapshot_id, partition, eid, results=None) -> str | None:
     """Comprobación bajo bloqueo del consumo (B6.4): manifiesto único de la ventana y de esta snapshot,
     ninguna consumición previa de la ventana (V4-pre) y OOS consumida antes que LOCKBOX. Solo lectura;
     cualquier fallo → texto (Fail-Closed). V5 completo y V1–V8 son de elegibilidad, no de esta comprobación."""
@@ -324,6 +347,8 @@ def consumption_error(records, manifest_dir, snapshot_id, partition, eid) -> str
             _tech("V4-pre: la ventana ya tiene un PARTITION_CONSUMED")
         if wid.endswith("/LOCKBOX") and not consumed.get(f"{eid}/OOS"):
             _tech("V4-pre: la OOS del experimento debe consumirse antes que el LOCKBOX")
+        if wid.endswith("/LOCKBOX"):
+            _oos_favorable(records, results, eid)
     except _Fail as f:
         return f.why
     except Exception as exc:
@@ -415,6 +440,7 @@ def stage_checks(registry, store, experiment_id: str, stage: str, *, decisions_d
         return {"V2": (TECH, "experimento no válido")}
     try:
         ctx = _context(registry, store, eid)
+        ctx["results"] = results_for(registry)         # CR-024 B.7: lectura autoritativa del OOS
     except _Fail as f:
         ctx = None
         out["V2"] = (f.nature, f.why)

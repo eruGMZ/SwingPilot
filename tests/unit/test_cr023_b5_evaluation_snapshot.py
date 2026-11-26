@@ -149,6 +149,7 @@ def test_lockbox_requires_consumed_oos_and_continuity(ready, monkeypatch):
         _build(ready, "SNAP-TESTL1", f"{EID}/LOCKBOX", cl)
     oos = _build(ready, "SNAP-TESTO1", f"{EID}/OOS", cl)
     _consume_oos(ready, "SNAP-TESTO1", oos.manifest["range"]["last_open_time_ms"])
+    _favorable_oos(ready)
     import pyarrow.parquet as pq
     monkeypatch.setattr(pq, "read_table", lambda *a, **k: pytest.fail("oos.parquet no se abre"))
     bad, _ = _client(LB_END + 10**9, tweak=(_ms(2027, 6), _ms(2027, 6, 3)))   # discrepancia en [B, B+L_oos)
@@ -227,10 +228,17 @@ def _document_all(env):
                 for e in E._discrepancies(env.res.manifest_path.parent, EID)])
 
 
+def _favorable_oos(env):
+    """CR-024 B.7: el LOCKBOX exige el OOS favorable autoritativo persistido (camino real de persistencia)."""
+    from cr024_oos import persist_favorable_oos
+    persist_favorable_oos(env.reg, env.res.manifest_path.parent, EID)
+
+
 def _setup_lockbox(env):
     cl, _ = _client(LB_END + 10**9)
     oos = _build(env, "SNAP-TESTO1", f"{EID}/OOS", cl)
     _consume_oos(env, "SNAP-TESTO1", oos.manifest["range"]["last_open_time_ms"])
+    _favorable_oos(env)
     return cl
 
 

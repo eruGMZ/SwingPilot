@@ -936,3 +936,11 @@ implementation/conflict_register.md — CONF-001, CONF-002 resueltos
 - R1 (opción B): `FinalWindowProvenance` inmutable emitido por el cargador y adjunto a `FinalEvaluationData` (grant, experimento, snapshot, ventana, registro de consumo, digests canónicos). R2: manifiesto y cargador del LOCKBOX resueltos perezosamente tras OOS favorable, con autorización humana explícita.
 - Forma del registro intacta; protección en modelo de proceso confiable, sin tamper-evidence. Corrige la línea de procedencia de B7.4c (era inferencia).
 - Pendiente: implementar/verificar R1 y R2 (no hecho). Sin commit ni push.
+
+---
+
+## Estado CR-024 I4 (2026-11-26)
+- CR-024 I1–I3 implementado sin commit sobre HEAD `ce49bbf`. Verificación real: unit 1429 passed (0), security 3 passed (0), validadores gates/manifest/requirements OK (0/0/0); sin skips. Registro real intacto (md5 `8af8e3e0…`); sin `window_results/`.
+- Recuperación explícita: `python -m swingpilot.research.cli recover-window-result --experiment <ID> --window {OOS|LOCKBOX} --confirm`. Almacén: `research/experiments/window_results/`. LOCKBOX autoritativamente bloqueado sin OOS favorable persistido (no EVIDENCE_ONLY).
+- Limitaciones: confianza en proceso sin tamper-evidence; fixture favorable fabricado (`tests/unit/cr024_oos.py`), evidencia genuina en E2E i2c/i3; sin evaluación real; ET-8, B8/B9 sin iniciar; D3 abierta, D4 bloqueada.
+- Obligatorio: QA independiente (sesión distinta, solo lectura) antes de cerrar FEAT. Sin commit ni push autorizados.

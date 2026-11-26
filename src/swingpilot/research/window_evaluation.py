@@ -17,6 +17,7 @@ operaciones y se informan aparte) y su comprobación ET-7.
 """
 import json
 import math
+from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -26,6 +27,9 @@ from . import acceptance as A
 from . import independence as I
 from . import partitions as P
 from . import preregistration as PR
+from . import result_serialization as RS
+from . import result_store as RST
+from .experiments import PersistenceUncertainError
 from . import snapshot as S
 from .backtest import ExecutionModel, InvalidFinalWindowCandle, run_backtest
 
@@ -185,7 +189,7 @@ def verify_provenance(data, manifest: dict, registry=None) -> tuple[pd.DataFrame
     return h4(data.data), h4(data.context)
 
 
-def evaluate_window(data, logic, model: ExecutionModel, registry, store, experiment_id: str, *,
+def _evaluate_outcome(data, logic, model: ExecutionModel, registry, store, experiment_id: str, *,
                     manifest: dict, preregistration=None, selection_inputs=None, **et7_ctx) -> WindowOutcome:
     """Evalúa UNA ventana ya cargada (`FinalEvaluationData`). No relee datos ni toca el consumo."""
     part = data.partition
@@ -232,18 +236,107 @@ def evaluate_window(data, logic, model: ExecutionModel, registry, store, experim
 
 def evaluate_final_windows(load_oos: Callable, resolve_lockbox: Callable, logic, model: ExecutionModel,
                            registry, store, experiment_id: str, *, oos_manifest: dict,
-                           preregistration=None, selection_inputs=None, **et7_ctx) -> FinalWindowsResult:
+                           preregistration=None, selection_inputs=None, result_store=None, actor=None,
+                           **et7_ctx) -> FinalWindowsResult:
     """`load_oos` es una llamada sin argumentos que invoca `load_final` (consumo y lectura). `resolve_lockbox`
     (B7.4d) se invoca SOLO tras un OOS favorable y devuelve `(manifest_lockbox, load_lockbox)`: ni el manifiesto
     ni el cargador del LOCKBOX existen antes, y la grant humana la aporta quien la construye dentro de
-    `load_lockbox`. Un error de acceso se propaga (no se interpreta como resultado)."""
+    `load_lockbox`. Un error de acceso se propaga (no se interpreta como resultado).
+
+    CR-024 B.5/B.7: todo resultado emitido (`IssuedWindowResult`) se persiste con `persist_window_result` ANTES
+    de informarse como acreditado o de progresar; un fallo propaga `PersistenceUncertainError` (sin éxito, sin
+    reevaluación). Un resultado no emitido (sin procedencia B7) no es acreditado y nunca progresa. El LOCKBOX
+    solo se resuelve si el OOS RELEÍDO del registro y de la evidencia es favorable autoritativo."""
+    from .experiments import OWNER
     kw = dict(preregistration=preregistration, selection_inputs=selection_inputs, **et7_ctx)
-    oos = evaluate_window(load_oos(), logic, model, registry, store, experiment_id,
-                          manifest=oos_manifest, **kw)
-    if oos.verdict != FAVORABLE:
+    rstore = None
+    if registry is not None:
+        rstore = result_store if result_store is not None else RST.for_registry(registry)
+
+    def run(data, manifest):
+        oc, issued = evaluate_window_issued(data, logic, model, registry, store, experiment_id,
+                                            manifest=manifest, **kw)
+        if issued is None:
+            return oc, False
+        registry.persist_window_result(rstore, issued, manifest_dir=et7_ctx.get("manifest_dir"),
+                                       actor=actor or OWNER)
+        state = registry.window_result_state(rstore, experiment_id, oc.partition)
+        if state != "RESULT_VALID":
+            raise PersistenceUncertainError(f"{experiment_id}/{oc.partition}: estado {state} tras persistir")
+        return oc, True
+
+    oos, persisted = run(load_oos(), oos_manifest)
+    if not persisted:
         return FinalWindowsResult(oos, None, "NOT_ATTEMPTED",
-                                  [f"LOCKBOX no iniciado: OOS {oos.verdict}"])
+                                  [f"LOCKBOX no iniciado: OOS {oos.verdict} no acreditado (resultado no emitido "
+                                   "ni persistido)"])
+    if not registry.window_result_favorable(rstore, experiment_id, "oos"):
+        return FinalWindowsResult(oos, None, "NOT_ATTEMPTED",
+                                  [f"LOCKBOX no iniciado: OOS {oos.verdict} no es favorable autoritativo"])
     lockbox_manifest, load_lockbox = resolve_lockbox()
-    lock = evaluate_window(load_lockbox(), logic, model, registry, store, experiment_id,
-                           manifest=lockbox_manifest, **kw)
-    return FinalWindowsResult(oos, lock, "ATTEMPTED")
+    lock, lpersisted = run(load_lockbox(), lockbox_manifest)
+    notes = [] if lpersisted else [f"LOCKBOX {lock.verdict} no acreditado (resultado no emitido ni persistido)"]
+    return FinalWindowsResult(oos, lock, "ATTEMPTED", notes)
+
+
+def _manifest_file_sha(manifest: dict, manifest_dir) -> str:
+    """SHA-256 de los bytes REALES del archivo del manifiesto sellado (`<manifest_dir>/<snapshot_id>.json`),
+    nunca de JSON reconstruido. El archivo debe cargar y validar exactamente al manifiesto verificado."""
+    if manifest_dir is None:
+        raise ProvenanceError("sin manifest_dir: los bytes del manifiesto no son accesibles")
+    path = Path(manifest_dir) / f"{manifest['snapshot_id']}.json"
+    raw = path.read_bytes()
+    if S.validate_manifest(json.loads(raw)) != manifest:
+        raise ProvenanceError("el archivo del manifiesto no coincide con el manifiesto verificado")
+    return RS.evaluation_hash(raw)
+
+
+def _issue(outcome: WindowOutcome, data, manifest: dict, registry, experiment_id: str, manifest_dir=None):
+    """CR-024 B.1/B.2: canonicaliza al emitir, ligado a la procedencia B7 genuina. Un fallo de tipo o de
+    ligadura es técnico: el resultado emitido es TECHNICAL/UNDETERMINABLE con `metrics = None`."""
+    def technical(msg):
+        return _fail(outcome.partition, [f"TECNICA (UNDETERMINABLE): resultado no canonicalizable: {msg}"],
+                     "TECHNICAL", I.UNDETERMINABLE, trades=outcome.trades,
+                     forced_window_close_trades=outcome.forced_window_close_trades)
+
+    try:                                 # ligadura B7 genuina; sin ella no hay nada que emitir ni persistir
+        _check_evidence(data, manifest, registry)
+        ev = data.provenance
+        rec = json.loads(ev.consumption)
+        lines, records = registry._load()
+        idx = [i for i, r in enumerate(records) if r == rec and r.get("kind") == "PARTITION_CONSUMED"]
+        if len(idx) != 1:
+            raise ProvenanceError("el consumo ligado no consta exactamente una vez")
+        bind = dict(experiment_id=experiment_id, prereg_sha256=PR._preregistered_sha(registry, experiment_id),
+                    snapshot_id=manifest["snapshot_id"], window_id=str(manifest["window_id"]),
+                    manifest_sha256=_manifest_file_sha(manifest, manifest_dir),
+                    decision_ref=ev.grant[3], consumed_line_sha256=RS.evaluation_hash(lines[idx[0]]))
+    except Exception:
+        return outcome, None
+
+    def build(oc):
+        doc, raw = RS.build_document(oc, **bind)
+        return RS.issue(RS._ISSUE_KEY, oc, doc, raw, (experiment_id, oc.partition, bind["snapshot_id"], bind["decision_ref"]))
+
+    try:
+        return outcome, build(outcome)
+    except Exception as exc:             # fallo de tipo/serialización: resultado técnico canonicalizable
+        oc = technical(repr(exc))
+        try:
+            return oc, build(oc)
+        except Exception:
+            return oc, None
+
+
+def evaluate_window_issued(data, logic, model: ExecutionModel, registry, store, experiment_id: str, *,
+                           manifest: dict, preregistration=None, selection_inputs=None, **et7_ctx):
+    """Como `evaluate_window`, pero devuelve `(WindowOutcome, IssuedWindowResult | None)`. El resultado emitido
+    solo existe con procedencia B7 verificada; su `outcome` es el devuelto (técnico si no fue canonicalizable)."""
+    oc = _evaluate_outcome(data, logic, model, registry, store, experiment_id, manifest=manifest,
+                           preregistration=preregistration, selection_inputs=selection_inputs, **et7_ctx)
+    return _issue(oc, data, manifest, registry, experiment_id, et7_ctx.get("manifest_dir"))
+
+
+def evaluate_window(*a, **kw) -> WindowOutcome:
+    """Firma histórica de B7: devuelve solo el `WindowOutcome` (técnico si el resultado no es canonicalizable)."""
+    return evaluate_window_issued(*a, **kw)[0]

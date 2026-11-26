@@ -307,6 +307,7 @@ def _integrity_error(lines: list[bytes], records: list[dict]) -> str | None:
     vinculable → incoherente."""
     first_ce: dict = {}
     first_dev: dict = {}
+    first_result: dict = {}
     seen_sha: dict = {}
     marker_ids: set = set()
     for i, (line, r) in enumerate(zip(lines, records), 1):
@@ -323,6 +324,11 @@ def _integrity_error(lines: list[bytes], records: list[dict]) -> str | None:
             if why:
                 return f"línea {i}: EVALUATION_PERSISTED no válido ({why})"
             marker_ids.add(r["marker_id"])
+        elif kind == RESULT_KIND:
+            why = _result_marker_error(r, records[:i - 1], seen_sha, first_result, line)
+            if why:
+                return f"línea {i}: {RESULT_KIND} no válido ({why})"
+            first_result.setdefault((r["experiment_id"], r["partition"]), line)
         seen_sha.setdefault(_line_sha(line), i - 1)
     return None
 
@@ -362,6 +368,73 @@ def _marker_error(r: dict, seen_sha: dict, records: list[dict], marker_ids: set)
                                          or target.get("field") != "trials_count"):
             return "la DEVIATION certificada no corresponde"
     return None
+
+
+# --- CR-024 B.4: WINDOW_RESULT_PERSISTED (marcador de evidencia de ventana OOS/LOCKBOX) -----------------
+RESULT_KIND = "WINDOW_RESULT_PERSISTED"
+_RESULT_KEYS = {"kind", "experiment_id", "partition", "snapshot_id", "evaluation_hash", "prereg_sha256", "verdict",
+                "eligibility", "evaluator_version", "consumed_line_sha256", "actor", "at_utc"}
+
+
+def _result_marker_error(r: dict, prior: list[dict], seen_sha: dict, first_result: dict, line: bytes) -> str | None:
+    """Forma y ligaduras del marcador con líneas ANTERIORES (CR-024 B.4/B.5); `prior` = registros previos.
+    No toca la evidencia (eso lo hace `ExperimentRegistry.verify_window_result`)."""
+    if set(r) != _RESULT_KEYS:
+        return "campos no válidos"
+    eid, part = r["experiment_id"], r["partition"]
+    if not valid_experiment_id(eid) or type(part) is not str or part not in SEALED:
+        return "experimento o partición no válidos"       # exacto, sin alias (contrato: oos|lockbox)
+    if not _valid_snapshot_id(r["snapshot_id"]):
+        return "snapshot no válida"
+    for k in ("evaluation_hash", "prereg_sha256", "consumed_line_sha256"):
+        if type(r[k]) is not str or not _HEX64.fullmatch(r[k]):
+            return f"{k} no es SHA-256 en hexadecimal minúsculo"
+    for k in ("verdict", "evaluator_version", "actor", "at_utc"):
+        if type(r[k]) is not str or not r[k].strip():
+            return f"{k} no válido"
+    if r["eligibility"] is not None and (type(r["eligibility"]) is not str or not r["eligibility"]):
+        return "eligibility no válida"
+    key = (eid, part)
+    if key in first_result:                                 # una identidad lógica por (experimento, partición)
+        if first_result[key] != line:                       # B.5: copia idéntica = el mismo; distinta → incoherente
+            return "resultado duplicado para la misma ventana con contenido distinto"
+        return None
+    owned = [x for x in prior if x.get("kind") == "PARTITION_CONSUMED" and x.get("experiment_id") == eid
+             and x.get("partition") == part and x.get("snapshot_id") == r["snapshot_id"]]
+    if len(owned) != 1:
+        return f"se exige exactamente un PARTITION_CONSUMED previo de la ventana por el experimento (hay {len(owned)})"
+    i = seen_sha.get(r["consumed_line_sha256"])
+    if i is None or prior[i] is not owned[0]:
+        return "consumed_line_sha256 no produce la línea PARTITION_CONSUMED previa"
+    pre = [x for x in prior if x.get("kind") == "TRANSITION" and x.get("experiment_id") == eid
+           and x.get("to") == "PREREGISTERED"]
+    vig = (pre[-1].get("evidence") or {}).get("preregistration_sha256") if len(pre) == 1 else None
+    if vig != r["prereg_sha256"]:
+        return "prereg_sha256 no coincide con el PREREGISTERED vigente"
+    return None
+
+
+def authoritative_favorable(records: list[dict], store, experiment_id: str, partition: str) -> bool:
+    """CR-024 B.4/B.7: favorable autoritativo SIN tomar el bloqueo, sobre registros que el llamador releyó con
+    `_load` (bajo el bloqueo cuando se exige: `claim_partition`, `_check` de ET-4). La forma y las ligaduras del
+    marcador las garantiza `_load`; aquí se exige un único consumo de la ventana (entre snapshots) y se relee y
+    verifica SIEMPRE la evidencia. Sin almacén o sin marcador → False; incoherencia → RegistryCorruptError."""
+    if store is None:
+        return False
+    owned = [r for r in records if r.get("kind") == "PARTITION_CONSUMED" and r.get("experiment_id") == experiment_id
+             and r.get("partition") == partition]
+    marks = [r for r in records if r.get("kind") == RESULT_KIND and r.get("experiment_id") == experiment_id
+             and r.get("partition") == partition]
+    if len(owned) > 1:
+        raise RegistryCorruptError(f"{experiment_id}/{partition}: consumo duplicado de la ventana")
+    if not marks:
+        return False
+    if not owned:
+        raise RegistryCorruptError(f"{experiment_id}/{partition}: marcador sin consumo previo")
+    m = marks[0]
+    out = ExperimentRegistry.verify_window_result(m, store)["outcome"]
+    return (m["verdict"] == out["verdict"] == "ELIGIBLE_FOR_HUMAN_REVIEW"
+            and m["eligibility"] == out["eligibility"] == "ELIGIBLE" and out.get("nature") is None)
 
 
 def _now() -> str:
@@ -451,6 +524,10 @@ class ExperimentRegistry:
             raise ExperimentError(f"snapshot no válida: {snapshot_id!r}")
         with self._locked():
             records = self._load()[1]                      # relectura fresca bajo el bloqueo
+            if any(r.get("kind") == "PARTITION_CONSUMED" and r.get("experiment_id") == experiment_id
+                   and r.get("partition") == partition and r.get("snapshot_id") != snapshot_id for r in records):
+                raise ExperimentError(f"{experiment_id}/{partition} ya consumida en otra snapshot: una sola "
+                                      "consumición por experimento y partición (CR-024 B.6)")
             try:
                 why = consumption_check(records, snapshot_id, partition, experiment_id, decision_ref)
             except ExperimentError:
@@ -470,6 +547,256 @@ class ExperimentRegistry:
         if rec is None:
             raise ExperimentError(f"{kw['partition']} de {kw['snapshot_id']} ya consumido (evaluación única)")
         return rec
+
+    # --- CR-024 B.4/B.5: marcador WINDOW_RESULT_PERSISTED ----------------------------------------
+    def window_results(self, records: list[dict] | None = None) -> list[dict]:
+        out, seen = [], set()
+        for r in (self.records() if records is None else records):
+            if r["kind"] == RESULT_KIND and (r["experiment_id"], r["partition"]) not in seen:
+                seen.add((r["experiment_id"], r["partition"]))      # copias idénticas = una entidad lógica
+                out.append(r)
+        return out
+
+    @staticmethod
+    def verify_window_result(marker: dict, store) -> dict:
+        """Comprueba la evidencia del marcador: existe, SHA-256 = evaluation_hash, lectura estricta de B.1 y
+        campos duplicados idénticos. `store` es un `result_store.ResultStore`. Devuelve el documento; todo
+        fallo → RegistryCorruptError (Fail-Closed, sin reparación)."""
+        from swingpilot.research.result_serialization import ResultSerializationError, evaluation_hash, parse_strict
+        from swingpilot.research.result_store import ResultStoreError
+        tag = f"{marker.get('experiment_id')}/{marker.get('partition')}"
+        try:
+            data = store.read(marker["experiment_id"], marker["partition"])
+            doc = parse_strict(data)
+        except (ResultStoreError, ResultSerializationError) as exc:
+            raise RegistryCorruptError(f"{RESULT_KIND} {tag}: evidencia no verificable ({exc})") from exc
+        if evaluation_hash(data) != marker["evaluation_hash"]:
+            raise RegistryCorruptError(f"{RESULT_KIND} {tag}: SHA-256 de la evidencia distinto de evaluation_hash")
+        out, cons = doc.get("outcome"), doc.get("consumption")
+        if not isinstance(out, dict) or not isinstance(cons, dict):
+            raise RegistryCorruptError(f"{RESULT_KIND} {tag}: evidencia sin outcome/consumption")
+        got = {"experiment_id": doc.get("experiment_id"), "partition": doc.get("partition"),
+               "snapshot_id": doc.get("snapshot_id"), "prereg_sha256": doc.get("prereg_sha256"),
+               "evaluator_version": doc.get("evaluator_version"), "verdict": out.get("verdict"),
+               "eligibility": out.get("eligibility"), "consumed_line_sha256": cons.get("consumed_line_sha256")}
+        bad = [k for k, v in got.items() if marker.get(k) != v or (type(v) is not type(marker.get(k)))]
+        if doc.get("schema") != 1 or bad:
+            raise RegistryCorruptError(f"{RESULT_KIND} {tag}: la evidencia no repite los campos del marcador {bad}")
+        return doc
+
+    def verified_window_results(self, store) -> list[dict]:
+        """Marcadores (ya validados estructuralmente por `_load`) con su evidencia verificada."""
+        out = self.window_results()
+        for m in out:
+            self.verify_window_result(m, store)
+        return out
+
+    @staticmethod
+    def _check_result_binding(lines, records, doc, manifest_dir) -> None:
+        """Revalida bajo bloqueo las ligaduras de un documento de resultado: consumo exacto y su línea, dueño del
+        LOCKBOX y bytes REALES del archivo del manifiesto (nunca JSON reconstruido). Compartido por la
+        persistencia normal y la recuperación explícita."""
+        from swingpilot.research import snapshot as S
+        exp, part, snap, cons = doc["experiment_id"], doc["partition"], doc["snapshot_id"], doc["consumption"]
+        owned = [r for r in records if r.get("kind") == "PARTITION_CONSUMED" and r.get("experiment_id") == exp
+                 and r.get("partition") == part and r.get("snapshot_id") == snap]
+        if len(owned) != 1 or owned[0].get("decision_ref") != cons["decision_ref"]:
+            raise ExperimentError("el consumo ligado no consta exactamente una vez por el experimento dueño")
+        if any(r.get("kind") == "PARTITION_CONSUMED" and r.get("partition") == "lockbox"
+               and r.get("snapshot_id") == snap and r.get("experiment_id") != exp for r in records):
+            raise ExperimentError("el LOCKBOX de esta snapshot pertenece a otro experimento")
+        if _line_sha(lines[records.index(owned[0])]) != cons["consumed_line_sha256"]:
+            raise ExperimentError("consumed_line_sha256 no produce la línea PARTITION_CONSUMED vigente")
+        try:                                   # bytes REALES del manifiesto sellado
+            raw = (Path(manifest_dir) / f"{snap}.json").read_bytes()
+            manifest = S.validate_manifest(json.loads(raw))
+        except Exception as exc:
+            raise ExperimentError(f"manifiesto no verificable: {exc!r}") from exc
+        if manifest.get("snapshot_id") != snap or str(manifest.get("window_id")) != doc["window_id"] \
+                or hashlib.sha256(raw).hexdigest() != doc["manifest_sha256"]:
+            raise ExperimentError("los bytes del manifiesto no coinciden con el resultado emitido")
+
+    def persist_window_result(self, store, issued, *, manifest_dir, actor: str) -> dict:
+        """Único camino de escritura de WINDOW_RESULT_PERSISTED (CR-024 B.2/B.5). Exige un `IssuedWindowResult`
+        genuino (credencial privada; un dict, copia o hash aportado → rechazo, nada escrito). Bajo UN bloqueo
+        exclusivo del registro y con `_load` revalida todas las ligaduras (consumo exacto y su línea, preregistro
+        vigente, bytes REALES del manifiesto), escribe y confirma la evidencia, escribe el marcador con fsync,
+        relee y verifica. Error tras empezar a escribir → PersistenceUncertainError; ningún reintento ni
+        recuperación automática. Copia idéntica ya persistida → idempotente."""
+        from swingpilot.research import snapshot as S
+        from swingpilot.research.result_serialization import (IssuedWindowResult, ResultSerializationError,
+                                                              evaluation_hash, parse_strict)
+        from swingpilot.research.result_store import ResultStoreConflict, ResultStoreError
+        if type(issued) is not IssuedWindowResult:
+            raise ExperimentError("persist_window_result exige un IssuedWindowResult emitido por evaluate_window (B.2)")
+        if type(actor) is not str or not actor.strip():
+            raise ExperimentError("actor no válido")
+        data = issued.document_bytes
+        try:
+            doc = parse_strict(data)
+            exp, part, snap = doc["experiment_id"], doc["partition"], doc["snapshot_id"]
+            cons, out = doc["consumption"], doc["outcome"]
+            if evaluation_hash(data) != issued.evaluation_hash or part != out["partition"] \
+                    or tuple(issued.binding) != (exp, part, snap, cons["decision_ref"]):
+                raise ValueError("ligadura del resultado emitido incoherente")
+            fields = {"experiment_id": exp, "partition": part, "snapshot_id": snap,
+                      "evaluation_hash": evaluation_hash(data), "prereg_sha256": doc["prereg_sha256"],
+                      "verdict": out["verdict"], "eligibility": out["eligibility"],
+                      "evaluator_version": doc["evaluator_version"],
+                      "consumed_line_sha256": cons["consumed_line_sha256"]}
+        except (ResultSerializationError, KeyError, TypeError, ValueError) as exc:
+            raise ExperimentError(f"resultado emitido no persistible: {exc}") from exc
+        if not valid_experiment_id(exp) or type(part) is not str or part not in SEALED:
+            raise ExperimentError(f"ventana no válida: {exp!r}/{part!r}")
+        with self._locked():
+            lines, records = self._load()
+            self._check_result_binding(lines, records, doc, manifest_dir)
+            for m in self.window_results(records):
+                if (m["experiment_id"], m["partition"]) == (exp, part):
+                    if all(m[k] == v for k, v in fields.items()):
+                        self.verify_window_result(m, store)
+                        return m
+                    raise RegistryCorruptError(f"{RESULT_KIND} ya existe para {exp}/{part} con contenido distinto")
+            state = self._window_state(lines, records, store, exp, part)
+            if state == "EVIDENCE_ONLY":                   # B.6: solo el comando explícito del CLI la recupera
+                raise ExperimentError(f"{exp}/{part} está en EVIDENCE_ONLY: recuperación solo con "
+                                      "`recover-window-result` del CLI; la persistencia normal no la dispara")
+            if state != "CONSUMED_NO_RESULT":
+                raise ExperimentError(f"{exp}/{part}: estado {state} no admite persistencia")
+            rec = {"at_utc": self._now(), "kind": RESULT_KIND, **fields, "actor": actor}
+            seen: dict = {}
+            for j, ln in enumerate(lines):
+                seen.setdefault(_line_sha(ln), j)
+            why = _result_marker_error(rec, records, seen, {}, b"")
+            if why:
+                raise ExperimentError(f"{RESULT_KIND} rechazado: {why}")
+            try:                                   # (2) evidencia durable, (3) marcador con fsync, (4) relectura
+                store.write(exp, part, data)
+                self.verify_window_result(rec, store)
+                self._write_lines([_serialize(rec)])
+                again = self.verified_window_results(store)
+            except ResultStoreConflict as exc:
+                raise RegistryCorruptError(f"evidencia ya presente con bytes distintos: {exc}") from exc
+            except (ResultStoreError, OSError, ExperimentError) as exc:
+                raise PersistenceUncertainError(f"persistencia incierta de {exp}/{part}: {exc}") from exc
+            if rec not in again:
+                raise PersistenceUncertainError(f"{RESULT_KIND} no aparece tras la relectura")
+            return rec
+
+    def window_result_state(self, store, experiment_id: str, partition: str) -> str:
+        """Conciliación B.6, solo lectura (sin recuperación automática): NOT_CONSUMED | RESULT_VALID |
+        CONSUMED_NO_RESULT | EVIDENCE_ONLY. CORRUPT → RegistryCorruptError (también un registro corrupto)."""
+        from swingpilot.research.result_serialization import ResultSerializationError, evaluation_hash, parse_strict
+        from swingpilot.research.result_store import ResultStoreMissing, ResultStoreError
+        if not valid_experiment_id(experiment_id) or type(partition) is not str or partition not in SEALED:
+            raise ExperimentError(f"ventana no válida: {experiment_id!r}/{partition!r}")
+        with self._locked():
+            lines, records = self._load()
+        return self._window_state(lines, records, store, experiment_id, partition)
+
+    def _window_state(self, lines, records, store, experiment_id: str, partition: str) -> str:
+        """Núcleo de B.6 sin bloqueo, sobre líneas ya cargadas con `_load` (el llamador decide el bloqueo)."""
+        from swingpilot.research.result_serialization import ResultSerializationError, evaluation_hash, parse_strict
+        from swingpilot.research.result_store import ResultStoreMissing, ResultStoreError
+        tag = f"{experiment_id}/{partition}"
+        owned = [i for i, r in enumerate(records) if r.get("kind") == "PARTITION_CONSUMED"
+                 and r.get("experiment_id") == experiment_id and r.get("partition") == partition]
+        marker = [m for m in self.window_results(records) if (m["experiment_id"], m["partition"]) == (experiment_id, partition)]
+        try:
+            data = store.read(experiment_id, partition)
+        except ResultStoreMissing:
+            data = None
+        except ResultStoreError as exc:
+            raise RegistryCorruptError(f"{tag}: evidencia ilegible o fuera de la frontera ({exc})") from exc
+        if not owned:
+            if marker or data is not None:
+                raise RegistryCorruptError(f"{tag}: marcador o evidencia sin consumo previo")
+            return "NOT_CONSUMED"
+        if len(owned) != 1:
+            raise RegistryCorruptError(f"{tag}: consumo duplicado de la ventana")
+        if marker:
+            self.verify_window_result(marker[0], store)      # RegistryCorruptError si la evidencia falla
+            return "RESULT_VALID"
+        if data is None:
+            return "CONSUMED_NO_RESULT"
+        try:                                                 # evidencia sin marcador: debe estar ligada al consumo
+            doc = parse_strict(data)
+            pre = [r for r in records if r.get("kind") == "TRANSITION" and r.get("experiment_id") == experiment_id
+                   and r.get("to") == "PREREGISTERED"]
+            vig = (pre[-1].get("evidence") or {}).get("preregistration_sha256") if len(pre) == 1 else None
+            cons = records[owned[0]]
+            ok = (doc.get("schema") == 1 and doc.get("experiment_id") == experiment_id
+                  and doc.get("partition") == partition and doc.get("snapshot_id") == cons["snapshot_id"]
+                  and doc["consumption"]["consumed_line_sha256"] == _line_sha(lines[owned[0]])
+                  and doc["consumption"]["decision_ref"] == cons.get("decision_ref")
+                  and doc.get("prereg_sha256") == vig and doc["outcome"]["partition"] == partition
+                  and evaluation_hash(data))
+        except (ResultSerializationError, KeyError, TypeError) as exc:
+            raise RegistryCorruptError(f"{tag}: evidencia no válida ({exc})") from exc
+        if not ok:
+            raise RegistryCorruptError(f"{tag}: la evidencia no está ligada al consumo y al preregistro")
+        return "EVIDENCE_ONLY"
+
+    def window_result_favorable(self, store, experiment_id: str, partition: str) -> bool:
+        """Favorable autoritativo (B.4, definición única): RESULT_VALID con verdict == ELIGIBLE_FOR_HUMAN_REVIEW,
+        eligibility == ELIGIBLE y nature is None, comprobadas en evidencia y marcador y coincidentes. Cualquier
+        otro estado válido → False; corrupción → RegistryCorruptError."""
+        if not valid_experiment_id(experiment_id) or type(partition) is not str or partition not in SEALED:
+            raise ExperimentError(f"ventana no válida: {experiment_id!r}/{partition!r}")
+        with self._locked():
+            lines, records = self._load()
+            if self._window_state(lines, records, store, experiment_id, partition) != "RESULT_VALID":
+                return False
+            return authoritative_favorable(records, store, experiment_id, partition)
+
+    def recover_evidence_only(self, store, experiment_id: str, partition: str, *, actor: str,
+                              manifest_dir=None) -> dict:
+        """Recuperación EXPLÍCITA de EVIDENCE_ONLY (CR-024 B.6; solo la invoca el comando del CLI). Bajo UN bloqueo
+        exclusivo y con `_load`: exige EVIDENCE_ONLY (revalida la ligadura al consumo y al preregistro vigente),
+        relee únicamente la evidencia (sin datos de mercado), revalida su durabilidad (fsync de archivo y cadena
+        de directorios y relectura con descriptor nuevo), escribe el marcador y lo relee. Cualquier error tras
+        empezar → PersistenceUncertainError; ningún acceso ni la persistencia normal la disparan."""
+        from swingpilot.research.result_serialization import evaluation_hash, parse_strict
+        from swingpilot.research.result_store import ResultStoreError
+        if not valid_experiment_id(experiment_id) or type(partition) is not str or partition not in SEALED:
+            raise ExperimentError(f"ventana no válida: {experiment_id!r}/{partition!r}")
+        if type(actor) is not str or not actor.strip():
+            raise ExperimentError("actor no válido")
+        tag = f"{experiment_id}/{partition}"
+        with self._locked():
+            lines, records = self._load()
+            state = self._window_state(lines, records, store, experiment_id, partition)
+            if state != "EVIDENCE_ONLY":
+                raise ExperimentError(f"{tag}: recuperación solo desde EVIDENCE_ONLY (estado {state})")
+            try:
+                data = store.read(experiment_id, partition)
+                doc = parse_strict(data)
+                out, cons = doc["outcome"], doc["consumption"]
+                rec = {"at_utc": self._now(), "kind": RESULT_KIND, "experiment_id": experiment_id,
+                       "partition": partition, "snapshot_id": doc["snapshot_id"],
+                       "evaluation_hash": evaluation_hash(data), "prereg_sha256": doc["prereg_sha256"],
+                       "verdict": out["verdict"], "eligibility": out["eligibility"],
+                       "evaluator_version": doc["evaluator_version"],
+                       "consumed_line_sha256": cons["consumed_line_sha256"], "actor": actor}
+            except Exception as exc:
+                raise RegistryCorruptError(f"{tag}: evidencia no recuperable ({exc})") from exc
+            self._check_result_binding(lines, records, doc, manifest_dir)   # consumo, línea y bytes del manifiesto
+            seen: dict = {}
+            for j, ln in enumerate(lines):
+                seen.setdefault(_line_sha(ln), j)
+            why = _result_marker_error(rec, records, seen, {}, b"")
+            if why:
+                raise ExperimentError(f"{RESULT_KIND} rechazado: {why}")
+            self.verify_window_result(rec, store)
+            try:
+                store.revalidate(experiment_id, partition, data)
+                self._write_lines([_serialize(rec)])
+                again = self.verified_window_results(store)
+            except (ResultStoreError, OSError, ExperimentError) as exc:
+                raise PersistenceUncertainError(f"recuperación incierta de {tag}: {exc}") from exc
+            if rec not in again:
+                raise PersistenceUncertainError(f"{RESULT_KIND} no aparece tras la relectura")
+            return rec
 
     def trials_count(self) -> int:
         """Conteo global de pruebas G = H_doc + H_bound + E (REQ-G-P17, CR-020; DEC-018 decisión 4).
@@ -661,6 +988,8 @@ class ExperimentRegistry:
     def _write(self, rec: dict) -> dict:
         """Escribe un registro; el llamador debe tener el bloqueo (`_locked`). Nunca añade a un
         registro corrupto (CR-021 §F.2 P1, P3)."""
+        if rec.get("kind") == RESULT_KIND:
+            raise ExperimentError(f"{RESULT_KIND} solo lo escribe persist_window_result (CR-024 B.2)")
         rec = {"at_utc": self._now(), **rec}
         self._load()                                       # RegistryCorruptError → nada escrito
         self._write_lines([_serialize(rec)])

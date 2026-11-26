@@ -129,16 +129,16 @@ def test_lockbox_not_loaded_after_unfavorable_or_inconclusive_oos(stubs):
     assert loaded == []
 
 
-def test_lockbox_evaluated_separately_after_favorable_oos(stubs):
+def test_synthetic_favorable_oos_is_not_accredited_and_never_resolves_lockbox(stubs):
+    """CR-024 B.5/B.7: un OOS favorable sin emisión persistible (datos sintéticos, sin procedencia B7) no es
+    acreditado; el LOCKBOX no se resuelve. El E2E genuino con persistencia está en test_cr024_i3_integration."""
     res = W.evaluate_final_windows(lambda: data("oos", window_rows(29, open_tail=True)),
-                                   lambda: ({"window_id": "EXP-0900/LOCKBOX"},
-                                            lambda: data("lockbox", window_rows(30, open_tail=True))),
+                                   lambda: pytest.fail("LOCKBOX resuelto"),
                                    Logic(), MODEL, None, None, "EXP-0900",
                                    oos_manifest={"window_id": "EXP-0900/OOS"})
-    assert res.oos.verdict == W.FAVORABLE and res.lockbox.verdict == W.FAVORABLE
-    assert (res.oos.trades, res.lockbox.trades) == (30, 31) and res.lockbox_progression == "ATTEMPTED"
-    assert stubs["et7"] == [("ET-7", "EXP-0900/OOS"), ("ET-7", "EXP-0900/LOCKBOX")]
-    assert stubs["eval"] == ["oos", "lockbox"]
+    assert res.oos.verdict == W.FAVORABLE and res.oos.trades == 30
+    assert res.lockbox is None and res.lockbox_progression == "NOT_ATTEMPTED" and "no acreditado" in res.notes[0]
+    assert stubs["et7"] == [("ET-7", "EXP-0900/OOS")] and stubs["eval"] == ["oos"]
 
 
 @pytest.mark.parametrize("result,nature,tag", [
