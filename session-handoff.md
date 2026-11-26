@@ -1,5 +1,11 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-26) — CR-023 decisiones 2 y 3 registradas; entrada para B6
+
+**Base:** `804880a`. Decisión 2 (gramática `AUTORIZA: ATESTACION`, ligada a la grant, única, reutiliza V1; sustituye el dict `attestations`; ET-8 diferida a B8) y decisión 3 (resolvedor snapshot→ventana por manifiestos verificados; credencial interna obligatoria para escribir consumos con precedente `FreezeCheck`; ET-4 rechaza manifiestos duplicados; publicación y claim de ET-6 serializados por el bloqueo del registro) APROBADAS; detalle y compatibilidad en `progress.md` (entrada 2026-11-26, decisiones 2 y 3). Sin conflicto contractual; forma de `PARTITION_CONSUMED`, C2 y CR-020/021/022 preservados.
+**Para B6:** implementar solo con autorización expresa; incluye ajuste de B5 (duplicados y publicación bajo bloqueo) y adaptación de pruebas por el cambio de firma de `claim_partition`. Los cambios documentales de esta entrada están **sin commit**.
+**Se conservan:** `_FINAL_ACCESS_BLOCKED_UNTIL_B6`; O3/O4; CONF-010 OPEN; P5 PENDIENTE; D3 ABIERTA; D4 bloqueada; B6–B9 sin iniciar; SNAP-0001 no creada.
+
 ## PUNTO DE REANUDACIÓN (2026-11-26) — CR-023 B5 implementado sin commit; siguiente: revisión del propietario
 
 **Base:** `e908472` más B5 **sin commit** (comprobar con `git status -sb`). Detalle y disposiciones B5-02, B5-03A y B5-03B en `progress.md` (entrada 2026-11-26, bloque B5). Contrato v1.11; `feature_list.json` v1.23.0 sin cambios.
