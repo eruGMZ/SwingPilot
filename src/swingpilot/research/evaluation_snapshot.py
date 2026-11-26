@@ -9,7 +9,7 @@
   consumidas) de todo preregistro confirmatorio; `build_snapshot(..., reserved_windows_source=...)` la
   suma a las ventanas inyectadas. Fail-Closed: un preregistro confirmatorio ilegible bloquea la
   construcción. No hay mecanismo de liberación (C.7.3): toda ventana no consumida se considera activa.
-No se lee ningún dato sellado; `_FINAL_ACCESS_BLOCKED_UNTIL_B6` sigue vigente en `partitions.py`.
+No se lee ningún dato sellado.
 """
 from __future__ import annotations
 
@@ -97,7 +97,8 @@ def _preflight(registry, store, eid, window_id, manifest_dir, data_root, decisio
         raise SnapshotError(f"{window_id} no es una ventana de {eid}")
     part = window_id.rsplit("/", 1)[1].lower()
     checks = I.stage_checks(registry, store, eid, "ET-4", decisions_dir=decisions_dir,
-                            manifest={"window_id": window_id, "snapshot_id": None})
+                            manifest={"window_id": window_id, "snapshot_id": None},
+                            manifest_dir=manifest_dir, window_id=window_id)
     bad = {k: v for k, v in checks.items() if v[0] != I.OK}
     if bad:
         raise SnapshotError(f"ET-4 bloqueada por las comprobaciones {bad}")
@@ -280,9 +281,21 @@ def build_evaluation_snapshot(client: BinancePublicClient, snapshot_id: str, dat
             fh.write(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n")
             fh.flush()
             os.fsync(fh.fileno())
-        os.rename(tmp_dir, data_dir)
-        renamed = True
-        os.replace(tmp_manifest, manifest_path)
+        def _check(records):                    # B6.4: bajo el bloqueo; unicidad de manifiesto y V4-pre sobre registros frescos
+            if manifest_path.exists() or data_dir.exists():
+                raise SnapshotError(f"la snapshot {snapshot_id} ya existe: una snapshot no se reescribe")
+            try:
+                I._v4({"records": records}, experiment_id, None, False, None, manifest_dir, window_id, et4=True)
+            except I._Fail as f:
+                raise SnapshotError(f"ET-4 bloqueada (V4-pre/ET-4 duplicado bajo bloqueo): {f.why}") from f
+
+        def _publish():
+            nonlocal renamed
+            os.rename(tmp_dir, data_dir)
+            renamed = True
+            os.replace(tmp_manifest, manifest_path)
+
+        registry.publish_under_lock(_check, _publish)
     except BaseException:
         S._remove_tree(data_dir if renamed else tmp_dir)
         tmp_manifest.unlink(missing_ok=True)

@@ -22,6 +22,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from consumption_helpers import ok_consumption_check  # noqa: E402
 import pytest
 
 SRC = Path(__file__).resolve().parents[2] / "src"
@@ -421,7 +422,7 @@ def _paths(reg, fz, inputs, prov, tmp_path, monkeypatch):
                                                                      informed_by=[])),
         "write.claim_partition": raised(lambda: reg.claim_partition(
             snapshot_id="SNAP-TEST", partition="oos", experiment_id=X1, snapshot_last_open_time=0,
-            decision_ref="DEC-900_ok.md")),
+            decision_ref="DEC-900_ok.md", consumption_check=ok_consumption_check())),
         "access.train_val": raised(train_val),
         "access.oos_lockbox": raised(final_loader),
         "evaluation.evaluate": raised(evaluator),

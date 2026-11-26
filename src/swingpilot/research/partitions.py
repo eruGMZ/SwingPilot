@@ -29,8 +29,10 @@ TC-ML-001, TC-ML-007, TC-ML-012, TC-ML-016, TC-ML-019).
   `development`; sobre una `evaluation` conserva el mecanismo vigente (autorización,
   OOS_EVALUATION, re-comprobación del sellado, consumo atómico y registro sin campos nuevos) y
   exige que la partición pedida y el experimento coincidan con el `window_id` del manifiesto.
-  NO implementados aquí (B6): la lectura del `context` junto con su partición, la regla
-  OOS-antes-que-LOCKBOX y las comprobaciones V.
+  B6.5: `load_final` aplica además ET-5 (atestación, elegibilidad, RELEASE) antes de consumir, ET-6
+  (ligadura de la credencial, manifiesto único de la ventana, V4-pre/OOS antes que LOCKBOX, V2, V3, V5, V8,
+  RELEASE) bajo el bloqueo del registro (`build_consumption_check`/`claim_partition`) y entrega en un único
+  `FinalEvaluationData` la partición y el `context` de su propia snapshot bajo el mismo consumo.
 - CR-023 (bloque B3, §C.3.3): `load_train_val_for_configuration` exige además el almacén de
   preregistros (`prereg_store`). Lee la clase de independencia de la transición PREREGISTERED y
   verifica el contenido citado en el almacén (hash, experimento y clase coherentes con
@@ -59,6 +61,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+import copy
 import hashlib
 
 import pandas as pd
@@ -66,25 +69,74 @@ import pyarrow
 import pyarrow.parquet as pq
 
 from . import boundary as B
-from .experiments import REGISTRY_ORIGIN
+from .experiments import _CONSUMPTION_CHECK_KEY, REGISTRY_ORIGIN, ConsumptionCheck
 from .preregistration import evaluation_evidence_error
+from . import independence as I
+from .independence import consumption_error
 from .prereg_store import PreregStoreError
 from .snapshot import (KIND_DEVELOPMENT, KIND_EVALUATION, MODE_SEALED, SEALED, SEALED_FILES, SealingError,
                        enforce_sealing, load_manifest, sha256_file)
 
 
-# B2-01 (revisión del propietario, 2026-11-25): restricción temporal Fail-Closed. Una snapshot de
-# evaluación sintética con esquema 2.0.0 y el mecanismo de autorización vigente bastarían para
-# que `load_final` registrara PARTITION_CONSUMED y leyera la partición sin las comprobaciones de
-# CR-023 previstas para B6 (elegibilidad V1–V8, consumo por ventana, OOS antes que LOCKBOX,
-# context). Hasta B6 se deniega siempre, después de las comprobaciones vigentes y antes de
-# `claim_partition`. No es configurable en ejecución; solo las pruebas del mecanismo histórico
-# la desactivan. B6 debe sustituirla por las comprobaciones reales y retirarla.
-_FINAL_ACCESS_BLOCKED_UNTIL_B6 = True
+def _classify(checks: dict) -> str | None:
+    """Denegación de las comprobaciones de etapa: la técnica tiene precedencia sobre la metodológica (§D.8)."""
+    tech = {k: w for k, (n, w) in checks.items() if n == I.TECH}
+    meth = {k: w for k, (n, w) in checks.items() if n == I.METHOD}
+    if tech:
+        return f"TECNICA (UNDETERMINABLE): {tech}"
+    if meth:
+        return f"METODOLOGICA (NOT_ELIGIBLE): {meth}"
+    return None
+
+
+def build_consumption_check(manifest_dir=None, *, registry=None, store=None, decisions_dir=None, grant=None,
+                            manifest=None) -> ConsumptionCheck:
+    """Constructor privado de la credencial de consumo (B6.3–B6.5, CR-023 decisión 3): el único punto que
+    construye `ConsumptionCheck`. `claim_partition` la ejecuta dentro del bloqueo del registro, sobre
+    registros releídos: ligadura de la credencial a la grant y al manifiesto, manifiesto único de la ventana,
+    V4-pre/OOS antes que LOCKBOX y las comprobaciones ET-6 (V2, V3, V4pre, V5, V8, RELEASE) con evidencia
+    fresca. Un consumo ya registrado de la misma partición se deja a `claim_partition` (devuelve None).
+    Sin `manifest_dir`, registro o grant → rechazo (Fail-Closed)."""
+    bound = (getattr(grant, "snapshot_id", None), str(getattr(grant, "partition", "")),
+             getattr(grant, "experiment_id", None), getattr(grant, "decision_ref", None))
+    bound_manifest = copy.deepcopy(manifest)
+
+    def check(records, snapshot_id, partition, experiment_id, decision_ref):
+        for r in records:
+            if (isinstance(r, dict) and r.get("kind") == "PARTITION_CONSUMED" and r.get("snapshot_id") == snapshot_id
+                    and r.get("partition") == partition and (partition == "lockbox" or r.get("experiment_id") == experiment_id)):
+                return None                                  # ya consumida: `claim_partition` devuelve None
+        why = consumption_error(records, manifest_dir, snapshot_id, partition, experiment_id)
+        if why:
+            return f"TECNICA (UNDETERMINABLE): {why}"
+        if grant is None or registry is None or bound_manifest is None:
+            return "TECNICA (UNDETERMINABLE): credencial sin grant, registro o manifiesto: ligadura imposible"
+        if (snapshot_id, partition, experiment_id, decision_ref) != bound:
+            return "TECNICA (UNDETERMINABLE): la credencial no está ligada a esta snapshot/partición/experimento/decisión"
+        if bound_manifest.get("snapshot_id") != snapshot_id:
+            return "TECNICA (UNDETERMINABLE): el manifiesto ligado no es el de la snapshot"
+        checks = I.stage_checks(registry, store, experiment_id, "ET-6", decisions_dir=decisions_dir,
+                                manifest=bound_manifest, manifest_dir=manifest_dir,
+                                window_id=bound_manifest.get("window_id"))
+        return _classify(checks)
+    return ConsumptionCheck(_CONSUMPTION_CHECK_KEY, check)
 
 
 class PartitionAccessError(PermissionError):
     pass
+
+
+@dataclass(frozen=True)
+class FinalEvaluationData:
+    """B6.5b (CR-023 §C.9.4): resultado único de `load_final`: la partición pedida y el `context` de su propia
+    snapshot, leídos bajo la misma autorización y el mismo consumo. El `context` solo alimenta indicadores
+    (nunca señales ni resultados). `len()` es el de la partición."""
+    partition: str
+    data: pd.DataFrame
+    context: pd.DataFrame
+
+    def __len__(self) -> int:
+        return len(self.data)
 
 
 @dataclass(frozen=True)
@@ -106,6 +158,7 @@ class PartitionLoader:
     def __init__(self, manifest_path: Path, data_root: Path, access_log: Path, *, registry=None,
                  owner: str = "propietario", prereg_store=None):
         self.prereg_store = prereg_store
+        self.manifest_dir = Path(manifest_path).parent
         self.manifest = load_manifest(manifest_path)
         self.data_dir = Path(data_root) / self.manifest["snapshot_id"]
         self.access_log = Path(access_log)
@@ -245,22 +298,31 @@ class PartitionLoader:
         return (df[df["open_time"] < cut].reset_index(drop=True),
                 df[df["open_time"] >= cut].reset_index(drop=True))
 
-    def load_final(self, grant: FinalEvaluationGrant | None, partition: str) -> pd.DataFrame:
+    def load_final(self, grant: FinalEvaluationGrant | None, partition: str) -> FinalEvaluationData:
         exp = grant.experiment_id if grant else None
         reason = self._deny_reason(grant, partition)
         if reason:
             self._log(partition, False, reason, exp)
             raise PartitionAccessError(f"acceso a {partition} denegado: {reason}")
-        claimed = self.registry.claim_partition(
-            snapshot_id=self.manifest["snapshot_id"], partition=partition, experiment_id=exp,
-            snapshot_last_open_time=self.manifest["range"]["last_open_time_ms"], decision_ref=grant.decision_ref)
+        try:                       # ET-6 bajo el bloqueo del registro; una denegación no consume ni lee
+            claimed = self.registry.claim_partition(
+                snapshot_id=self.manifest["snapshot_id"], partition=partition, experiment_id=exp,
+                snapshot_last_open_time=self.manifest["range"]["last_open_time_ms"], decision_ref=grant.decision_ref,
+                consumption_check=build_consumption_check(
+                    self.manifest_dir, registry=self.registry, store=self.prereg_store,
+                    decisions_dir=getattr(self.registry, "decisions_dir", None), grant=grant, manifest=self.manifest))
+        except Exception as exc:
+            reason = f"ET-6 bajo bloqueo: {exc}"
+            self._log(partition, False, reason, exp)
+            raise PartitionAccessError(f"acceso a {partition} denegado: {reason}") from exc
         if claimed is None:                                   # otro proceso consumió primero (QA3R2-03)
             reason = f"{partition} ya consumido (evaluación única; consumo concurrente)"
             self._log(partition, False, reason, exp)
             raise PartitionAccessError(f"acceso a {partition} denegado: {reason}")
         self._log(partition, True, f"evaluación final única ({grant.decision_ref})", exp)
-        try:
-            return self._read(partition)
+        try:        # B6.5b: context + partición bajo el mismo consumo; si falla cualquiera no se entrega nada
+            context = self._read("context")
+            return FinalEvaluationData(partition, self._read(partition), context)
         except BaseException as exc:
             self._log(partition, False, f"lectura fallida tras el consumo; la partición queda consumida: {exc!r}", exp)
             raise
@@ -299,7 +361,12 @@ class PartitionLoader:
             return f"la partición pedida no coincide con la ventana del manifiesto ({wid!r})"
         if partition not in self.manifest.get("files", {}):
             return f"la partición {partition} no consta en el manifiesto"
-        if _FINAL_ACCESS_BLOCKED_UNTIL_B6:            # B2-01: antes del consumo y de toda lectura
-            return ("evaluación final bloqueada hasta B6: faltan las comprobaciones de elegibilidad y de "
-                    "consumo por ventana de CR-023 (§C.6.4, §C.9)")
+        if "context" not in self.manifest.get("files", {}):
+            return "el manifiesto no declara el context: no se puede leer con su partición"
+        checks = I.stage_checks(self.registry, self.prereg_store, grant.experiment_id, "ET-5",
+                                decisions_dir=getattr(self.registry, "decisions_dir", None), manifest=self.manifest,
+                                grant=grant, manifest_dir=self.manifest_dir, window_id=wid)
+        why = _classify(checks)                # ET-5: atestación, elegibilidad, RELEASE (antes de cualquier consumo)
+        if why:
+            return why
         return None

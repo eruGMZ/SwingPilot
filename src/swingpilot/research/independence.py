@@ -2,7 +2,7 @@
 (CR-023 §C.9, §D.3, §D.4, §D.8; bloque B4).
 
 Solo lectura y sin Git: no escribe en el registro ni en el almacén, no lee datos de mercado, no consume
-particiones y no abre el acceso final (`_FINAL_ACCESS_BLOCKED_UNTIL_B6` sigue vigente en `partitions.py`).
+particiones y no abre el acceso final por sí mismo.
 Clasificación C2: *metodológica* (`METHOD`) frente a *técnica* (`TECH`, Fail-Closed). Cualquier
 excepción inesperada es técnica. La parte documental de V6/V7 solo comprueba existencia y sintaxis de
 la referencia (§C.9); su validez la acredita el propietario.
@@ -44,6 +44,8 @@ STAGES = {
     "ET-10": ("V2", "V3", "V4post", "V5", "V8"),
 }
 _LIBERACION = re.compile(rf"AUTORIZA: LIBERACION (EXP-[0-9]{{4}}/(?:OOS|LOCKBOX)) SHA256=({_HEX})", re.ASCII)
+_ATESTACION = re.compile(rf"AUTORIZA: ATESTACION (EXP-[0-9]{{4}}/(?:OOS|LOCKBOX)) (SNAP-[0-9]{{4}}) SHA256=({_HEX}) "
+                         rf"V1=CONFIRMADA V6=CONFIRMADA V7=CONFIRMADA", re.ASCII)
 _REINTENTO = re.compile(rf"AUTORIZA: REINTENTO (EXP-[0-9]{{4}}/LOCKBOX) EVIDENCIA=({_HEX})", re.ASCII)
 _DISPOSICION = re.compile(r"AUTORIZA: DISPOSICION (EXP-[0-9]{4}/LOCKBOX) INCONCLUSIVE", re.ASCII)
 
@@ -240,40 +242,138 @@ def _v3(registry, eid) -> None:
         _meth(f"V3: DEVIATION posterior a PREREGISTERED: {[d['deviation_id'] for d in devs]}")
 
 
-def _consumed(ctx, snapshot_id, part):
-    return [r for r in ctx["records"] if isinstance(r, dict) and r.get("kind") == "PARTITION_CONSUMED"
-            and r.get("snapshot_id") == snapshot_id and str(r.get("partition")).lower() == part]
+def resolve_window(ctx, eid, manifest_dir, window_id, *, require_target=True, validate_target=True) -> tuple[dict | None, dict[str, list[dict]]]:
+    """Resolvedor de solo lectura snapshot→ventana (decisión 3). Valida todos los manifiestos de `manifest_dir`
+    (stem = `snapshot_id`; ilegible o inválido → TECH), exige exactamente un manifiesto `evaluation` de
+    `window_id` (V5 sobre él) y resuelve cada `PARTITION_CONSUMED` por su `snapshot_id` a `experiment_id/PARTICIÓN`
+    (discrepancia, o huérfano de la ventana objetivo → TECH). Devuelve (manifiesto, consumos por ventana).
+    Todo fallo es técnico (Fail-Closed); `PARTITION_CONSUMED` conserva su forma. `require_target=False` (solo
+    ET-4: el manifiesto aún no existe) exige 0 manifiestos de la ventana en lugar de 1 y omite V5."""
+    if manifest_dir is None or not Path(manifest_dir).is_dir():
+        _tech("V4: sin directorio de manifiestos")
+    if not (isinstance(window_id, str) and window_id.startswith(f"{eid}/")):
+        _tech("V4: ventana objetivo ausente o ajena al experimento")
+    by_snap, found = {}, []
+    for path in sorted(Path(manifest_dir).glob("*.json")):
+        try:
+            m = S.load_manifest(path)
+        except Exception as exc:
+            _tech(f"V4: manifiesto ilegible o inválido {path.name}: {exc!r}")
+        if m["snapshot_id"] != path.stem:
+            _tech(f"V4: el snapshot_id del manifiesto no es su nombre de archivo ({path.name})")
+        by_snap[m["snapshot_id"]] = m
+        if m.get("kind") == S.KIND_EVALUATION and m.get("window_id") == window_id:
+            found.append(m)
+    if len(found) != (1 if require_target else 0):
+        _tech(f"V4: manifiestos evaluation de {window_id}: hay {len(found)}, se exige {1 if require_target else 0}")
+    target = found[0] if found else None
+    if target is not None and validate_target:
+        _check_manifest(ctx, eid, target, window_id)
+    part = window_id.rsplit("/", 1)[-1].lower()
+    consumed: dict[str, list[dict]] = {}
+    for r in ctx["records"]:
+        if not (isinstance(r, dict) and r.get("kind") == "PARTITION_CONSUMED"):
+            continue
+        rec_win = f"{r.get('experiment_id')}/{str(r.get('partition')).upper()}"
+        m = by_snap.get(r.get("snapshot_id"))
+        if m is None:
+            if r.get("experiment_id") == eid and str(r.get("partition")).lower() == part:
+                _tech(f"V4: consumo huérfano de {rec_win}: su manifiesto no existe")
+            continue
+        if m.get("kind") != S.KIND_EVALUATION or m.get("window_id") != rec_win:
+            _tech(f"V4: el consumo de {r.get('snapshot_id')} no coincide con la ventana de su manifiesto")
+        consumed.setdefault(rec_win, []).append(r)
+    return target, consumed
 
 
-def _v4(ctx, eid, manifest, post, decision_ref) -> None:
-    if not isinstance(manifest, dict) or not isinstance(manifest.get("window_id"), str):
-        _tech("V4: sin manifiesto de la ventana")
-    wid = manifest["window_id"]
-    part = wid.rsplit("/", 1)[-1].lower()
-    sid = manifest.get("snapshot_id")
-    cons = _consumed(ctx, sid, part)
-    oos_done = any(r.get("experiment_id") == eid and str(r.get("partition")).lower() == "oos"
-                   for r in ctx["records"] if isinstance(r, dict) and r.get("kind") == "PARTITION_CONSUMED")
+def _v4(ctx, eid, manifest, post, decision_ref, manifest_dir=None, window_id=None, *, et4=False) -> None:
+    """V4 a nivel de ventana (decisión 3). Todas las denegaciones son técnicas (C2)."""
+    wid = window_id or (manifest.get("window_id") if isinstance(manifest, dict) else None)
+    target, consumed = resolve_window(ctx, eid, manifest_dir, wid, require_target=not et4)
+    if not et4 and manifest is not None and manifest != target:
+        _tech("V4: el manifiesto aportado no es el manifiesto resuelto de la ventana")
+    cons, oos_done = consumed.get(wid, []), bool(consumed.get(f"{eid}/OOS"))
+    lockbox = wid.endswith("/LOCKBOX")
     if not post:                                       # V4-pre
         if cons:
-            _meth("V4-pre: la ventana ya tiene un PARTITION_CONSUMED")
-        if part == "lockbox" and not oos_done:
-            _meth("V4-pre: la OOS del experimento debe consumirse antes que el LOCKBOX")
+            _tech("V4-pre: la ventana ya tiene un PARTITION_CONSUMED")
+        if lockbox and not oos_done:
+            _tech("V4-pre: la OOS del experimento debe consumirse antes que el LOCKBOX")
         return
-    if not cons:
-        _tech("V4-post: falta el PARTITION_CONSUMED de la ventana evaluada")
-    if len(cons) != 1 or cons[0].get("experiment_id") != eid:
-        _meth("V4-post: la ventana tiene más de una consumición o la consumió otro experimento")
-    if not (isinstance(decision_ref, str) and decision_ref) or cons[0].get("decision_ref") != decision_ref:
+    if len(cons) != 1:
+        _tech(f"V4-post: se exige exactamente un PARTITION_CONSUMED de {wid} (hay {len(cons)})")
+    r = cons[0]
+    if r.get("experiment_id") != eid or r.get("actor") != "propietario":
+        _tech("V4-post: el consumo no es del dueño o lo consumió otro experimento")
+    if not (isinstance(decision_ref, str) and decision_ref) or r.get("decision_ref") != decision_ref:
         _tech("V4-post: el decision_ref del consumo no es el de la FinalEvaluationGrant")
-    if part == "lockbox" and not oos_done:
+    if lockbox and not oos_done:
         _tech("V4-post: falta el consumo de la OOS del LOCKBOX")
 
 
-def _v6_v7d(attestations, key, decisions_dir) -> None:
-    ref = (attestations or {}).get(key)
-    if not (isinstance(ref, str) and _DEC_REF.fullmatch(ref) and (Path(decisions_dir) / ref).is_file()):
-        _tech(f"{key}: falta la referencia a un documento DEC-NNN_*.md existente (solo existencia y sintaxis)")
+def consumption_error(records, manifest_dir, snapshot_id, partition, eid) -> str | None:
+    """Comprobación bajo bloqueo del consumo (B6.4): manifiesto único de la ventana y de esta snapshot,
+    ninguna consumición previa de la ventana (V4-pre) y OOS consumida antes que LOCKBOX. Solo lectura;
+    cualquier fallo → texto (Fail-Closed). V5 completo y V1–V8 son de elegibilidad, no de esta comprobación."""
+    wid = f"{eid}/{str(partition).upper()}"
+    try:
+        target, consumed = resolve_window({"records": records}, eid, manifest_dir, wid, validate_target=False)
+        if target["snapshot_id"] != snapshot_id:
+            _tech("V4: la snapshot no es el manifiesto único de la ventana")
+        if consumed.get(wid):
+            _tech("V4-pre: la ventana ya tiene un PARTITION_CONSUMED")
+        if wid.endswith("/LOCKBOX") and not consumed.get(f"{eid}/OOS"):
+            _tech("V4-pre: la OOS del experimento debe consumirse antes que el LOCKBOX")
+    except _Fail as f:
+        return f.why
+    except Exception as exc:
+        return f"fallo interno: {exc!r}"
+    return None
+
+
+def _attestation_lines(decisions_dir, window: str) -> list[tuple]:
+    """Líneas `AUTORIZA: ATESTACION` de la ventana en todo `DEC-*.md`: (documento, SNAP, SHA256). Gramática
+    estricta (`fullmatch`); una línea que nombra la ventana y no la cumple → TECH. Sin reparación."""
+    out = []
+    try:
+        for path in sorted(Path(decisions_dir).glob("DEC-*.md")):
+            for line in path.read_bytes().decode("utf-8").split("\n"):
+                if not line.startswith("AUTORIZA: ATESTACION"):
+                    continue
+                m = _ATESTACION.fullmatch(line)
+                if m and m.group(1) == window:
+                    out.append((path.name, m.group(2), m.group(3)))
+                elif not m and window in line:
+                    _tech(f"V6/V7: línea ATESTACION mal formada en {path.name}")
+    except _Fail:
+        raise
+    except Exception as exc:
+        _tech(f"V6/V7: documentos de decisión ilegibles: {exc!r}")
+    return out
+
+
+def _v6_v7d(ctx, eid, decisions_dir, grant, manifest) -> None:
+    """V6/V7 documentales (decisión 2): una única línea ATESTACION de la ventana, en el documento del
+    `decision_ref` de la grant y ligada a ella (ventana, snapshot y SHA-256 del preregistro). Solo existencia,
+    sintaxis y ligadura; V1 se reejecuta aparte (`_v1`)."""
+    if decisions_dir is None:
+        _tech("V6/V7: sin directorio de decisiones")
+    ref = getattr(grant, "decision_ref", None)
+    if getattr(grant, "experiment_id", None) != eid or not (isinstance(ref, str) and _DEC_REF.fullmatch(ref)):
+        _tech("V6/V7: FinalEvaluationGrant ausente o con decision_ref inválido")
+    if not (Path(decisions_dir) / ref).is_file():
+        _tech("V6/V7: el documento del decision_ref de la grant no existe")
+    window = manifest.get("window_id") if isinstance(manifest, dict) else None
+    if not isinstance(window, str) or window != f"{eid}/{str(getattr(grant, 'partition', '')).upper()}":
+        _tech("V6/V7: la ventana del manifiesto no es la de la grant")
+    lines = _attestation_lines(decisions_dir, window)
+    if len(lines) != 1:
+        _tech(f"V6/V7: se exige exactamente una línea ATESTACION de {window} (hay {len(lines)})")
+    doc, snap, sha = lines[0]
+    if doc != ref:
+        _tech("V6/V7: la línea ATESTACION no consta en el documento del decision_ref de la grant")
+    if snap != getattr(grant, "snapshot_id", None) or sha != ctx["sha"]:
+        _tech("V6/V7: la línea ATESTACION no está ligada a la snapshot de la grant o al preregistro congelado")
 
 
 def _v7m(ctx) -> None:
@@ -294,7 +394,7 @@ def _v7m(ctx) -> None:
 # --- comprobaciones por etapa y clasificación (D.8) --------------------------------------------------
 
 def stage_checks(registry, store, experiment_id: str, stage: str, *, decisions_dir=None, manifest=None,
-                 decision_ref=None, attestations=None) -> dict:
+                 decision_ref=None, grant=None, manifest_dir=None, window_id=None) -> dict:
     """Resultado de cada comprobación requerida de `stage` (§C.9): OK | METHOD | TECH. Una evidencia
     faltante es TECH (Fail-Closed). Las no aplicables no se evalúan y nunca bloquean."""
     if stage not in STAGES:
@@ -329,11 +429,12 @@ def stage_checks(registry, store, experiment_id: str, stage: str, *, decisions_d
         elif name == "V3":
             run(name, lambda: _v3(registry, eid))
         elif name in ("V4pre", "V4post"):
-            run(name, lambda n=name: _v4(ctx, eid, manifest, n == "V4post", decision_ref))
+            run(name, lambda n=name: _v4(ctx, eid, manifest, n == "V4post", decision_ref, manifest_dir, window_id,
+                                          et4=stage == "ET-4"))
         elif name == "V5":
             run(name, lambda: _check_manifest(ctx, eid, manifest))
         elif name in ("V6", "V7d"):
-            run(name, lambda n=name: _v6_v7d(attestations, "V6" if n == "V6" else "V7", ddir))
+            run(name, lambda: _v6_v7d(ctx, eid, ddir, grant, manifest))
         elif name == "V7m":
             run(name, lambda: _v7m(ctx))
         elif name == "V8":

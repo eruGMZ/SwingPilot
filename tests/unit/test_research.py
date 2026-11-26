@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from consumption_helpers import ok_consumption_check  # noqa: E402
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -362,7 +363,8 @@ def _oos_ready(reg, eid="EXP-0101"):
 
 def _consume(reg, partition="oos", sid="SNAP-TEST1", eid="EXP-0101"):
     assert reg.claim_partition(snapshot_id=sid, partition=partition, experiment_id=eid,
-                               snapshot_last_open_time=0, decision_ref="DEC-900_ok.md") is not None
+                               snapshot_last_open_time=0, decision_ref="DEC-900_ok.md",
+                               consumption_check=ok_consumption_check()) is not None
 
 
 @pytest.mark.parametrize("partition", ["oos", "lockbox"])

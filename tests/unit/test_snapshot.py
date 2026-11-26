@@ -14,6 +14,7 @@ import urllib.parse
 from pathlib import Path
 
 import pandas as pd
+from consumption_helpers import ok_consumption_check  # noqa: E402
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -21,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from swingpilot.market_data import BinancePublicClient, interval_ms  # noqa: E402
 from swingpilot.research import partitions as P  # noqa: E402
+from swingpilot.research import preregistration as PR  # noqa: E402
 from swingpilot.research import snapshot as SN  # noqa: E402
 from swingpilot.research.experiments import ExperimentError, ExperimentRegistry  # noqa: E402
 from swingpilot.research.partitions import (FinalEvaluationGrant, PartitionAccessError,  # noqa: E402
@@ -29,17 +31,6 @@ from test_cr023_b3_preregistration import register_confirmatory, store_for  # no
 from swingpilot.research.snapshot import (COLUMNS, DAY_MS, ReservedWindow, SnapshotError, _date_ms,  # noqa: E402
                                           build_snapshot, canonical_content_digest, compute_train_end,
                                           load_manifest, validate_manifest, verify_snapshot)
-
-_B6_GATE_DEFAULT = P._FINAL_ACCESS_BLOCKED_UNTIL_B6        # valor de fábrica, leído al importar
-
-
-@pytest.fixture(autouse=True)
-def _historical_final_mechanism(monkeypatch):
-    """B2-01: la restricción temporal hasta B6 bloquea todo `load_final`. Las pruebas históricas del
-    mecanismo (autorización, consumo atómico, sellado, lectura) la desactivan para seguir
-    cubriéndolo; las pruebas de la restricción la reactivan explícitamente."""
-    monkeypatch.setattr(P, "_FINAL_ACCESS_BLOCKED_UNTIL_B6", False)
-
 
 START = _date_ms("2017-08-17")
 DAYS = 400
@@ -149,8 +140,68 @@ def esnap(tmp_path):
 def _decisions(tmp, text="AUTORIZA: EXP-0900 OOS_EVALUATION\nAUTORIZA: EXP-0900 lockbox SNAP-TEST\nAUTORIZA: EXP-0900 oos SNAP-TEST\n"):
     dec = tmp / "decisions"
     dec.mkdir(exist_ok=True)
-    (dec / "DEC-999_eval.md").write_text(text)
+    att = _GEN_ATT.get(str(tmp), "")
+    (dec / "DEC-999_eval.md").write_text((text.replace("SNAP-TEST", GSID) if att else text) + att)
     return dec
+
+
+GSID = "SNAP-0901"      # la gramática de ATESTACION exige SNAP-NNNN: las snapshots genuinas no usan SNAP-TEST
+_GEN_ATT = {}          # directorio de prueba → línea ATESTACION (V6/V7) que se añade a las decisiones de la grant
+_GENUINE = {}          # ruta del registro → preregistro congelado de las instantáneas con evidencia CR-023 genuina
+
+
+@pytest.fixture(scope="module")
+def gdev(tmp_path_factory):
+    """Snapshot de desarrollo sintética (≈ 46 meses) con id propio; cada prueba la copia a su directorio."""
+    from test_cr023_b3_preregistration import LONG_DEV_DAYS, _dev_days, _long_binance
+    tmp = tmp_path_factory.mktemp("gdev")
+    res = build_snapshot(BinancePublicClient(transport=_long_binance()), "SNAP-TESTDEV", tmp / "var" / "snapshots",
+                         tmp / "research" / "snapshots", d_dev=_dev_days(LONG_DEV_DAYS), reserved_windows=[],
+                         injected_only=True)
+    return res, tmp
+
+
+def make_genuine(tmp, gdev, part="lockbox", sid="SNAP-0901", eid="EXP-0900"):
+    """B6.5a: snapshot de evaluación construida por el constructor real, con preregistro confirmatorio
+    congelado, FRONTERA/PUBLICACION del propietario y OOS consumida antes del LOCKBOX (ET-4 → ET-5/ET-6)."""
+    import shutil
+    from test_cr023_b3_preregistration import B_DEFAULT, PILOT_ID, Env
+    from test_cr023_b5_evaluation_snapshot import LB_END, _build, _client
+    dres, dtmp = gdev
+    shutil.copytree(dtmp / "var" / "snapshots", tmp / "var" / "snapshots")
+    shutil.copytree(dtmp / "research" / "snapshots", tmp / "research" / "snapshots")
+    manifest_path = tmp / "research" / "snapshots" / dres.manifest_path.name
+    env = Env(tmp, SN.SnapshotResult(load_manifest(manifest_path), manifest_path, tmp / "var" / "snapshots", []),
+              tmp / "var" / "snapshots")
+    env.pilot()
+    fz = env.confirmatory(eid)
+    sha = PR._preregistered_sha(env.reg, eid)
+    (env.reg.decisions_dir / "DEC-901_frontera.md").write_text(
+        f"AUTORIZA: FRONTERA {eid} SHA256={sha} B={B_DEFAULT}\n"
+        f"AUTORIZA: PUBLICACION {eid} SHA256={sha} B={B_DEFAULT} P=2027-02-20T12:00:00Z RESULTADO=VALIDA\n")
+    cl, _ = _client(LB_END + 10**9)
+    _GEN_ATT[str(tmp)] = (f"AUTORIZA: ATESTACION {eid}/{part.upper()} {sid} SHA256={sha} "
+                          "V1=CONFIRMADA V6=CONFIRMADA V7=CONFIRMADA\n")
+    import test_cr023_b5_evaluation_snapshot as B5
+    B5.EID, b5_eid = eid, B5.EID
+    try:
+        oos = _build(env, sid if part == "oos" else "SNAP-0900", f"{eid}/OOS", cl)
+        _GENUINE[str(env.reg.path)] = fz
+        if part == "oos":
+            return oos
+        _decisions(tmp)                                       # DEC-999: autoriza OOS_EVALUATION para la transición
+        _advance_to_oos(env.reg, eid)
+        env.reg.claim_partition(snapshot_id="SNAP-0900", partition="oos", experiment_id=eid,
+                                snapshot_last_open_time=oos.manifest["range"]["last_open_time_ms"],
+                                decision_ref="DEC-999_eval.md", consumption_check=ok_consumption_check())
+        return _build(env, sid, f"{eid}/LOCKBOX", cl)
+    finally:
+        B5.EID = b5_eid
+
+
+@pytest.fixture
+def gsnap(tmp_path, gdev):
+    return make_genuine(tmp_path, gdev), tmp_path
 
 
 def _loader(res, tmp, reg=None):
@@ -467,6 +518,18 @@ def legacy_freeze_check():
     return FreezeCheck(_FREEZE_CHECK_KEY, lambda records, experiment_id, evidence: None)
 
 def _advance_to_oos(reg, eid="EXP-0900"):
+    fz = _GENUINE.get(str(reg.path))
+    if fz is not None:                                  # B6.5a: evidencia genuina (preregistro congelado)
+        if reg.state(eid) == "OOS_EVALUATION":
+            return
+        for st, ev in (("DATA_VALIDATION", {}), ("DEVELOPMENT", {"snapshot_verified": True}), ("VALIDATION", {})):
+            reg.transition(eid, st, actor="orquestador", evidence=ev)
+        fz.begin_evaluation("A", registry=reg)
+        reg.transition(eid, "OOS_EVALUATION", actor="propietario",
+                       evidence={"decision_ref": "DEC-999_eval.md", "selected_config_id": "A",
+                                 "selection_inputs_sha256": hashlib.sha256(eid.encode()).hexdigest(),
+                                 "informed_by": []})
+        return
     reg.create(eid, "prueba", actor="orquestador")
     reg.transition(eid, "DESIGN", actor="orquestador")
     reg.transition(eid, "PREREGISTERED", actor="orquestador", freeze_check=legacy_freeze_check(),   # CR-023
@@ -482,8 +545,12 @@ def _advance_to_oos(reg, eid="EXP-0900"):
                              "selection_inputs_sha256": "0" * 64, "informed_by": []})
 
 
-def grant(part="lockbox", eid="EXP-0900", by="propietario", ref="DEC-999_eval.md"):
-    return FinalEvaluationGrant(eid, part, "SNAP-TEST", by, ref)
+def grant(part="lockbox", eid="EXP-0900", by="propietario", ref="DEC-999_eval.md", sid="SNAP-TEST"):
+    return FinalEvaluationGrant(eid, part, sid, by, ref)
+
+
+def ggrant(*a, **k):
+    return grant(*a, sid=GSID, **k)
 
 
 def test_tc_ml_001_grant_conditions(esnap):
@@ -537,21 +604,21 @@ def test_qa3_03_antecedent_cannot_open_sealed_partitions(esnap):
         _loader(res, tmp, reg).load_final(grant(), "lockbox")
 
 
-def test_tc_ml_007_019_lockbox_single_use_persisted_in_registry(esnap):
-    res, tmp = esnap
+def test_tc_ml_007_019_lockbox_single_use_persisted_in_registry(gsnap):
+    res, tmp = gsnap
     reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
     _advance_to_oos(reg)
     loader = _loader(res, tmp, reg)
-    df = loader.load_final(grant(), "lockbox")
+    df = loader.load_final(ggrant(), "lockbox")
     assert len(df) > 0
     with pytest.raises(PartitionAccessError, match="consumido"):
-        loader.load_final(grant(), "lockbox")
+        loader.load_final(ggrant(), "lockbox")
     # QA3-06: borrar el registro de accesos no «desconsume» el LOCKBOX
     loader.access_log.unlink()
     with pytest.raises(PartitionAccessError, match="consumido"):
-        loader.load_final(grant(), "lockbox")
+        loader.load_final(ggrant(), "lockbox")
     rec = reg.consumed_lockboxes()
-    assert rec == [{"snapshot_id": "SNAP-TEST", "snapshot_last_open_time": EVAL_LAST_OPEN}]   # forma del registro intacta
+    assert rec == [{"snapshot_id": GSID, "snapshot_last_open_time": res.manifest["range"]["last_open_time_ms"]}]   # forma del registro intacta
     if not ROOT:
         with pytest.raises(PermissionError):
             open(res.data_dir / "lockbox.parquet", "rb")   # vuelve a quedar sellado
@@ -573,20 +640,20 @@ def _concurrent_loader(manifest_path, tmp, out, barrier):
             pass
         return result
     ExperimentRegistry.is_consumed = is_consumed_then_wait
-    P._FINAL_ACCESS_BLOCKED_UNTIL_B6 = False                          # mecanismo histórico (B2-01)
     reg = ExperimentRegistry(tmp / "registry.jsonl", tmp / "decisions")
-    loader = PartitionLoader(manifest_path, tmp / "var" / "snapshots", tmp / "access.jsonl", registry=reg)
+    loader = PartitionLoader(manifest_path, tmp / "var" / "snapshots", tmp / "access.jsonl", registry=reg,
+                             prereg_store=store_for(reg))
     try:
-        out.put(("LEIDO", len(loader.load_final(grant(), "lockbox"))))
+        out.put(("LEIDO", len(loader.load_final(ggrant(), "lockbox"))))
     except PartitionAccessError as exc:
         out.put(("DENEGADO", str(exc)))
     except BaseException as exc:                                       # noqa: BLE001
         out.put(("ERROR", repr(exc)))
 
 
-def test_qa3r2_03_two_concurrent_loaders_consume_lockbox_once(esnap):
+def test_qa3r2_03_two_concurrent_loaders_consume_lockbox_once(gsnap):
     import multiprocessing as mp
-    res, tmp = esnap
+    res, tmp = gsnap
     reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
     _advance_to_oos(reg)
     ctx = mp.get_context("spawn")
@@ -608,30 +675,33 @@ def test_qa3r2_03_two_concurrent_loaders_consume_lockbox_once(esnap):
             open(res.data_dir / "lockbox.parquet", "rb")          # sigue sellado
 
 
-def test_qa3r2_03_failed_read_keeps_partition_consumed_and_is_logged(esnap):
-    res, tmp = esnap
+def test_qa3r2_03_failed_read_keeps_partition_consumed_and_is_logged(gsnap):
+    res, tmp = gsnap
     reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
     _advance_to_oos(reg)
     loader = _loader(res, tmp, reg)
-    loader.manifest["files"]["lockbox"]["sha256"] = "0" * 64      # fuerza el fallo de lectura
+    path = res.data_dir / "lockbox.parquet"                         # fuerza el fallo de lectura (hash ≠ manifiesto)
+    os.chmod(path, 0o600)
+    path.write_bytes(path.read_bytes() + b"\0")
+    os.chmod(path, 0)
     with pytest.raises(PartitionAccessError, match="SHA-256"):
-        loader.load_final(grant(), "lockbox")
-    assert reg.is_consumed("SNAP-TEST", "lockbox", "EXP-0900")       # consumo conservador, documentado
+        loader.load_final(ggrant(), "lockbox")
+    assert reg.is_consumed(GSID, "lockbox", "EXP-0900")       # consumo conservador, documentado
     assert any("lectura fallida" in r["reason"] for r in loader.access_history())
     with pytest.raises(PartitionAccessError, match="consumido"):
-        _loader(res, tmp, reg).load_final(grant(), "lockbox")
+        _loader(res, tmp, reg).load_final(ggrant(), "lockbox")
 
 
 _SUBSTRING_DECISIONS = [
     # (partición pedida, texto de la decisión): todos pasaban la comprobación por subcadena
-    ("oos", "AUTORIZA: EXP-0900 lockbox SNAP-TEST\nchoose"),            # «oos» dentro de «choose» (QA3R2-04)
-    ("lockbox", "AUTORIZA: EXP-0900 oos SNAP-TEST\nNo se autoriza el lockbox."),
+    ("oos", "AUTORIZA: EXP-0900 lockbox SNAP-0901\nchoose"),            # «oos» dentro de «choose» (QA3R2-04)
+    ("lockbox", "AUTORIZA: EXP-0900 oos SNAP-0901\nNo se autoriza el lockbox."),
     ("lockbox", "AUTORIZA: EXP-09001 lockbox SNAP-TEST"),               # otro experimento que contiene el id
     ("lockbox", "AUTORIZA: EXP-0900 lockbox SNAP-TEST-2"),              # otra snapshot que contiene el id
     ("lockbox", "AUTORIZA: EXP-0900 LOCKBOX SNAP-TEST"),
     ("lockbox", "NO AUTORIZA: EXP-0900 lockbox SNAP-TEST"),
     ("lockbox", "> AUTORIZA: EXP-0900 lockbox SNAP-TEST"),
-    ("lockbox", "AUTORIZA: EXP-0900 lockbox SNAP-TEST oos"),
+    ("lockbox", "AUTORIZA: EXP-0900 lockbox SNAP-0901 oos"),
     ("lockbox", "AUTORIZA: EXP-0900\nlockbox SNAP-TEST"),                # campos repartidos en líneas
     ("lockbox", "EXP-0900 lockbox SNAP-TEST"),
 ]
@@ -655,14 +725,15 @@ def test_qa3r2_04_partition_requires_exact_experiment_partition_snapshot(tmp_pat
 
 
 @pytest.mark.parametrize("part", ["oos", "lockbox"])
-def test_qa3r2_04_exact_partition_line_still_grants(tmp_path, part):
-    res, tmp = make_eval(tmp_path, part), tmp_path
+def test_qa3r2_04_exact_partition_line_still_grants(tmp_path, gdev, part):
+    res, tmp = make_genuine(tmp_path, gdev, part), tmp_path
     dec = _decisions(tmp, text="AUTORIZA: EXP-0900 OOS_EVALUATION\n")
-    (dec / "DEC-971_grant.md").write_text(f"# Decisión\n\nAUTORIZA: EXP-0900 {part} SNAP-TEST\n")
+    (dec / "DEC-999_eval.md").write_text("AUTORIZA: EXP-0900 OOS_EVALUATION\n")   # la ATESTACION única va en DEC-971
+    (dec / "DEC-971_grant.md").write_text(f"# Decisión\n\nAUTORIZA: EXP-0900 {part} SNAP-0901\n" + _GEN_ATT[str(tmp)])
     reg = ExperimentRegistry(tmp / "registry.jsonl", dec)
     _advance_to_oos(reg)
-    assert len(_loader(res, tmp, reg).load_final(grant(part=part, ref="DEC-971_grant.md"), part)) > 0
-    assert [r["partition"] for r in reg.consumed_partitions()] == [part]
+    assert len(_loader(res, tmp, reg).load_final(ggrant(part=part, ref="DEC-971_grant.md"), part)) > 0
+    assert [r["partition"] for r in reg.consumed_partitions() if r["snapshot_id"] == GSID] == [part]
 
 
 @pytest.mark.parametrize("kw", [
@@ -673,7 +744,8 @@ def test_qa3r2_04_exact_partition_line_still_grants(tmp_path, part):
 def test_qa3r2_04_claim_rejects_malformed_ids_without_writing(tmp_path, kw):
     reg = ExperimentRegistry(tmp_path / "reg.jsonl", _decisions(tmp_path))
     args = {"snapshot_id": "SNAP-TEST", "partition": "lockbox", "experiment_id": "EXP-0900",
-            "snapshot_last_open_time": 1, "decision_ref": "DEC-999_eval.md", **kw}
+            "snapshot_last_open_time": 1, "decision_ref": "DEC-999_eval.md",
+            "consumption_check": ok_consumption_check(), **kw}
     with pytest.raises(ExperimentError, match="no válid"):
         reg.claim_partition(**args)
     assert reg.records() == []
@@ -922,20 +994,19 @@ def test_qa3r2_08_loader_blocked_before_any_read_or_consumption(esnap, monkeypat
     assert opened == [] and reg.consumed_partitions() == [] and not (tmp / "access.jsonl").exists()
 
 
-def test_qa3r2_08_final_read_rechecks_sealing_before_consumption(esnap, monkeypatch):
-    res, tmp = esnap
+def test_qa3r2_08_final_read_rechecks_sealing_before_consumption(gsnap, monkeypatch):
+    res, tmp = gsnap
     reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
     _advance_to_oos(reg)
     loader = _loader(res, tmp, reg)                                 # creado en un entorno conforme
     monkeypatch.setattr(SN.os, "access", lambda path, mode, *a, **k: True)
     with pytest.raises(PartitionAccessError, match="sellado no efectivo"):
-        loader.load_final(grant(), "lockbox")
-    assert reg.consumed_partitions() == []                          # el bloqueo no consume
+        loader.load_final(ggrant(), "lockbox")
+    assert [r for r in reg.consumed_partitions() if r["snapshot_id"] == GSID] == []                          # el bloqueo no consume
     assert [(r["partition"], r["allowed"]) for r in loader.access_history()] == [("lockbox", False)]
     monkeypatch.undo()
-    monkeypatch.setattr(P, "_FINAL_ACCESS_BLOCKED_UNTIL_B6", False)  # undo() también deshizo el fixture (B2-01)
-    assert len(loader.load_final(grant(), "lockbox")) > 0           # control: sigue disponible una vez
-    assert [r["partition"] for r in reg.consumed_partitions()] == ["lockbox"]
+    assert len(loader.load_final(ggrant(), "lockbox")) > 0           # control: sigue disponible una vez
+    assert [r["partition"] for r in reg.consumed_partitions() if r["snapshot_id"] == GSID] == ["lockbox"]
 
 
 @pytest.mark.parametrize("entry", ["verify", "loader"])
@@ -971,34 +1042,33 @@ import swingpilot.research.partitions as P
 def die(*a, **k):
     os._exit(9)                           # SIGKILL simulado a mitad de la lectura autorizada
 P.pq.read_table = die
-P._FINAL_ACCESS_BLOCKED_UNTIL_B6 = False  # mecanismo histórico (B2-01)
 tmp = Path({tmp!r})
 reg = T.ExperimentRegistry(tmp / "registry.jsonl", tmp / "decisions")
-loader = P.PartitionLoader(tmp / "research" / "snapshots" / "SNAP-TEST.json", tmp / "var" / "snapshots",
-                           tmp / "access.jsonl", registry=reg)
-loader.load_final(T.grant(), "lockbox")
+loader = P.PartitionLoader(tmp / "research" / "snapshots" / "SNAP-0901.json", tmp / "var" / "snapshots",
+                           tmp / "access.jsonl", registry=reg, prereg_store=T.store_for(reg))
+loader.load_final(T.ggrant(), "lockbox")
 """
 
 
-def test_qa3r2_08_kill_during_authorized_read_leaves_partition_sealed(esnap):
+def test_qa3r2_08_kill_during_authorized_read_leaves_partition_sealed(gsnap):
     import subprocess
-    res, tmp = esnap
+    res, tmp = gsnap
     reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
     _advance_to_oos(reg)
     script = _KILL_DURING_READ.format(unit=str(Path(__file__).parent), tmp=str(tmp))
     proc = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=120)
     assert proc.returncode == 9, proc.stderr
-    assert reg.is_consumed("SNAP-TEST", "lockbox", "EXP-0900")    # el consumo se registró antes de leer
+    assert reg.is_consumed(GSID, "lockbox", "EXP-0900")    # el consumo se registró antes de leer
     assert _mode(res.data_dir / "lockbox.parquet") == 0           # sin residuo 0o400 tras la muerte
 
 
 @pytest.mark.parametrize("part", ["oos", "lockbox"])
-def test_qa3r2_08_authorized_read_still_verifies_hash_and_reseals(tmp_path, part):
-    res, tmp = make_eval(tmp_path, part), tmp_path
+def test_qa3r2_08_authorized_read_still_verifies_hash_and_reseals(tmp_path, gdev, part):
+    res, tmp = make_genuine(tmp_path, gdev, part), tmp_path
     reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
     _advance_to_oos(reg)
     loader = _loader(res, tmp, reg)
-    df = loader.load_final(grant(part=part), part)
+    df = loader.load_final(ggrant(part=part), part)
     assert len(df) == res.manifest["files"][part]["rows"]
     assert _mode(res.data_dir / f"{part}.parquet") == 0 and _mode(res.data_dir / "context.parquet") == 0
 
@@ -1370,54 +1440,26 @@ def test_load_final_on_development_snapshot_is_denied_logged_and_not_consumed(sn
     assert all(r["allowed"] is False for r in loader.access_history()) and len(loader.access_history()) == 5
 
 
-def test_load_final_requires_partition_and_experiment_to_match_manifest_window(tmp_path):
-    res = make_eval(tmp_path, "lockbox")
-    dec = _decisions(tmp_path, text="AUTORIZA: EXP-0900 OOS_EVALUATION\nAUTORIZA: EXP-0900 oos SNAP-TEST\n"
-                                    "AUTORIZA: EXP-0900 lockbox SNAP-TEST\n")
+def test_load_final_requires_partition_and_experiment_to_match_manifest_window(tmp_path, gdev):
+    res = make_genuine(tmp_path, gdev, "lockbox")
+    dec = _decisions(tmp_path, text="AUTORIZA: EXP-0900 OOS_EVALUATION\nAUTORIZA: EXP-0900 oos SNAP-0901\n"
+                                    "AUTORIZA: EXP-0900 lockbox SNAP-0901\n")
     reg = ExperimentRegistry(tmp_path / "registry.jsonl", dec)
     _advance_to_oos(reg)
     loader = _loader(res, tmp_path, reg)
     with pytest.raises(PartitionAccessError, match="no coincide con la ventana"):
-        loader.load_final(grant(part="oos"), "oos")            # la snapshot es de la ventana LOCKBOX
-    assert reg.consumed_partitions() == []
-    assert len(loader.load_final(grant(), "lockbox")) > 0     # coincide: se concede y consume como siempre
-    rec = reg.consumed_partitions()
+        loader.load_final(ggrant(part="oos"), "oos")            # la snapshot es de la ventana LOCKBOX
+    assert [r for r in reg.consumed_partitions() if r["snapshot_id"] == GSID] == []
+    assert len(loader.load_final(ggrant(), "lockbox")) > 0     # coincide: se concede y consume como siempre
+    rec = [r for r in reg.consumed_partitions() if r["snapshot_id"] == GSID]
     assert len(rec) == 1 and set(rec[0]) == set(reg.consumed_partitions()[0])
     assert "window_id" not in rec[0]                           # sin campos nuevos en PARTITION_CONSUMED
 
 
 # --- B2-01: restricción temporal Fail-Closed de la evaluación final hasta B6 ------------------------
 
-def test_b2_01_final_access_gate_is_active_by_default():
-    assert _B6_GATE_DEFAULT is True
-
-
-@pytest.mark.parametrize("part", ["oos", "lockbox"])
-def test_b2_01_valid_grant_on_synthetic_evaluation_snapshot_is_denied_without_consumption(tmp_path, monkeypatch,
-                                                                                          part):
-    """Manifiesto 2.0.0 válido, autorización exacta del propietario y experimento en OOS_EVALUATION:
-    todo lo que hoy concedería el mecanismo vigente. Hasta B6 se deniega antes del consumo."""
-    monkeypatch.setattr(P, "_FINAL_ACCESS_BLOCKED_UNTIL_B6", True)
-    res = make_eval(tmp_path, part)
-    reg = ExperimentRegistry(tmp_path / "registry.jsonl", _decisions(tmp_path))
-    _advance_to_oos(reg)
-    before = (tmp_path / "registry.jsonl").read_bytes()
-    loader = _loader(res, tmp_path, reg)
-    reads = _no_read(loader)
-    for _ in range(2):                                          # repetible: nada queda consumido
-        with pytest.raises(PartitionAccessError, match="bloqueada hasta B6"):
-            loader.load_final(grant(part=part), part)
-    assert reads == []
-    assert reg.consumed_partitions() == []
-    assert (tmp_path / "registry.jsonl").read_bytes() == before   # ningún registro nuevo
-    hist = loader.access_history()
-    assert len(hist) == 2 and all(r["allowed"] is False and "B6" in r["reason"] for r in hist)
-    assert _mode(res.data_dir / f"{part}.parquet") == 0 and _mode(res.data_dir / "context.parquet") == 0
-
-
-def test_b2_01_gate_preserves_earlier_denial_reasons(tmp_path, monkeypatch):
-    """La restricción va al final: los motivos de denegación vigentes no cambian."""
-    monkeypatch.setattr(P, "_FINAL_ACCESS_BLOCKED_UNTIL_B6", True)
+def test_load_final_denial_reasons_are_unchanged(tmp_path, monkeypatch):
+    """Los motivos de denegación vigentes no cambian."""
     res = make_eval(tmp_path, "lockbox")
     reg = ExperimentRegistry(tmp_path / "registry.jsonl", _decisions(tmp_path))
     _advance_to_oos(reg)

@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from consumption_helpers import ok_consumption_check  # noqa: E402
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -577,7 +578,8 @@ def test_tc_ml_024_larger_n_eval_does_not_restore_confirmatory_status(reg):
     inputs = inputs_for("EXP-0101", {"A": {"sharpe": 1.0}})
     select(reg, "EXP-0101", "A", inputs)
     assert reg.claim_partition(snapshot_id="SNAP-TEST1", partition="oos", experiment_id="EXP-0101",
-                               snapshot_last_open_time=0, decision_ref="DEC-900_ok.md") is not None
+                               snapshot_last_open_time=0, decision_ref="DEC-900_ok.md",
+                               consumption_check=ok_consumption_check()) is not None
     fx.record_deviation("metrics", ["sharpe", "pf"], "cambio de diseño tras OOS", registry=reg, informed_by=[t])
     v = A.evaluate(evidence(), reg, preregistration=fx, selection_inputs=inputs)
     assert v.outcome == "INCONCLUSIVE" and _reason(v, "NOT_CONFIRMATORY")

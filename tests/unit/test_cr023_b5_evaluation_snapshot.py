@@ -9,6 +9,7 @@ import sys
 import urllib.parse
 from datetime import datetime, timezone
 
+from consumption_helpers import ok_consumption_check  # noqa: E402
 import pytest
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -97,7 +98,7 @@ def _consume_oos(env, sid, last):
         env._fz.begin_evaluation("A", registry=env.reg)
         env.reg.transition(EID, "OOS_EVALUATION", actor="propietario", evidence=_oos_ev(EID))
     env.reg.claim_partition(snapshot_id=sid, partition="oos", experiment_id=EID, snapshot_last_open_time=last,
-                            decision_ref="DEC-900_ok.md")
+                            decision_ref="DEC-900_ok.md", consumption_check=ok_consumption_check())
 
 
 def test_et4_requires_confirm_and_checks_before_download(ready):
@@ -172,7 +173,7 @@ def test_lockbox_needs_single_valid_oos_manifest(ready):
     oos = _build(ready, "SNAP-TESTO1", f"{EID}/OOS", cl)
     _consume_oos(ready, "SNAP-TESTO1", 1)
     oos.manifest_path.rename(oos.manifest_path.with_suffix(".moved"))       # manifiesto de la OOS ausente
-    with pytest.raises(SnapshotError, match="exactamente un manifiesto"):
+    with pytest.raises(SnapshotError, match="exactamente un manifiesto|ET-4 bloqueada"):
         _build(ready, "SNAP-TESTL1", f"{EID}/LOCKBOX", cl)
     _no_trace(ready, "SNAP-TESTL1")
 
@@ -200,11 +201,6 @@ def test_authoritative_source_fails_closed_on_unreadable_store(ready):
         f.unlink()
     with pytest.raises(SnapshotError, match="no verificable"):
         E.reserved_windows_source(ready.reg, ready.store)()
-
-
-def test_final_access_block_still_in_force():
-    from swingpilot.research import partitions as P
-    assert P._FINAL_ACCESS_BLOCKED_UNTIL_B6 is True
 
 
 def test_b5_01_build_snapshot_without_authoritative_source_fails_closed(ready):

@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+from consumption_helpers import ok_consumption_check  # noqa: E402
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -74,7 +75,8 @@ def select(reg, cfg, inputs, eid=X):
 
 def consume_oos(reg):
     assert reg.claim_partition(snapshot_id="SNAP-TEST1", partition="oos", experiment_id=X,
-                               snapshot_last_open_time=0, decision_ref="DEC-900_ok.md") is not None
+                               snapshot_last_open_time=0, decision_ref="DEC-900_ok.md",
+                               consumption_check=ok_consumption_check()) is not None
 
 
 def evidence():

@@ -150,6 +150,33 @@ class FreezeCheck:
 
     def __call__(self, records, experiment_id, evidence):
         return self._fn(records, experiment_id, evidence)
+# B6.3 (CR-023, decisión 3, condición 1): credencial en proceso de la comprobación de consumo. Solo la usa
+# `partitions.build_consumption_check`; una guarda estática impide referenciarla en otro módulo de `src/`
+# o `scripts/`.
+_CONSUMPTION_CHECK_KEY = object()
+
+
+class ConsumptionCheck:
+    """Comprobación de consumo que `claim_partition` exige (B6.3, precedente `FreezeCheck`). Solo la
+    construye `partitions.build_consumption_check`; un invocable arbitrario se rechaza. Se ejecuta DENTRO
+    del bloqueo del registro, sobre registros releídos con `_load`. Inmutable. Control en proceso, no
+    tamper-evidence (misma limitación que `FreezeCheck`)."""
+    __slots__ = ("_fn",)
+
+    def __init__(self, key, fn):
+        if key is not _CONSUMPTION_CHECK_KEY:
+            raise ExperimentError("ConsumptionCheck solo lo construye partitions.build_consumption_check (CR-023 B6)")
+        if not callable(fn):
+            raise ExperimentError("ConsumptionCheck exige un invocable")
+        object.__setattr__(self, "_fn", fn)
+
+    def __setattr__(self, name, value):
+        raise AttributeError("ConsumptionCheck es inmutable")
+
+    def __call__(self, records, snapshot_id, partition, experiment_id, decision_ref):
+        return self._fn(records, snapshot_id, partition, experiment_id, decision_ref)
+
+
 OWNER = "propietario"
 DECLARED_ANTECEDENT = "DECLARED_ANTECEDENT"
 REGISTRY_ORIGIN = "REGISTRY"
@@ -406,9 +433,16 @@ class ExperimentRegistry:
         return False
 
     def claim_partition(self, *, snapshot_id: str, partition: str, experiment_id: str,
-                        snapshot_last_open_time: int, decision_ref: str) -> dict | None:
+                        snapshot_last_open_time: int, decision_ref: str,
+                        consumption_check: ConsumptionCheck | None = None) -> dict | None:
         """Comprueba y registra el consumo de forma atómica entre procesos (QA3R2-03).
-        Devuelve el registro, o None si la partición ya estaba consumida."""
+        Devuelve el registro, o None si la partición ya estaba consumida.
+        B6.3: exige un `ConsumptionCheck` de `partitions.build_consumption_check` (cualquier otro valor o
+        su ausencia → rechazo); se ejecuta dentro del bloqueo sobre registros releídos con `_load`
+        (corrupción → RegistryCorruptError, nada escrito)."""
+        if type(consumption_check) is not ConsumptionCheck:
+            raise ExperimentError("claim_partition exige un «consumption_check» ConsumptionCheck de "
+                                  "partitions.build_consumption_check (CR-023 B6.3)")
         if not valid_experiment_id(experiment_id):
             raise ExperimentError(f"experimento no válido: {experiment_id!r} (formato EXP-NNNN)")
         if partition not in SEALED:
@@ -416,6 +450,15 @@ class ExperimentRegistry:
         if not _valid_snapshot_id(snapshot_id):
             raise ExperimentError(f"snapshot no válida: {snapshot_id!r}")
         with self._locked():
+            records = self._load()[1]                      # relectura fresca bajo el bloqueo
+            try:
+                why = consumption_check(records, snapshot_id, partition, experiment_id, decision_ref)
+            except ExperimentError:
+                raise
+            except Exception as exc:
+                raise ExperimentError(f"consumption_check rechazó el consumo: {exc}") from exc
+            if why:
+                raise ExperimentError(f"consumption_check rechazó el consumo: {why}")
             if self.is_consumed(snapshot_id, partition, experiment_id):
                 return None
             return self._write({"kind": "PARTITION_CONSUMED", "snapshot_id": snapshot_id, "partition": partition,
@@ -635,6 +678,14 @@ class ExperimentRegistry:
     def _append(self, rec: dict) -> dict:
         with self._locked():
             return self._write(rec)
+
+    def publish_under_lock(self, check, publish):
+        """B6.4: `check(records)` (lanza si rechaza) y `publish()` se ejecutan DENTRO del bloqueo exclusivo,
+        sobre registros releídos con `_load` (corrupción → RegistryCorruptError, nada publicado). No escribe
+        en el registro."""
+        with self._locked():
+            check(self._load()[1])
+            return publish()
 
     def append_deviation(self, build) -> dict:
         """Registro DEVIATION (ORQ-017-01). `build()` se ejecuta DENTRO del bloqueo exclusivo,
