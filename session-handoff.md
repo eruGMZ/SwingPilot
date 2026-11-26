@@ -1,11 +1,18 @@
 # session-handoff.md — SwingPilot Harness
 
-## PUNTO DE REANUDACIÓN (2026-11-26) — siguiente: revisión del propietario de CR-023 B3; sin commit
+## PUNTO DE REANUDACIÓN (2026-11-26) — CR-023 decisión 1 registrada; entrada para B4
 
-**Base:** `8629d0f` en `develop` (= `origin/develop`) más B3 **sin commit** (comprobar con `git status -sb`). Contrato **v1.11**; `feature_list.json` **v1.23.0** sin cambios.
+**Hecho:** decisión 1 aprobada por el propietario y registrada en `progress.md` (entrada 2026-11-26, «decisión 1»): línea `AUTORIZA: FRONTERA EXP-NNNN SHA256=<64 hex> B=YYYY-MM-DDT00:00:00Z` con gramática estricta, unicidad y ligadura al preregistro; V1 se acredita con una atestación del propietario que debe existir en ET-3 (ET-4 la reutiliza; ET-5 la cita o reafirma), no con fechas de commit; clasificación C2 (metodológica frente a técnica).
+**Atestación V1 aprobada (2026-11-26):** `AUTORIZA: PUBLICACION EXP-NNNN SHA256=<64 hex> B=YYYY-MM-DDT00:00:00Z P=<YYYY-MM-DDTHH:MM:SSZ|NONE> RESULTADO=<VALIDA|INVALIDA>`, detalle en `progress.md`.
+**Para B4:** implementar solo con autorización expresa. Sin cambios de contrato, código ni pruebas en este registro.
+**Se conservan:** las cuatro decisiones abiertas restantes; B3 y el resto del estado del punto de reanudación inferior.
+
+## PUNTO DE REANUDACIÓN (2026-11-26) — siguiente: revisión del propietario de CR-023 B3 (commit `2b825b0`)
+
+**Base:** `2b825b0` en `develop` (= `origin/develop`, comprobado con Git el 2026-11-26): B3 **ya está commiteado y publicado** (corrige la referencia anterior «`8629d0f` más B3 sin commit»). Contrato **v1.11**; `feature_list.json` **v1.23.0** sin cambios.
 **Hecho:** B3 implementado (detalle y Decisión 4 —inventario mínimo obligatorio de exposiciones— en `progress.md`, entrada 2026-11-26). Suite 1197 passed, 5 skipped; validadores → código 0; registro real `07efad20…` sin cambios.
 **Se conservan:** bloqueo de acceso final hasta B6; O3/O4; cuatro decisiones abiertas restantes; CONF-010 OPEN; P5 de CR-021 PENDIENTE; S1–S4; D3 ABIERTA; D4 bloqueada; B4–B9 sin iniciar.
-**Siguiente acción autorizada:** ninguna. Sin commit ni push.
+**Siguiente acción autorizada:** ninguna. Los cambios documentales de la decisión 1 están sin commit.
 
 ## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: revisión del propietario de la aplicación contractual de CR-023 (DEC-025); sin commit
 
