@@ -164,11 +164,19 @@ def test_ml_no_active_model(regs):
     assert p["model_id"] is None
 
 
+def legacy_freeze_check():
+    """Solo pruebas heredadas (CR-020/CR-021): congelación sin las comprobaciones de ET-1, construida
+    deliberadamente con la credencial privada (B3-01: el registro ya no acepta un invocable arbitrario)."""
+    from swingpilot.research.experiments import _FREEZE_CHECK_KEY, FreezeCheck
+    return FreezeCheck(_FREEZE_CHECK_KEY, lambda records, experiment_id, evidence: None)
+
+
 def _approve(exps, eid="EXP-0301"):
     exps.create(eid, "x", actor="orquestador")
     for to, ev in [("DESIGN", {}), ("PREREGISTERED", None),
                    ("DATA_VALIDATION", {}), ("DEVELOPMENT", {"snapshot_verified": True}), ("VALIDATION", {})]:
-        exps.transition(eid, to, actor="orquestador", evidence=_cr020_freeze_ev(exps, eid) if ev is None else ev)
+        exps.transition(eid, to, actor="orquestador", evidence=_cr020_freeze_ev(exps, eid) if ev is None else ev,
+                        **({"freeze_check": legacy_freeze_check()} if to == "PREREGISTERED" else {}))  # CR-023 ET-1
     exps.transition(eid, "OOS_EVALUATION", actor="propietario", evidence=_cr020_oos_ev(exps, eid, "DEC-900_x.md"))
     exps.transition(eid, "AUDIT", actor="orquestador")
     exps.transition(eid, "HUMAN_REVIEW", actor="orquestador")
@@ -653,7 +661,8 @@ def test_cycle_requires_same_store(tmp_path, regs):
 
 def _cr020_freeze_ev(exps, eid, sha="a" * 64):
     """CR-020: la congelación exige el «trials_accounting» recalculado desde el registro."""
-    return {"preregistration_sha256": sha, "min_history_ok": True,
+    # CR-023 (B3): la congelación declara su clase de independencia (ET-1).
+    return {"preregistration_sha256": sha, "min_history_ok": True, "independence_class": "CONFIRMATORY",
             "trials_accounting": exps.trials_accounting(eid, ["A"])}
 
 

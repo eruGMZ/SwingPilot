@@ -15,6 +15,7 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from swingpilot.research import acceptance as A  # noqa: E402
 from swingpilot.research import experiments as X  # noqa: E402
@@ -22,8 +23,9 @@ from swingpilot.research.experiments import (EvaluationRequestRejected, Experime
                                              ExperimentRegistry, PersistenceUncertainError,
                                              TrialsAccountingError)
 from swingpilot.research.preregistration import (EvaluationPersistenceUncertain,  # noqa: E402
-                                                 PreregistrationError, freeze, preregister)
+                                                 PreregistrationError, freeze)
 from swingpilot.research.trials import reconcile  # noqa: E402
+from test_cr023_b3_preregistration import cr023_fields, freeze_in_registry, store_for  # noqa: E402  (CR-023)
 
 WF = {"train_months": 24, "embargo_months": 2, "test_months": 6, "step_months": 6,
       "roll_frequency": "6M", "n_windows": 2}
@@ -71,10 +73,10 @@ def content(reg, eid="EXP-0101", planned=("A",), rule="PRIMARY A", metrics=("sha
                                "costs", "acceptance_criteria", "rejection_criteria", "limitations",
                                "execution_model", "regime_declaration", "sharpe_definition")}
     p.update(experiment_id=eid, timeframes=["H4"], wf_design=dict(WF), label_horizon_months=1,
-             snapshot={"id": "SNAP-X"}, observed_trade_rate_per_month=3.0, trade_rate_source="train_only",
-             antecedents=["EXP-0001", "ANT-MR-H1"], min_history={"ok": True},
+             antecedents=["EXP-0001", "ANT-MR-H1"],
              statistical_tests={"dsr_min_probability": 0.95}, metrics=list(metrics),
              trials_count=reg.trials_accounting(eid, list(planned)), candidate_selection_rule=rule)
+    p.update(cr023_fields(planned))                                # CR-023 §C.5
     return p
 
 
@@ -82,7 +84,7 @@ def frozen_experiment(reg, eid="EXP-0101", planned=("A",), rule="PRIMARY A", to=
     reg.create(eid, "x", actor="orquestador")
     reg.transition(eid, "DESIGN", actor="orquestador")
     fz = freeze(content(reg, eid, planned, rule))
-    preregister(reg, fz)
+    freeze_in_registry(reg, fz)                                   # CR-023: almacén + clase + freeze_check
     for st, ev in (("DATA_VALIDATION", {}), ("DEVELOPMENT", {"snapshot_verified": True}), ("VALIDATION", {})):
         if reg.state(eid) == to:
             break
@@ -336,9 +338,9 @@ def test_tc_ml_022_freeze_rejected_when_declared_count_differs_from_registry(reg
     fz = freeze(content(reg))                                     # declarado con G = 0
     historical(reg)                                               # el registro cambia antes de congelar
     with pytest.raises(TrialsAccountingError, match="TRIALS_COUNT_INCONSISTENT"):
-        preregister(reg, fz)
+        freeze_in_registry(reg, fz)
     assert reg.state("EXP-0101") == "DESIGN"
-    preregister(reg, freeze(content(reg)))                        # con el desglose correcto, congela
+    freeze_in_registry(reg, freeze(content(reg)))                 # con el desglose correcto, congela
     assert reg.state("EXP-0101") == "PREREGISTERED"
 
 
@@ -479,6 +481,7 @@ def test_tc_ml_023_loader_requires_registered_pair(reg, tmp_path):
     frozen_experiment(reg)
     loader = PartitionLoader.__new__(PartitionLoader)             # sin snapshot: solo la puerta del cargador
     loader.registry, loader.access_log = reg, tmp_path / "access.jsonl"
+    loader.prereg_store = store_for(reg)                          # CR-023 §C.3.3
     loader.manifest = {"snapshot_id": "SNAP-TEST", "kind": "development"}
     loader._read = lambda part: (_ for _ in ()).throw(AssertionError("no debía leer datos"))
     with pytest.raises(PartitionAccessError, match="sin inicio de evaluación"):

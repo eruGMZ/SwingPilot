@@ -1,5 +1,12 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-26) — siguiente: revisión del propietario de CR-023 B3; sin commit
+
+**Base:** `8629d0f` en `develop` (= `origin/develop`) más B3 **sin commit** (comprobar con `git status -sb`). Contrato **v1.11**; `feature_list.json` **v1.23.0** sin cambios.
+**Hecho:** B3 implementado (detalle y Decisión 4 —inventario mínimo obligatorio de exposiciones— en `progress.md`, entrada 2026-11-26). Suite 1197 passed, 5 skipped; validadores → código 0; registro real `07efad20…` sin cambios.
+**Se conservan:** bloqueo de acceso final hasta B6; O3/O4; cuatro decisiones abiertas restantes; CONF-010 OPEN; P5 de CR-021 PENDIENTE; S1–S4; D3 ABIERTA; D4 bloqueada; B4–B9 sin iniciar.
+**Siguiente acción autorizada:** ninguna. Sin commit ni push.
+
 ## PUNTO DE REANUDACIÓN (2026-11-25) — siguiente: revisión del propietario de la aplicación contractual de CR-023 (DEC-025); sin commit
 
 **Base:** `aca408e` en `develop` (= `origin/develop` al iniciar; árbol limpio antes de esta aplicación) más la aplicación documental de CR-023, **sin commit** (comprobar con `git status -sb`). Contrato **v1.11**; `feature_list.json` **v1.23.0**.

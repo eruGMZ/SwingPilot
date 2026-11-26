@@ -9,9 +9,11 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from swingpilot.research.experiments import ExperimentError, ExperimentRegistry  # noqa: E402
 from swingpilot.research.preregistration import PreregistrationError, freeze  # noqa: E402
+from test_cr023_b3_preregistration import cr023_fields  # noqa: E402  (CR-023: campos nuevos del preregistro)
 
 WF = {"train_months": 24, "embargo_months": 2, "test_months": 6, "step_months": 6,
       "roll_frequency": "6M", "n_windows": 2}
@@ -31,9 +33,9 @@ def _legacy_prereg():
                                "metrics", "costs", "acceptance_criteria", "rejection_criteria", "limitations",
                                "execution_model", "regime_declaration", "sharpe_definition")}
     p.update(experiment_id="EXP-0101", timeframes=["H4"], wf_design=dict(WF), label_horizon_months=1,
-             snapshot={"id": "SNAP-X"}, observed_trade_rate_per_month=3.0, trade_rate_source="train_only",
-             antecedents=["EXP-0001"], trials_count=3, min_history={"ok": True},
+             antecedents=["EXP-0001"], trials_count=3,
              statistical_tests={"dsr_min_probability": "<pre>"})
+    p.update(cr023_fields(["A"]))      # CR-023: sin esto fallaría por campos ausentes y no por el conteo escalar
     return p
 
 

@@ -67,6 +67,7 @@
     antes de toda escritura; ninguna línea se ignora; el archivo nunca se reescribe ni se repara.
 """
 import contextlib
+import copy
 import fcntl
 import hashlib
 import json
@@ -116,11 +117,39 @@ _FORWARD = {
 }
 # Requisitos verificables por transición (evidencias que deben acompañarla)
 _REQUIRES = {
-    "PREREGISTERED": ("preregistration_sha256", "min_history_ok"),
+    "PREREGISTERED": ("preregistration_sha256",),      # histórico mínimo: ver `_check_freeze_independence` (CR-023)
     "DEVELOPMENT": ("snapshot_verified",),
     "OOS_EVALUATION": ("decision_ref",),
     "APPROVED": ("decision_ref",),
 }
+# CR-023 (bloque B3): clases de independencia que declara la transición a PREREGISTERED
+INDEPENDENCE_CLASSES = ("CONFIRMATORY", "TRADE_RATE_PILOT")
+PILOT_EXEMPTION = "TRADE_RATE_PILOT"
+# B3-01: credencial en proceso de la comprobación ET-1. Solo la usa `preregistration.build_freeze_check`;
+# una guarda estática impide referenciarla en otro módulo de `src/` o `scripts/`.
+_FREEZE_CHECK_KEY = object()
+
+
+class FreezeCheck:
+    """Comprobación ET-1 (CR-023 §C.9) que `transition` exige para PREREGISTERED (B3-01). Solo la
+    construye `preregistration.build_freeze_check`: un invocable arbitrario aportado por quien llama se
+    rechaza, y la comprobación recibe el experimento y la evidencia de la transición para vincularlos al
+    preregistro congelado. Inmutable. Control en proceso, como el resto del registro: impide el uso
+    accidental o no trazable desde el código, no la elusión deliberada con la credencial privada."""
+    __slots__ = ("_fn",)
+
+    def __init__(self, key, fn):
+        if key is not _FREEZE_CHECK_KEY:
+            raise ExperimentError("FreezeCheck solo lo construye preregistration.build_freeze_check (CR-023 ET-1)")
+        if not callable(fn):
+            raise ExperimentError("FreezeCheck exige un invocable")
+        object.__setattr__(self, "_fn", fn)
+
+    def __setattr__(self, name, value):
+        raise AttributeError("FreezeCheck es inmutable")
+
+    def __call__(self, records, experiment_id, evidence):
+        return self._fn(records, experiment_id, evidence)
 OWNER = "propietario"
 DECLARED_ANTECEDENT = "DECLARED_ANTECEDENT"
 REGISTRY_ORIGIN = "REGISTRY"
@@ -686,7 +715,12 @@ class ExperimentRegistry:
             return None, f"la decisión no se puede leer: {exc!r}"
 
     def transition(self, experiment_id: str, to: str, *, actor: str, evidence: dict | None = None,
-                   reason: str = "") -> dict:
+                   reason: str = "", freeze_check=None) -> dict:
+        """Transición de estado. `freeze_check` (solo PREREGISTERED; CR-023 ET-1) es obligatorio: un
+        `FreezeCheck` de `preregistration.build_freeze_check` (B3-01: no se acepta otro invocable) que se
+        ejecuta DENTRO del bloqueo con los registros vigentes, el experimento y una copia de la evidencia,
+        después de las demás comprobaciones y antes de escribir. Devolver un motivo o lanzar cualquier
+        excepción rechaza la transición (Fail-Closed)."""
         evidence = evidence or {}
         with self._locked():          # CR-020: la congelación y la selección se validan contra el registro
             records = self.records()  # en el mismo bloqueo en que se escribe la transición
@@ -709,8 +743,8 @@ class ExperimentRegistry:
             for key in _REQUIRES.get(to, ()):
                 if not evidence.get(key):
                     raise ExperimentError(f"{cur} → {to} exige la evidencia «{key}»")
-            if to == "PREREGISTERED" and evidence.get("min_history_ok") is not True:
-                raise ExperimentError("histórico insuficiente: el experimento no pasa de DESIGN (TC-ML-014)")
+            if to == "PREREGISTERED":
+                self._check_freeze_independence(cur, evidence)
             if to in ("APPROVED", "OOS_EVALUATION") or (cur == "HUMAN_REVIEW" and to in TERMINAL):
                 if actor != OWNER:
                     raise ExperimentError(f"{to} solo lo decide el propietario (REQ-G-107)")
@@ -719,10 +753,56 @@ class ExperimentRegistry:
                     raise ExperimentError(why)
             if to == "PREREGISTERED":
                 self._check_freeze_accounting(records, experiment_id, evidence)
+                self._run_freeze_check(freeze_check, records, experiment_id, evidence)
             if to == "OOS_EVALUATION":
+                self._check_oos_eligible_class(e)
                 self._check_selection(records, experiment_id, evidence)
             return self._write({"kind": "TRANSITION", "experiment_id": experiment_id, "from": cur, "to": to,
                                 "actor": actor, "evidence": evidence, "reason": reason})
+
+    @staticmethod
+    def _check_freeze_independence(cur: str, evidence: dict) -> None:
+        """CR-023 C.3.2, C.8: la congelación declara su clase de independencia. El histórico mínimo
+        (TC-ML-014) se exige a la clase CONFIRMATORY; la exención solo la admite TRADE_RATE_PILOT."""
+        cls = evidence.get("independence_class")
+        if cls == "TRADE_RATE_PILOT":
+            if evidence.get("min_history_exempt") != PILOT_EXEMPTION:
+                raise ExperimentError("el piloto de tasa exige «min_history_exempt» = 'TRADE_RATE_PILOT' (CR-023 C.3.2)")
+            return
+        if "min_history_exempt" in evidence:
+            raise ExperimentError("solo el piloto de tasa puede declarar la exención del histórico mínimo")
+        if not evidence.get("min_history_ok"):
+            raise ExperimentError(f"{cur} → PREREGISTERED exige la evidencia «min_history_ok»")
+        if evidence.get("min_history_ok") is not True:
+            raise ExperimentError("histórico insuficiente: el experimento no pasa de DESIGN (TC-ML-014)")
+        if cls not in INDEPENDENCE_CLASSES:
+            raise ExperimentError(f"PREREGISTERED exige «independence_class» ∈ {INDEPENDENCE_CLASSES} (CR-023)")
+
+    @staticmethod
+    def _run_freeze_check(freeze_check, records: list[dict], experiment_id: str, evidence: dict) -> None:
+        """ET-1 (CR-023 §C.9): verificación de congelación dentro del bloqueo. Solo un `FreezeCheck`
+        (B3-01); cualquier otro valor o invocable → rechazo. La evidencia se pasa como copia."""
+        if type(freeze_check) is not FreezeCheck:
+            raise ExperimentError("PREREGISTERED exige un «freeze_check» FreezeCheck de "
+                                  "preregistration.build_freeze_check (CR-023 ET-1; use preregistration.preregister)")
+        try:
+            why = freeze_check(records, experiment_id, copy.deepcopy(evidence))
+        except ExperimentError:
+            raise
+        except Exception as exc:
+            raise ExperimentError(f"freeze_check rechazó la congelación: {exc}") from exc
+        if why:
+            raise ExperimentError(f"freeze_check rechazó la congelación: {why}")
+
+    @staticmethod
+    def _check_oos_eligible_class(exp: dict) -> None:
+        """CR-023 C.3.4: solo un experimento congelado como CONFIRMATORY transita a OOS_EVALUATION;
+        el piloto de tasa nunca, y una congelación sin clase se rechaza (Fail-Closed)."""
+        pre = [h for h in exp["history"] if h.get("kind") == "TRANSITION" and h.get("to") == "PREREGISTERED"]
+        cls = (pre[0].get("evidence") or {}).get("independence_class") if len(pre) == 1 else None
+        if cls != "CONFIRMATORY":
+            raise ExperimentError(f"OOS_EVALUATION exige un experimento congelado como CONFIRMATORY, no {cls!r} "
+                                  "(el piloto de tasa nunca transita; CR-023 C.3.4)")
 
     def _check_freeze_accounting(self, records: list[dict], experiment_id: str, evidence: dict) -> None:
         """CR-020 §C.3.3: `trials_accounting` debe coincidir con el recalculado en este momento."""

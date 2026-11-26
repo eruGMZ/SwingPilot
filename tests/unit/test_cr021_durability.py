@@ -26,13 +26,15 @@ import pytest
 
 SRC = Path(__file__).resolve().parents[2] / "src"
 sys.path.insert(0, str(SRC))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from swingpilot.research import acceptance as A  # noqa: E402
 from swingpilot.research import experiments as X  # noqa: E402
 from swingpilot.research import partitions as P  # noqa: E402
 from swingpilot.research.experiments import ExperimentRegistry  # noqa: E402
 from swingpilot.research.partitions import FinalEvaluationGrant, PartitionAccessError, PartitionLoader  # noqa: E402
-from swingpilot.research.preregistration import confirmatory_status, freeze, preregister  # noqa: E402
+from swingpilot.research.preregistration import confirmatory_status, freeze  # noqa: E402
+from test_cr023_b3_preregistration import cr023_fields, freeze_in_registry, store_for  # noqa: E402  (CR-023)
 from swingpilot.research.trials import reconcile  # noqa: E402
 
 WF = {"train_months": 24, "embargo_months": 2, "test_months": 6, "step_months": 6,
@@ -60,12 +62,12 @@ def frozen(reg, eid=X1, planned=("A",)):
                                "costs", "acceptance_criteria", "rejection_criteria", "limitations",
                                "execution_model", "regime_declaration", "sharpe_definition")}
     p.update(experiment_id=eid, timeframes=["H4"], wf_design=dict(WF), label_horizon_months=1,
-             snapshot={"id": "SNAP-X"}, observed_trade_rate_per_month=3.0, trade_rate_source="train_only",
-             antecedents=["-"], min_history={"ok": True}, statistical_tests={"dsr_min_probability": 0.95},
+             antecedents=["-"], statistical_tests={"dsr_min_probability": 0.95},
              metrics=["sharpe"], trials_count=reg.trials_accounting(eid, list(planned)),
              candidate_selection_rule=f"PRIMARY {planned[0]}")
+    p.update(cr023_fields(planned))                                # CR-023 §C.5
     fz = freeze(p)
-    preregister(reg, fz)
+    freeze_in_registry(reg, fz)                                    # CR-023: almacén + clase + freeze_check
     for st, ev in (("DATA_VALIDATION", {}), ("DEVELOPMENT", {"snapshot_verified": True}), ("VALIDATION", {})):
         reg.transition(eid, st, actor="orquestador", evidence=ev)
     return fz
@@ -109,6 +111,7 @@ def gate(reg, tmp, eid=X1, cfg="A"):
     """Puerta del cargador de Train+Val con `_read` sintético: (resultado, motivo, lecturas)."""
     loader = PartitionLoader.__new__(PartitionLoader)
     loader.registry, loader.access_log = reg, Path(tmp) / f"access-{eid}-{cfg}.jsonl"
+    loader.prereg_store = store_for(reg)                           # CR-023 §C.3.3
     loader.manifest = {"snapshot_id": "SNAP-TEST", "kind": "development"}
     reads = []
     loader._read = lambda part: reads.append(part) or pd.DataFrame({"interval": ["1d"]})
@@ -125,7 +128,9 @@ def proc_gate(reg, eid=X1, cfg="A"):
     code = (f"import sys;sys.path.insert(0,{str(SRC)!r});from pathlib import Path;import pandas as pd;"
             "from swingpilot.research.experiments import ExperimentRegistry as R;"
             "from swingpilot.research.partitions import PartitionLoader as L;"
+            "from swingpilot.research.prereg_store import PreregistrationStore as S;"
             f"r=R(Path({str(reg.path)!r}),Path({str(reg.decisions_dir)!r}));l=L.__new__(L);l.registry=r;"
+            f"l.prereg_store=S(Path({str(reg.path.parent / 'preregistrations')!r}));"
             f"l.access_log=Path({str(reg.path.parent / 'proc-access.jsonl')!r});l.manifest={{'snapshot_id':'SNAP-TEST','kind':'development'}};"
             "l._read=lambda p: pd.DataFrame({'interval':['1d']})\n"
             f"try:\n l.load_train_val_for_configuration({eid!r},{cfg!r});print('DELIVERED')\n"

@@ -13,6 +13,7 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from swingpilot.research import acceptance as A  # noqa: E402
 from swingpilot.research import indicators as I  # noqa: E402
@@ -22,6 +23,7 @@ from swingpilot.research.preregistration import (PreregistrationError, check_min
                                                  freeze, min_history_months, walk_forward_windows,
                                                  validate_wf_design)
 from swingpilot.research.scaling import ScalerError, TrainOnlyScaler  # noqa: E402
+from test_cr023_b3_preregistration import cr023_fields  # noqa: E402  (CR-023: campos nuevos del preregistro)
 
 H4 = 14_400_000
 WF = {"train_months": 24, "embargo_months": 2, "test_months": 6, "step_months": 6,
@@ -38,14 +40,24 @@ def reg(tmp_path):
     return ExperimentRegistry(tmp_path / "registry.jsonl", dec)
 
 
+def legacy_freeze_check():
+    """Solo pruebas heredadas (CR-020/CR-021): congelación sin las comprobaciones de ET-1, construida
+    deliberadamente con la credencial privada (B3-01: el registro ya no acepta un invocable arbitrario)."""
+    from swingpilot.research.experiments import _FREEZE_CHECK_KEY, FreezeCheck
+    return FreezeCheck(_FREEZE_CHECK_KEY, lambda records, experiment_id, evidence: None)
+
+
 def _preregister(reg, eid="EXP-0101", sha=None):
     # ORQ-017-01: PREREGISTERED cita el SHA-256 real del preregistro de prueba (antes "f"*64),
     # porque las desviaciones se vinculan a ese hash. Solo cambia la preparación.
     # CR-020: la congelación exige además el «trials_accounting» recalculado desde el registro.
     reg.create(eid, "x", actor="orquestador")
     reg.transition(eid, "DESIGN", actor="orquestador")
-    reg.transition(eid, "PREREGISTERED", actor="orquestador",
+    # CR-023: la transición exige la clase de independencia y un `freeze_check` (aquí nulo: estas pruebas
+    # ejercitan el registro de experimentos, no ET-1, que cubre test_cr023_b3_preregistration.py)
+    reg.transition(eid, "PREREGISTERED", actor="orquestador", freeze_check=legacy_freeze_check(),
                    evidence={"preregistration_sha256": sha or freeze(prereg()).sha256, "min_history_ok": True,
+                             "independence_class": "CONFIRMATORY",
                              "trials_accounting": reg.trials_accounting(eid, ["A"])})
 
 
@@ -288,13 +300,13 @@ def prereg():
                                "acceptance_criteria", "rejection_criteria", "limitations",
                                "execution_model", "regime_declaration", "sharpe_definition")}
     p.update(experiment_id="EXP-0101", timeframes=["H4"], wf_design=dict(WF), label_horizon_months=1,
-             snapshot={"id": "SNAP-X"}, observed_trade_rate_per_month=3.0, trade_rate_source="train_only",
-             antecedents=["EXP-0001"], min_history={"ok": True},
+             antecedents=["EXP-0001"],
              statistical_tests={"dsr_min_probability": "<pre>"},
              # CR-020: desglose de la contabilidad de pruebas y regla de selección congelada
              trials_count={"H_doc": 0, "H_bound": 0, "E": 0, "planned_config_ids": ["A"], "planned_new": 1,
                            "N_pre": 1, "provenance_ids": []},
              candidate_selection_rule="PRIMARY A")
+    p.update(cr023_fields(["A"]))                       # CR-023 §C.5: independencia, snapshot, tasa, histórico
     return p
 
 
@@ -690,8 +702,9 @@ def test_orq_017_01_chronology_and_duplicate_inconsistencies_fail_closed(reg, tm
     r3.create("EXP-0101", "x", actor="orquestador")
     r3._append(_valid_deviation())
     r3.transition("EXP-0101", "DESIGN", actor="orquestador")
-    r3.transition("EXP-0101", "PREREGISTERED", actor="orquestador",
+    r3.transition("EXP-0101", "PREREGISTERED", actor="orquestador", freeze_check=legacy_freeze_check(),
                   evidence={"preregistration_sha256": freeze(prereg()).sha256, "min_history_ok": True,
+                            "independence_class": "CONFIRMATORY",
                             "trials_accounting": r3.trials_accounting("EXP-0101", ["A"])})
     with pytest.raises(PreregistrationError, match="anterior a PREREGISTERED"):
         confirmatory_status(r3, "EXP-0101")
@@ -819,13 +832,14 @@ def test_freeze_hash_is_canonical():
 
 
 def test_tc_ml_014_min_history_formula_and_limitation():
-    assert min_history_months(8.0, WF) == pytest.approx(38 / 0.70)
-    assert min_history_months(1.0, WF) == pytest.approx(30 / (0.15 * 1.0))
-    r = check_min_history(1.0, "train_only", available_months=111, wf=WF)
-    assert not r["ok"] and r["limitation"] and r["required_months"] == 200
-    # 30/(0.15·1.8) = 111.1 > 111: el «~1.8 trades/mes» de DEC-013 es aproximado
-    assert not check_min_history(1.8, "train_only", available_months=111, wf=WF)["ok"]
-    assert check_min_history(1.85, "train_only", available_months=111, wf=WF)["ok"]
+    # CR-023 §C.8 sustituye la fórmula antigua: H_dev,min = max(38 ; 100/r) meses
+    assert min_history_months(8.0, WF) == pytest.approx(38)
+    assert min_history_months(1.0, WF) == pytest.approx(100)
+    r = check_min_history(1.0, "train_only", available_months=60, wf=WF)
+    assert not r["ok"] and r["limitation"] and r["required_months"] == 100
+    # 100/2.5 = 40 > 39.9: el umbral es exacto; 100/2.6 = 38.46 → basta con 38.5
+    assert not check_min_history(2.5, "train_only", available_months=39.9, wf=WF)["ok"]
+    assert check_min_history(2.5, "train_only", available_months=40, wf=WF)["ok"]
     with pytest.raises(PreregistrationError):
         check_min_history(3.0, "oos", available_months=111, wf=WF)
 

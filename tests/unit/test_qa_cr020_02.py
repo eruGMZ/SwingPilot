@@ -19,12 +19,13 @@ import numpy as np
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from swingpilot.research import acceptance as A  # noqa: E402
 from swingpilot.research.experiments import ExperimentRegistry  # noqa: E402
 from swingpilot.research.preregistration import (ConfirmatoryStatusUnverifiable,  # noqa: E402
-                                                 PreregistrationError, confirmatory_status, freeze,
-                                                 preregister)
+                                                 PreregistrationError, confirmatory_status, freeze)
+from test_cr023_b3_preregistration import cr023_fields, freeze_in_registry  # noqa: E402  (CR-023)
 
 WF = {"train_months": 24, "embargo_months": 2, "test_months": 6, "step_months": 6,
       "roll_frequency": "6M", "n_windows": 2}
@@ -50,12 +51,12 @@ def frozen(reg, eid=X, planned=("A",), rule="PRIMARY A"):
                                "costs", "acceptance_criteria", "rejection_criteria", "limitations",
                                "execution_model", "regime_declaration", "sharpe_definition")}
     p.update(experiment_id=eid, timeframes=["H4"], wf_design=dict(WF), label_horizon_months=1,
-             snapshot={"id": "SNAP-X"}, observed_trade_rate_per_month=3.0, trade_rate_source="train_only",
-             antecedents=["-"], min_history={"ok": True}, statistical_tests={"dsr_min_probability": 0.95},
+             antecedents=["-"], statistical_tests={"dsr_min_probability": 0.95},
              metrics=["sharpe"], trials_count=reg.trials_accounting(eid, list(planned)),
              candidate_selection_rule=rule)
+    p.update(cr023_fields(planned))                                # CR-023 §C.5
     fz = freeze(p)
-    preregister(reg, fz)
+    freeze_in_registry(reg, fz)                                    # CR-023: almacén + clase + freeze_check
     for st, ev in (("DATA_VALIDATION", {}), ("DEVELOPMENT", {"snapshot_verified": True}), ("VALIDATION", {})):
         reg.transition(eid, st, actor="orquestador", evidence=ev)
     return fz

@@ -12,6 +12,16 @@ una `candidate_selection_rule` determinista (`PRIMARY <config_id>` o
 desglose coincide con el recalculado dentro del bloqueo. `begin_evaluation` registra el inicio
 duradero de la evaluación de una configuración; una configuración no planificada se registra
 igualmente (cuenta) junto con su DEVIATION. Las desviaciones nuevas exigen `informed_by` (R2).
+
+CR-023 (bloque B3): el preregistro declara además `independence_boundary` (piloto de tasa o frontera
+confirmatoria; ver `boundary.py`), `conditioning_components` y la `snapshot` de desarrollo
+(`snapshot_id`, `train_val_sha256`, `d_dev`). `freeze` valida todo de forma pura; `preregister` (ET-1)
+verifica la snapshot de desarrollo (I2), escribe el contenido en el almacén recuperable ANTES de la
+transición y pasa al registro un `FreezeCheck` que se ejecuta dentro del bloqueo (vinculación con el
+experimento y la evidencia, I2, V2, ventanas anteriores, V7 mecánico, piloto de tasa). B3-01: el registro
+solo acepta un `FreezeCheck` de `build_freeze_check`, nunca un invocable de quien llama. Un `DEVIATION` de `independence_boundary` se valida antes de
+escribir y en cada reproducción (D.2). NO implementados aquí (bloques posteriores): `independence_status`,
+la regla endurecida de cualquier `DEVIATION`, V1, V3–V6, V8 y el acceso final.
 """
 import hashlib
 import json
@@ -23,9 +33,11 @@ from datetime import datetime, timezone
 
 import pandas as pd
 
-from .experiments import (REGISTRY_ORIGIN, ExperimentError, ExperimentRegistry, PersistenceUncertainError,
-                          accounting_shape_error, valid_config_id, valid_experiment_id)
-from .snapshot import SEALED
+from . import boundary as B
+from .experiments import (_FREEZE_CHECK_KEY, REGISTRY_ORIGIN, ExperimentError, ExperimentRegistry, FreezeCheck,
+                          PersistenceUncertainError, accounting_shape_error, valid_config_id, valid_experiment_id)
+from .prereg_store import PreregistrationStore, PreregStoreError
+from .snapshot import KIND_DEVELOPMENT, SEALED, SnapshotError, load_manifest, verify_snapshot
 
 # Campos obligatorios (REQ-G-103 + CR-011 + REQ-G-109)
 REQUIRED_FIELDS = (
@@ -36,6 +48,7 @@ REQUIRED_FIELDS = (
     "trade_rate_source", "execution_model", "regime_declaration", "sharpe_definition",
     "antecedents", "trials_count", "min_history", "statistical_tests",
     "candidate_selection_rule",                                   # CR-020 §C.3.4 (R1)
+    "independence_boundary", "conditioning_components",           # CR-023 §C.5 (D.2: campo conocido)
 )
 WF_KEYS = ("train_months", "embargo_months", "test_months", "step_months", "roll_frequency", "n_windows")
 # Campos cuyo cambio tras ver OOS invalida el carácter confirmatorio (CR-011, REQ-G-109)
@@ -46,7 +59,6 @@ DESIGN_FIELDS = ("wf_design", "label_horizon_months", "execution_model", "accept
 CONTRACT_WF = {"train_months": 24, "embargo_months": 2, "test_months": 6, "step_months": 6}
 MIN_WF_WINDOWS = 2
 MIN_TRADES_TRAIN_VAL, MIN_TRADES_OOS, MIN_TRADES_LOCKBOX = 100, 30, 30
-FRAC_TRAIN_VAL, FRAC_OOS = 0.70, 0.15
 
 
 class PreregistrationError(ValueError):
@@ -132,25 +144,33 @@ def wf_region_months(wf: dict) -> float:
     return wf["train_months"] + wf["embargo_months"] + wf["test_months"] + (wf["n_windows"] - 1) * wf["step_months"]
 
 
-def min_history_months(trade_rate_per_month: float, wf: dict) -> float:
-    """H_min = max(WF/0.70; 100/(0.70·r); 30/(0.15·r)) — REQ-G-106 (indicativo) y REQ-G-103."""
-    if trade_rate_per_month <= 0:
-        raise PreregistrationError("la tasa de trades debe ser > 0")
-    r = trade_rate_per_month
-    return max(wf_region_months(wf) / FRAC_TRAIN_VAL, MIN_TRADES_TRAIN_VAL / (FRAC_TRAIN_VAL * r),
-               max(MIN_TRADES_OOS, MIN_TRADES_LOCKBOX) / (FRAC_OOS * r))
+def min_history_months(trade_rate_per_month: float, wf: dict | None = None) -> float:
+    """H_dev,min = max(38 ; 100/r) meses (CR-023 §C.8; REQ-G-106, REQ-G-103). `wf` se conserva por
+    compatibilidad de firma: los 38 meses son 24 + 2 + 6 + 6 del diseño WF contractual."""
+    try:
+        return B.dev_min_history_months(trade_rate_per_month)
+    except B.BoundaryError as exc:
+        raise PreregistrationError(str(exc)) from exc
 
 
-def check_min_history(trade_rate_per_month: float, rate_source: str, available_months: float, wf: dict) -> dict:
-    """TC-ML-014: la tasa debe venir solo de Train; si no alcanza, queda en DESIGN con la limitación."""
+def check_min_history(trade_rate_per_month: float, rate_source: str, available_months: float,
+                      wf: dict | None = None, *, k: float | None = None) -> dict:
+    """TC-ML-014: la tasa debe venir solo de Train; si no alcanza, queda en DESIGN con la limitación.
+    Con `k` añade `window_min_months` = k·30/r (CR-023 §C.8)."""
     if rate_source != "train_only":
         raise PreregistrationError("la tasa de trades del piloto debe estimarse solo con Train")
-    need = min_history_months(trade_rate_per_month, wf)
+    need = min_history_months(trade_rate_per_month)
     ok = available_months >= need
-    return {"required_months": round(need, 2), "available_months": round(available_months, 2), "ok": ok,
-            "limitation": None if ok else
-            "histórico insuficiente para 2 ventanas WF + OOS + LOCKBOX: el experimento no pasa de DESIGN; "
-            "el ajuste lo decide el propietario"}
+    out = {"required_months": round(need, 2), "available_months": round(available_months, 2), "ok": ok,
+           "limitation": None if ok else
+           "histórico insuficiente para el diseño WF + OOS + LOCKBOX: el experimento no pasa de DESIGN; "
+           "el ajuste lo decide el propietario"}
+    if k is not None:
+        try:
+            out["window_min_months"] = round(B.window_min_months(trade_rate_per_month, k), 2)
+        except B.BoundaryError as exc:
+            raise PreregistrationError(str(exc)) from exc
+    return out
 
 
 def validate_wf_design(wf: dict, label_horizon_months: float) -> None:
@@ -297,6 +317,20 @@ class FrozenPreregistration:
         self.deviations.append(rec)
         return rec
 
+    def record_independence_deviation(self, window_ids: list, cls: str, evidence: list,
+                                      exposure_started_at: str, justification: str, *, registry,
+                                      informed_by: list, actor: str = "orquestador") -> dict:
+        """`DEVIATION` de independencia (CR-023 §D.2): `field = "independence_boundary"` y `new` con
+        exactamente `contaminated_window_ids`, `class`, `evidence` y `exposure_started_at`. Se admite
+        en cualquier estado posterior a PREREGISTERED, también terminal (sin puerta de estado). Se
+        valida antes de escribir (forma, ventanas calculadas desde el valor congelado `old`); un
+        piloto de tasa, que no reserva ventanas, se rechaza. Append-only: no se retira ni corrige."""
+        new = {"contaminated_window_ids": list(window_ids) if isinstance(window_ids, (list, tuple)) else window_ids,
+               "class": cls, "evidence": list(evidence) if isinstance(evidence, (list, tuple)) else evidence,
+               "exposure_started_at": exposure_started_at}
+        return self.record_deviation("independence_boundary", new, justification, registry=registry,
+                                     informed_by=informed_by, actor=actor)
+
     def _deviation_builder(self, registry, field_name, new_value, justification, informed_by, access_history,
                            actor, extra: dict | None = None):
         """Constructor del registro DEVIATION, ejecutado dentro del bloqueo exclusivo (ORQ-017-01).
@@ -325,6 +359,11 @@ class FrozenPreregistration:
                 json.dumps(rec, ensure_ascii=False, sort_keys=True)
             except (TypeError, ValueError) as exc:
                 raise PreregistrationError(f"desviación no serializable: {exc!r}") from exc
+            if field_name == "independence_boundary":     # D.2: validación previa a la escritura (como N-1)
+                why_shape = _deviation_shape_error(rec)
+                if why_shape:
+                    raise PreregistrationError(f"desviación de independencia no válida ({why_shape}); "
+                                               "nada escrito (CR-023 D.2)")
             return rec
         build.deviation_id = deviation_id
         return build
@@ -359,18 +398,196 @@ class FrozenPreregistration:
         return rec
 
 
-def preregister(registry, frozen: "FrozenPreregistration", *, actor: str = "orquestador") -> dict:
-    """Congela en el registro (DESIGN → PREREGISTERED) con el SHA-256 y el `trials_accounting`
-    declarado en el preregistro; el registro lo recalcula dentro del bloqueo y rechaza la
-    transición si no coincide (CR-020 §C.3.3, TC-ML-022)."""
+def _manifest_binding_error(content: dict, manifest: dict) -> str | None:
+    """La snapshot declarada en el preregistro debe ser la verificada (I2): id, SHA-256 de `train_val`
+    y `d_dev`. None = coincide."""
+    snap = content["snapshot"]
+    if manifest.get("kind") != KIND_DEVELOPMENT:
+        return f"la snapshot citada no es de desarrollo (kind={manifest.get('kind')!r})"
+    if snap["snapshot_id"] != manifest.get("snapshot_id"):
+        return "snapshot_id del preregistro distinto del de la snapshot verificada"
+    if snap["train_val_sha256"] != (manifest.get("files") or {}).get("train_val", {}).get("sha256"):
+        return "train_val_sha256 del preregistro distinto del de la snapshot verificada"
+    if snap["d_dev"] != manifest.get("d_dev"):
+        return "d_dev del preregistro distinto del de la snapshot verificada"
+    return None
+
+
+def freeze_evidence(frozen: "FrozenPreregistration") -> dict:
+    """Evidencia exacta de la transición a PREREGISTERED que implica el preregistro congelado (B3-01):
+    SHA-256, `trials_accounting`, clase de independencia y histórico mínimo o exención del piloto."""
+    c = frozen.content
+    cls = B.boundary_class(c.get("independence_boundary"))
+    ev = {"preregistration_sha256": frozen.sha256, "trials_accounting": c["trials_count"], "independence_class": cls}
+    if cls == B.CONFIRMATORY:
+        ev["min_history_ok"] = True
+    else:
+        ev["min_history_exempt"] = B.TRADE_RATE_PILOT
+    return ev
+
+
+def _development_snapshot_error(content: dict, dev_manifest_path, data_root) -> str | None:
+    """I2 y comprobaciones de ET-1 que dependen de la snapshot de desarrollo: verificada (SHA-256 de
+    `train_val`), coincidente con la declarada y, si es confirmatorio, `available_months` recalculado igual
+    al declarado y suficiente, y `D_dev < B`. None = conforme; si no, el motivo."""
+    try:
+        verify_snapshot(dev_manifest_path, data_root)
+        manifest = load_manifest(dev_manifest_path)
+    except (SnapshotError, OSError, ValueError, TypeError) as exc:
+        return f"snapshot de desarrollo no verificable (I2): {exc}"
+    why = _manifest_binding_error(content, manifest)
+    if why:
+        return f"snapshot de desarrollo: {why}"
+    if B.boundary_class(content.get("independence_boundary")) == B.CONFIRMATORY:
+        mh, ib = content["min_history"], content["independence_boundary"]
+        avail = round(B.available_months(manifest["d_dev_ms"], manifest["range"]["start_ms"]), 2)
+        if avail != mh["available_months"]:
+            return (f"available_months declarado ({mh['available_months']}) distinto del recalculado desde la "
+                    f"snapshot ({avail})")
+        if avail < mh["required_months"]:
+            return "histórico mínimo no alcanzado: no se congela (queda en DESIGN)"
+        if manifest["d_dev_ms"] >= B.to_ms(B.parse_midnight(ib["B"])):
+            return "D_dev debe ser anterior a B"
+    return None
+
+
+def build_freeze_check(frozen: "FrozenPreregistration", store: PreregistrationStore, *, dev_manifest_path,
+                       data_root) -> FreezeCheck:
+    """`FreezeCheck` de ET-1 (CR-023 §C.9, C.4.2): lo ejecuta `ExperimentRegistry.transition` DENTRO del
+    bloqueo con los registros vigentes, el experimento y la evidencia de la transición. Devuelve None o el
+    motivo del rechazo. Todas las comprobaciones de ET-1 están aquí (B3-01), no solo en `preregister`:
+    - vinculación: el experimento es el del preregistro y la evidencia es exactamente `freeze_evidence`
+      (la clase, el SHA-256 y el histórico mínimo no los declara quien llama);
+    - I2 y snapshot de desarrollo (`_development_snapshot_error`);
+    - V2: el contenido citado se recupera del almacén, su SHA-256 coincide y es el congelado.
+    - Piloto de tasa: nada más (no reserva ventanas).
+    - Confirmatorio: `B` ≥ mayor `b_not_before` del inventario; `B` ≥ fin del LOCKBOX de todo otro
+      experimento nativo congelado, sea cual sea su estado (C.4.2.3, C.4.2.4, C.7.4); un congelado sin
+      clase de independencia o con contenido irrecuperable se rechaza (Fail-Closed); V7 mecánico:
+      `independence_deviation_ids` = DEVIATION de independencia del registro; el piloto citado en
+      `trade_rate_source` es un experimento nativo congelado como piloto, con contenido verificable."""
+    frozen.verify()
+    content, eid = frozen.content, frozen.experiment_id
+    cls = B.boundary_class(content.get("independence_boundary"))
+    expected = freeze_evidence(frozen)
+
+    def check(records: list[dict], experiment_id: str, evidence: dict) -> str | None:
+        if experiment_id != eid:
+            return f"la comprobación de congelación es de {eid}, no de {experiment_id!r}"
+        if evidence != expected:
+            return "la evidencia de la transición no coincide con la que implica el preregistro congelado (B3-01)"
+        why = _development_snapshot_error(content, dev_manifest_path, data_root)
+        if why:
+            return why
+        try:
+            loaded = store.verify_cited(eid, frozen.sha256, frozen.sha256)
+        except PreregStoreError as exc:
+            return f"V2: contenido del preregistro no recuperable del almacén: {exc}"
+        if loaded != frozen.content:
+            return "V2: el contenido del almacén difiere del preregistro congelado"
+        if cls == B.TRADE_RATE_PILOT:
+            return None
+        if cls != B.CONFIRMATORY:
+            return "independence_boundary no válido"
+        ib = content["independence_boundary"]
+        b = B.parse_midnight(ib["B"])
+        floor = B.max_b_not_before(ib["exposure_inventory"])
+        if b < floor:
+            return f"B ({ib['B']}) anterior al fin de la exposición inventariada ({B.format_instant(floor)})"
+        exps = ExperimentRegistry._experiments_from(records)
+        for oid, e in exps.items():
+            if oid == eid or e.get("origin") != REGISTRY_ORIGIN:
+                continue
+            pre = [h for h in e["history"] if h.get("kind") == "TRANSITION" and h.get("to") == "PREREGISTERED"]
+            if not pre:
+                continue
+            ev = pre[0].get("evidence") or {}
+            if len(pre) != 1 or ev.get("independence_class") not in (B.CONFIRMATORY, B.TRADE_RATE_PILOT):
+                return f"{oid}: congelado sin clase de independencia válida; no se puede comprobar su ventana (Fail-Closed)"
+            if ev["independence_class"] == B.TRADE_RATE_PILOT:
+                continue
+            why = _prior_window_error(store, oid, ev.get("preregistration_sha256"), b)
+            if why:
+                return why
+        return _v7_and_pilot_error(store, records, exps, content)
+    return FreezeCheck(_FREEZE_CHECK_KEY, check)
+
+
+def _prior_window_error(store, oid: str, sha, new_b) -> str | None:
+    """`B` nueva ≥ fin del LOCKBOX de un confirmatorio anterior (cualquier estado; C.4.2.3, C.7.4)."""
+    if not isinstance(sha, str) or not _SHA256.fullmatch(sha):
+        return f"{oid}: PREREGISTERED sin SHA-256 válido"
+    try:
+        other = store.verify_cited(oid, sha)
+    except PreregStoreError as exc:
+        return f"{oid}: contenido congelado no recuperable ({exc}); no se puede comprobar su ventana"
+    ib = other.get("independence_boundary")
+    if B.boundary_class(ib) != B.CONFIRMATORY or B.boundary_error(ib):
+        return f"{oid}: frontera confirmatoria congelada no válida; no se puede comprobar su ventana"
+    end = B.lockbox_end(ib, oid)
+    if new_b < end:
+        return (f"B anterior al fin del LOCKBOX de {oid} ({B.format_instant(end)}): una frontera nueva es posterior "
+                "a toda ventana anterior (C.7.4)")
+    return None
+
+
+def _v7_and_pilot_error(store, records, exps, content) -> str | None:
+    ib = content["independence_boundary"]
+    recorded = set()
+    for r in records:
+        if isinstance(r, dict) and r.get("kind") == "DEVIATION" and r.get("field") == "independence_boundary":
+            why = _deviation_shape_error(r)
+            if why:
+                return f"registro DEVIATION de independencia incoherente ({why}): {r.get('deviation_id')}"
+            recorded.add(r["deviation_id"])
+    declared = set(ib["exposure_inventory"]["independence_deviation_ids"])
+    if declared != recorded:
+        return (f"V7: independence_deviation_ids {sorted(declared)} no coincide con los DEVIATION de independencia "
+                f"del registro {sorted(recorded)}")
+    pid = content["trade_rate_source"]["pilot_experiment_id"]
+    pilot = exps.get(pid)
+    if pilot is None or pilot.get("origin") != REGISTRY_ORIGIN:
+        return f"el piloto de tasa {pid} no es un experimento nativo registrado"
+    pre = [h for h in pilot["history"] if h.get("kind") == "TRANSITION" and h.get("to") == "PREREGISTERED"]
+    ev = (pre[0].get("evidence") or {}) if len(pre) == 1 else {}
+    if ev.get("independence_class") != B.TRADE_RATE_PILOT or not isinstance(ev.get("preregistration_sha256"), str) \
+            or not _SHA256.fullmatch(ev["preregistration_sha256"]):
+        return f"{pid} no fue congelado como piloto de tasa"
+    try:
+        pc = store.verify_cited(pid, ev["preregistration_sha256"])
+    except PreregStoreError as exc:
+        return f"contenido del piloto {pid} no recuperable del almacén: {exc}"
+    if B.boundary_class(pc.get("independence_boundary")) != B.TRADE_RATE_PILOT \
+            or B.boundary_error(pc.get("independence_boundary")):
+        return f"el contenido almacenado de {pid} no es un piloto de tasa"
+    return None
+
+
+def preregister(registry, frozen: "FrozenPreregistration", *, store: PreregistrationStore, dev_manifest_path,
+                data_root, actor: str = "orquestador") -> dict:
+    """ET-1 (CR-023 §C.9): congela en el registro (DESIGN → PREREGISTERED).
+    Orden: (1) snapshot de desarrollo verificada (I2) y coincidente con la declarada; confirmatorio:
+    `available_months` recalculado igual al declarado y suficiente, y `D_dev < B`; (2) contenido escrito
+    en el almacén (si falla, no hay transición y el archivo huérfano se conserva); (3) transición con
+    el SHA-256, el `trials_accounting` declarado (el registro lo recalcula dentro del bloqueo, CR-020
+    §C.3.3) y un `freeze_check` ejecutado dentro del bloqueo (V2, ventanas anteriores, V7, piloto)."""
     if not isinstance(registry, ExperimentRegistry):
         raise PreregistrationError("se requiere un ExperimentRegistry válido")
+    if not isinstance(store, PreregistrationStore):
+        raise PreregistrationError("se requiere un PreregistrationStore (CR-023 §C.4.1)")
     frozen.verify()
     c = frozen.content
-    return registry.transition(frozen.experiment_id, "PREREGISTERED", actor=actor,
-                               evidence={"preregistration_sha256": frozen.sha256,
-                                         "min_history_ok": c["min_history"].get("ok") is True,
-                                         "trials_accounting": c["trials_count"]})
+    why = B.independence_error(c, c["trials_count"]["planned_config_ids"]) \
+        if not accounting_shape_error(c.get("trials_count")) else "trials_count no válido"
+    if why:
+        raise PreregistrationError(f"preregistro no válido para ET-1: {why}")
+    why = _development_snapshot_error(c, dev_manifest_path, data_root)   # comprobación anticipada (sin escribir)
+    if why:
+        raise PreregistrationError(why)
+    store.write_frozen(frozen)           # antes de PREREGISTERED; un fallo del almacén no transita (C.4.1.2)
+    return registry.transition(frozen.experiment_id, "PREREGISTERED", actor=actor, evidence=freeze_evidence(frozen),
+                               freeze_check=build_freeze_check(frozen, store, dev_manifest_path=dev_manifest_path,
+                                                               data_root=data_root))
 
 
 def _registry_exposure(registry, experiment_id) -> bool:
@@ -479,6 +696,8 @@ def _deviation_shape_error(r) -> str | None:
         return "evidencia del registro de accesos no válida"
     if "informed_by" in r and not isinstance(r["informed_by"], list):   # R2: ausente = histórico
         return "informed_by no es una lista"
+    if r["field"] == "independence_boundary":       # CR-023 §D.2: forma exacta; antes y después de escribir
+        return B.independence_deviation_error(r)
     return None
 
 
@@ -664,17 +883,18 @@ def confirmatory_status(registry, experiment_id: str, *, preregistration=None,
 
 
 def freeze(prereg: dict) -> FrozenPreregistration:
+    """Congela un preregistro tras validarlo de forma pura, sin E/S (CR-023 §C.5, C.8). Un preregistro
+    incompleto o con una forma de independencia no válida no se congela (queda en DESIGN)."""
     missing = [k for k in REQUIRED_FIELDS if k not in prereg or prereg[k] in (None, "", [], {})]
     if missing:
         raise PreregistrationError(f"preregistro incompleto: {missing}")
     validate_wf_design(prereg["wf_design"], prereg["label_horizon_months"])
-    if not prereg["min_history"].get("ok"):
-        raise PreregistrationError("histórico mínimo no alcanzado: no se congela (queda en DESIGN)")
-    if prereg["trade_rate_source"] != "train_only":
-        raise PreregistrationError("la tasa de trades debe venir solo de Train")
     why = accounting_shape_error(prereg["trials_count"])               # CR-020 §C.3.3
     if why:
         raise PreregistrationError(f"trials_count debe declarar el desglose de la contabilidad de pruebas: {why}")
+    why = B.independence_error(prereg, prereg["trials_count"]["planned_config_ids"])   # CR-023 §C.3, C.5, C.8
+    if why:
+        raise PreregistrationError(why)
     parse_selection_rule(prereg["candidate_selection_rule"], prereg["trials_count"]["planned_config_ids"],
                          prereg["metrics"])                           # CR-020 §C.3.4
     content = json.loads(canonical_json(prereg))

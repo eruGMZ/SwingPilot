@@ -16,12 +16,13 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from swingpilot.research.experiments import (EvaluationRequestRejected, ExperimentError,  # noqa: E402
                                              ExperimentRegistry)
 from swingpilot.research.partitions import PartitionAccessError, PartitionLoader  # noqa: E402
-from swingpilot.research.preregistration import (EvaluationPersistenceUncertain, freeze,  # noqa: E402
-                                                 preregister)
+from swingpilot.research.preregistration import EvaluationPersistenceUncertain, freeze  # noqa: E402
+from test_cr023_b3_preregistration import cr023_fields, freeze_in_registry, store_for  # noqa: E402  (CR-023)
 
 WF = {"train_months": 24, "embargo_months": 2, "test_months": 6, "step_months": 6,
       "roll_frequency": "6M", "n_windows": 2}
@@ -44,12 +45,12 @@ def frozen(reg, planned=("A",)):
                                "costs", "acceptance_criteria", "rejection_criteria", "limitations",
                                "execution_model", "regime_declaration", "sharpe_definition")}
     p.update(experiment_id=EID, timeframes=["H4"], wf_design=dict(WF), label_horizon_months=1,
-             snapshot={"id": "SNAP-X"}, observed_trade_rate_per_month=3.0, trade_rate_source="train_only",
-             antecedents=["-"], min_history={"ok": True}, statistical_tests={"dsr_min_probability": 0.95},
+             antecedents=["-"], statistical_tests={"dsr_min_probability": 0.95},
              metrics=["sharpe"], trials_count=reg.trials_accounting(EID, list(planned)),
              candidate_selection_rule=f"PRIMARY {planned[0]}")
+    p.update(cr023_fields(planned))                                # CR-023 §C.5
     fz = freeze(p)
-    preregister(reg, fz)
+    freeze_in_registry(reg, fz)                                    # CR-023: almacén + clase + freeze_check
     for st, ev in (("DATA_VALIDATION", {}), ("DEVELOPMENT", {"snapshot_verified": True}), ("VALIDATION", {})):
         reg.transition(EID, st, actor="orquestador", evidence=ev)
     return fz
@@ -59,6 +60,7 @@ def loader_for(reg, tmp_path):
     """Solo la puerta del cargador: `_read` sintético que anota cada lectura."""
     loader = PartitionLoader.__new__(PartitionLoader)
     loader.registry, loader.access_log = reg, tmp_path / "access.jsonl"
+    loader.prereg_store = store_for(reg)                           # CR-023 §C.3.3: el cargador exige el almacén
     loader.manifest = {"snapshot_id": "SNAP-TEST", "kind": "development"}
     loader.reads = []
     loader._read = lambda part: loader.reads.append(part) or pd.DataFrame({"interval": ["1d"]})

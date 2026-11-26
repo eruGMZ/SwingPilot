@@ -29,7 +29,12 @@ Reglas:
 - Un archivo sin PREREGISTERED que lo cite es huérfano: se conserva, sin autoridad.
 - Todos los fallos son fallos técnicos de evidencia (independence_status INDETERMINATE).
 
-No se integra aún con ``preregister()`` ni con el registro de experimentos.
+Integración (CR-023, bloque B3): ``preregistration.preregister()`` escribe aquí el contenido
+(``write_frozen``) ANTES de la transición PREREGISTERED y le pasa al registro un ``freeze_check``
+que vuelve a verificarlo con ``verify_cited`` dentro del bloqueo (V2); ``PartitionLoader`` lo usa
+para leer la clase de independencia del preregistro citado (§C.3.3). Un fallo del almacén impide la
+transición; el archivo huérfano se conserva. No se integra aún con ``independence_status`` (bloque
+posterior).
 """
 from __future__ import annotations
 

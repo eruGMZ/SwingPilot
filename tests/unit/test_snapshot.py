@@ -17,6 +17,7 @@ import pandas as pd
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from swingpilot.market_data import BinancePublicClient, interval_ms  # noqa: E402
 from swingpilot.research import partitions as P  # noqa: E402
@@ -24,6 +25,7 @@ from swingpilot.research import snapshot as SN  # noqa: E402
 from swingpilot.research.experiments import ExperimentError, ExperimentRegistry  # noqa: E402
 from swingpilot.research.partitions import (FinalEvaluationGrant, PartitionAccessError,  # noqa: E402
                                             PartitionLoader)
+from test_cr023_b3_preregistration import register_confirmatory, store_for  # noqa: E402  (CR-023 B3)
 from swingpilot.research.snapshot import (COLUMNS, DAY_MS, ReservedWindow, SnapshotError, _date_ms,  # noqa: E402
                                           build_snapshot, canonical_content_digest, compute_train_end,
                                           load_manifest, validate_manifest, verify_snapshot)
@@ -151,7 +153,9 @@ def _decisions(tmp, text="AUTORIZA: EXP-0900 OOS_EVALUATION\nAUTORIZA: EXP-0900 
 
 
 def _loader(res, tmp, reg=None):
-    return PartitionLoader(res.manifest_path, tmp / "var" / "snapshots", tmp / "access.jsonl", registry=reg)
+    # CR-023 §C.3.3: el cargador de desarrollo exige el almacén de preregistros (temporal, junto al registro)
+    return PartitionLoader(res.manifest_path, tmp / "var" / "snapshots", tmp / "access.jsonl", registry=reg,
+                           prereg_store=store_for(reg) if reg is not None else None)
 
 
 # --- TC-ML-015 / TC-ML-017 ---------------------------------------------------------------------
@@ -454,11 +458,19 @@ def test_tc_ml_016_lockbox_and_oos_denied_without_grant_and_logged(esnap, monkey
         [("train_val", False), ("lockbox", False), ("oos", False)]
 
 
+
+def legacy_freeze_check():
+    """Solo pruebas heredadas (CR-020/CR-021): congelación sin las comprobaciones de ET-1, construida
+    deliberadamente con la credencial privada (B3-01: el registro ya no acepta un invocable arbitrario)."""
+    from swingpilot.research.experiments import _FREEZE_CHECK_KEY, FreezeCheck
+    return FreezeCheck(_FREEZE_CHECK_KEY, lambda records, experiment_id, evidence: None)
+
 def _advance_to_oos(reg, eid="EXP-0900"):
     reg.create(eid, "prueba", actor="orquestador")
     reg.transition(eid, "DESIGN", actor="orquestador")
-    reg.transition(eid, "PREREGISTERED", actor="orquestador",
+    reg.transition(eid, "PREREGISTERED", actor="orquestador", freeze_check=legacy_freeze_check(),   # CR-023
                    evidence={"preregistration_sha256": "a" * 64, "min_history_ok": True,
+                             "independence_class": "CONFIRMATORY",
                              "trials_accounting": reg.trials_accounting(eid, ["A"])})        # CR-020
     reg.transition(eid, "DATA_VALIDATION", actor="orquestador")
     reg.transition(eid, "DEVELOPMENT", actor="orquestador", evidence={"snapshot_verified": True})
@@ -997,9 +1009,7 @@ def test_tc_ml_023_loader_delivers_train_val_only_for_registered_pair(snap):
     reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
     reg.create("EXP-0900", "prueba", actor="orquestador")
     reg.transition("EXP-0900", "DESIGN", actor="orquestador")
-    reg.transition("EXP-0900", "PREREGISTERED", actor="orquestador",
-                   evidence={"preregistration_sha256": "a" * 64, "min_history_ok": True,
-                             "trials_accounting": reg.trials_accounting("EXP-0900", ["A"])})
+    register_confirmatory(reg, "EXP-0900", ("A",))        # CR-023: contenido en el almacén + clase CONFIRMATORY
     reg.transition("EXP-0900", "DATA_VALIDATION", actor="orquestador")
     reg.transition("EXP-0900", "DEVELOPMENT", actor="orquestador", evidence={"snapshot_verified": True})
     loader = _loader(res, tmp, reg)
@@ -1059,9 +1069,7 @@ def _dev_registry(tmp, eids=("EXP-0900",)):
     for eid in eids:
         reg.create(eid, "prueba", actor="orquestador")
         reg.transition(eid, "DESIGN", actor="orquestador")
-        reg.transition(eid, "PREREGISTERED", actor="orquestador",
-                       evidence={"preregistration_sha256": "a" * 64, "min_history_ok": True,
-                                 "trials_accounting": reg.trials_accounting(eid, ["A", "B"])})
+        register_confirmatory(reg, eid, ("A", "B"))       # CR-023: contenido en el almacén + clase CONFIRMATORY
         reg.transition(eid, "DATA_VALIDATION", actor="orquestador")
         reg.transition(eid, "DEVELOPMENT", actor="orquestador", evidence={"snapshot_verified": True})
     return reg

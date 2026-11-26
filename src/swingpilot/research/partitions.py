@@ -31,6 +31,13 @@ TC-ML-001, TC-ML-007, TC-ML-012, TC-ML-016, TC-ML-019).
   exige que la partición pedida y el experimento coincidan con el `window_id` del manifiesto.
   NO implementados aquí (B6): la lectura del `context` junto con su partición, la regla
   OOS-antes-que-LOCKBOX y las comprobaciones V.
+- CR-023 (bloque B3, §C.3.3): `load_train_val_for_configuration` exige además el almacén de
+  preregistros (`prereg_store`). Lee la clase de independencia de la transición PREREGISTERED y
+  verifica el contenido citado en el almacén (hash, experimento y clase coherentes con
+  `independence_boundary`); sin almacén, con un fallo de verificación, con contenido de otro
+  experimento o con una clase desconocida deniega, anota y no lee datos. El piloto de tasa
+  (TRADE_RATE_PILOT) solo recibe la porción Train (`open_time` < `cuts_ms.train_end`): nunca
+  Validation. La clase CONFIRMATORY conserva el comportamiento vigente.
 - DEC-018: en IMPL-3 no se evalúan OOS ni LOCKBOX; ninguna autorización real se emite.
 - CR-020 (§C.3.2) y A2 (opción B del propietario): `load_train_val_for_configuration` solo
   entrega Train+Val si el par (experimento, configuración) está en la evidencia VALIDADA del
@@ -58,7 +65,10 @@ import pandas as pd
 import pyarrow
 import pyarrow.parquet as pq
 
+from . import boundary as B
+from .experiments import REGISTRY_ORIGIN
 from .preregistration import evaluation_evidence_error
+from .prereg_store import PreregStoreError
 from .snapshot import (KIND_DEVELOPMENT, KIND_EVALUATION, MODE_SEALED, SEALED, SEALED_FILES, SealingError,
                        enforce_sealing, load_manifest, sha256_file)
 
@@ -91,8 +101,11 @@ def _now() -> str:
 
 
 class PartitionLoader:
+    prereg_store = None        # CR-023 §C.3.3: sin almacén, el cargador de desarrollo deniega (Fail-Closed)
+
     def __init__(self, manifest_path: Path, data_root: Path, access_log: Path, *, registry=None,
-                 owner: str = "propietario"):
+                 owner: str = "propietario", prereg_store=None):
+        self.prereg_store = prereg_store
         self.manifest = load_manifest(manifest_path)
         self.data_dir = Path(data_root) / self.manifest["snapshot_id"]
         self.access_log = Path(access_log)
@@ -181,12 +194,49 @@ class PartitionLoader:
                     reason = evaluation_evidence_error(self.registry, experiment_id, config_id)
             except Exception as exc:
                 reason = f"registro de experimentos ilegible, corrupto o incoherente: {exc!r}"
+        independence = None
+        if not reason:                              # CR-023 §C.3.3: clase de independencia del preregistro
+            reason, independence = self._independence_scope(experiment_id)
+        train_end = None
+        if not reason and independence == B.TRADE_RATE_PILOT:
+            train_end = (self.manifest.get("cuts_ms") or {}).get("train_end")
+            if not isinstance(train_end, int) or isinstance(train_end, bool):
+                reason = "manifiesto sin cuts_ms.train_end: no se puede limitar el piloto de tasa a Train"
         if reason:
             self._log("train_val", False, reason, experiment_id)
             raise PartitionAccessError(f"acceso a train_val denegado: {reason}")
-        self._log("train_val", True, f"evaluación de la configuración {config_id}", experiment_id)
+        self._log("train_val", True, f"evaluación de la configuración {config_id}"
+                  + (" (piloto de tasa: solo Train)" if train_end is not None else ""), experiment_id)
         df = self._read("train_val")
-        return df[df["interval"] == interval].reset_index(drop=True) if interval else df
+        if train_end is not None:                   # el piloto nunca recibe Validation
+            df = df[df["open_time"] < train_end]
+        return df[df["interval"] == interval].reset_index(drop=True) if interval else df.reset_index(drop=True)
+
+    def _independence_scope(self, experiment_id: str) -> tuple[str | None, str | None]:
+        """(motivo, clase). Lee la clase de la transición PREREGISTERED del registro y verifica en el
+        almacén el contenido citado; la clase debe coincidir con `independence_boundary` del contenido.
+        Cualquier fallo o clase desconocida → motivo (denegado). No lee datos de la snapshot."""
+        if self.prereg_store is None:
+            return "sin almacén de preregistros (CR-023 §C.3.3)", None
+        try:
+            exp = self.registry.experiments().get(experiment_id)
+            if exp is None or exp.get("origin") != REGISTRY_ORIGIN:
+                return f"{experiment_id} no es un experimento nativo registrado", None
+            pre = [h for h in exp["history"] if h.get("kind") == "TRANSITION" and h.get("to") == "PREREGISTERED"]
+            if len(pre) != 1:
+                return f"{experiment_id}: sin una única transición a PREREGISTERED", None
+            ev = pre[0].get("evidence") or {}
+            content = self.prereg_store.verify_cited(experiment_id, ev.get("preregistration_sha256"))
+        except PreregStoreError as exc:
+            return f"contenido del preregistro no verificable en el almacén: {exc}", None
+        except Exception as exc:
+            return f"registro o almacén ilegible, corrupto o incoherente: {exc!r}", None
+        cls = ev.get("independence_class")
+        if cls not in (B.CONFIRMATORY, B.TRADE_RATE_PILOT):
+            return f"clase de independencia no válida o ausente: {cls!r}", None
+        if content.get("experiment_id") != experiment_id or B.boundary_class(content.get("independence_boundary")) != cls:
+            return "el contenido almacenado no corresponde a la clase de independencia congelada", None
+        return None, cls
 
     def split_train_validation(self, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Train = primeros 5/7 y Validation = últimos 2/7 por fecha (corte del manifiesto)."""
