@@ -908,3 +908,18 @@ implementation/conflict_register.md — CONF-001, CONF-002 resueltos
 5. Los archivos en `src/` están vacíos — correctamente, hasta FASE 2
 6. Los parámetros PENDING no se rellenan por suposición — solo con información real del propietario o del sistema Binance
 7. No crear código funcional de SwingPilot hasta la autorización de FASE 2
+
+---
+
+## Estado CR-023 B7 (2026-11-26, cierre B7.4c)
+
+- B7 implementado sin commit: `window_evaluation.py` (nuevo), `acceptance.py`, `backtest.py`, `partitions.py` modificados; 5 archivos de pruebas/auxiliar nuevos en `tests/unit/`. HEAD `8a50604`.
+- Verificación (exit codes reales): unit 1353 passed (0); security/aislamiento 3 passed (0); validate_gates/manifest/requirements OK (0/0/0). Registro de experimentos intacto (md5 `8af8e3e0…`).
+- Decisiones aprobadas: procedencia de ventana vía `FinalEvaluationData`; LOCKBOX perezoso (solo tras OOS ELIGIBLE_FOR_HUMAN_REVIEW). Esquema D6 y métodos estadísticos DIFERIDOS.
+- Limitaciones: controles en proceso sin tamper-evidence; ninguna evaluación real autorizada; B8–B9 sin iniciar; D3 abierta, D4 bloqueada.
+- QA independiente pendiente (sesión distinta, solo lectura) antes de cerrar FEAT. No hay commit ni push autorizados.
+
+### B7.4d — Resoluciones del propietario (2026-11-26)
+- R1 (opción B): `FinalWindowProvenance` inmutable emitido por el cargador y adjunto a `FinalEvaluationData` (grant, experimento, snapshot, ventana, registro de consumo, digests canónicos). R2: manifiesto y cargador del LOCKBOX resueltos perezosamente tras OOS favorable, con autorización humana explícita.
+- Forma del registro intacta; protección en modelo de proceso confiable, sin tamper-evidence. Corrige la línea de procedencia de B7.4c (era inferencia).
+- Pendiente: implementar/verificar R1 y R2 (no hecho). Sin commit ni push.

@@ -20,6 +20,18 @@ Reglas:
 - Señales inválidas (stop no finito, ≤ 0 o ≥ precio de entrada ejecutado; TP no finito o ≤
   precio de entrada) se descartan y se cuentan (QA3-12).
 
+Modo ventana (CR-023 C.8, AC-017-6, TC-ML-018/027; solo OOS y LOCKBOX; el Walk-Forward no lo
+usa y conserva la semántica anterior):
+- `context` (velas previas a la ventana) solo es visible para la lógica; no genera señales,
+  entradas ni operaciones. La evaluación empieza sin posición ni órdenes pendientes.
+- Una señal en la última vela de la ventana tendría su entrada en una vela posterior: no se
+  ejecuta (se cuenta en `window_end_signals`). No se lee ningún dato posterior.
+- Última vela de la ventana con NaN → `InvalidFinalWindowCandle` (Fail-Closed, antes de
+  ejecutar nada); nunca se sustituye por una vela anterior ni posterior.
+- Posición abierta tras la última vela cerrada: stop/TP de esa vela con las reglas vigentes
+  (stop primero); si sigue abierta, se cierra al cierre con slippage adverso y comisión
+  contractuales, `exit_reason = forced_window_close`, informada por separado.
+
 El motor no contiene ninguna estrategia: recibe la lógica por interfaz (DEC-018: el piloto no
 se preregistra todavía).
 """
@@ -33,6 +45,13 @@ import pandas as pd
 
 MIN_COMMISSION = 0.001   # 0.10% por lado (DEC-004 P03)
 SLIPPAGE = 0.001         # 0.10% (DEC-004 P04)
+FORCED_WINDOW_CLOSE = "forced_window_close"
+
+
+class InvalidFinalWindowCandle(ValueError):
+    """Fail-Closed (CR-023 C.8): la última vela de la ventana tiene NaN en open/high/low/close.
+    No se sustituye por otra vela ni se ejecuta el cierre forzado; la evaluación es técnica-
+    mente inválida (el integrador la trata como error, nunca como resultado)."""
 
 
 @dataclass(frozen=True)
@@ -92,10 +111,14 @@ class Trade:
     entry_price: float               # ejecutado (con slippage)
     exit_price: float                # ejecutado (con slippage)
     initial_stop: float
-    exit_reason: str                 # STOP | STOP_GAP | TAKE_PROFIT | TAKE_PROFIT_GAP | EXIT_SIGNAL | END_OF_DATA
+    exit_reason: str                 # STOP | STOP_GAP | TAKE_PROFIT | TAKE_PROFIT_GAP | EXIT_SIGNAL | END_OF_DATA | forced_window_close
     gross_r: float                   # con precios de referencia, sin fricciones
     slippage_r: float
     commission_r: float
+
+    @property
+    def forced_window_close(self) -> bool:
+        return self.exit_reason == FORCED_WINDOW_CLOSE
 
     @property
     def cost_r(self) -> float:
@@ -111,14 +134,19 @@ class BacktestResult:
     trades: list[Trade]
     skipped_signals: int
     invalid_signals: int = 0
+    window_end_signals: int = 0      # señales de la última vela de la ventana: no ejecutadas
 
     def summary(self) -> dict:
         g = sum(t.gross_r for t in self.trades)
         sl = sum(t.slippage_r for t in self.trades)
         cm = sum(t.commission_r for t in self.trades)
+        forced = [t for t in self.trades if t.forced_window_close]
         return {"trades": len(self.trades), "gross_r": g, "slippage_r": sl, "commission_r": cm,
                 "costs_r": sl + cm, "net_r": g - sl - cm, "skipped_signals": self.skipped_signals,
-                "invalid_signals": self.invalid_signals}
+                "invalid_signals": self.invalid_signals,
+                "window_end_signals": self.window_end_signals,
+                "forced_window_close_trades": len(forced),
+                "forced_window_close_net_r": sum(t.net_r for t in forced)}
 
     def equity_curve(self, risk_fraction: float, start: float = 1.0) -> list[float]:
         """Equity con riesgo fijo por operación (fracción preregistrada; INV-001 ≤ 1.5%)."""
@@ -138,11 +166,29 @@ def _finite_pos(x) -> bool:
     return isinstance(x, (int, float)) and not isinstance(x, bool) and np.isfinite(x) and x > 0
 
 
-def run_backtest(bars: pd.DataFrame, logic: StrategyLogic, model: ExecutionModel = ExecutionModel()) -> BacktestResult:
-    """`bars`: una temporalidad, ordenada por open_time, columnas open/high/low/close/open_time."""
+def run_backtest(bars: pd.DataFrame, logic: StrategyLogic, model: ExecutionModel = ExecutionModel(),
+                 *, context: pd.DataFrame | None = None) -> BacktestResult:
+    """`bars`: una temporalidad, ordenada por open_time, columnas open/high/low/close/open_time.
+
+    `context=None`: modo clásico (Walk-Forward; cierre END_OF_DATA). `context` (DataFrame, puede
+    ser vacío): modo ventana CR-023; `bars` es la ventana de evaluación y `context` las velas
+    previas, solo visibles para la lógica (ver docstring del módulo)."""
     if not bars["open_time"].is_monotonic_increasing:
         raise ValueError("las velas deben estar ordenadas por open_time")
+    window_mode = context is not None
+    start = 0
+    if window_mode:
+        if len(bars) == 0:
+            raise ValueError("la ventana de evaluación no puede estar vacía")
+        if not context["open_time"].is_monotonic_increasing:
+            raise ValueError("las velas de contexto deben estar ordenadas por open_time")
+        if len(context) and context["open_time"].iloc[-1] >= bars["open_time"].iloc[0]:
+            raise ValueError("el contexto debe ser estrictamente anterior a la ventana")
+        start = len(context)
+        bars = pd.concat([context, bars], ignore_index=True)
     bars = bars.reset_index(drop=True)
+    if window_mode and not _valid(bars.iloc[-1]):
+        raise InvalidFinalWindowCandle("la última vela de la ventana no es válida (NaN)")
     rows = bars.to_dict("records")
     s, fee = model.slippage, model.commission_rate
     trades: list[Trade] = []
@@ -150,7 +196,8 @@ def run_backtest(bars: pd.DataFrame, logic: StrategyLogic, model: ExecutionModel
     entry_ref = 0.0
     pending_entry: EntrySignal | None = None
     pending_exit = False
-    skipped = invalid = 0
+    skipped = invalid = window_end = 0
+    last_index = len(bars) - 1
 
     def close(i, ref_price, reason):
         nonlocal pos
@@ -164,6 +211,8 @@ def run_backtest(bars: pd.DataFrame, logic: StrategyLogic, model: ExecutionModel
         pos = None
 
     for i, row in enumerate(rows):
+        if i < start:   # contexto: sin señales, entradas ni operaciones
+            continue
         valid = _valid(row)
         # 1) órdenes decididas al cierre de la vela anterior, a la apertura de esta
         if pending_entry is not None:
@@ -209,8 +258,14 @@ def run_backtest(bars: pd.DataFrame, logic: StrategyLogic, model: ExecutionModel
         elif pending_entry is None:
             sig = logic.entry_signal(visible, i)
             if sig is not None:
-                pending_entry = sig
+                if window_mode and i == last_index:
+                    window_end += 1   # su entrada caería fuera de la ventana: no se ejecuta
+                else:
+                    pending_entry = sig
     if pos is not None:
-        last = max(k for k, r in enumerate(rows) if _valid(r))
-        close(last, rows[last]["close"], "END_OF_DATA")
-    return BacktestResult(trades, skipped, invalid)
+        if window_mode:   # la última vela es válida (comprobado al inicio)
+            close(last_index, rows[last_index]["close"], FORCED_WINDOW_CLOSE)
+        else:
+            last = max(k for k, r in enumerate(rows) if _valid(r))
+            close(last, rows[last]["close"], "END_OF_DATA")
+    return BacktestResult(trades, skipped, invalid, window_end)

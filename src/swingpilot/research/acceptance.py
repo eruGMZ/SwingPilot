@@ -180,7 +180,8 @@ def _domain_errors(ev: ExperimentEvidence) -> list[str]:
     return errs
 
 
-def evaluate(ev: ExperimentEvidence, registry, *, preregistration, selection_inputs: bytes | None) -> Verdict:
+def evaluate(ev: ExperimentEvidence, registry, *, preregistration, selection_inputs: bytes | None,
+             p15_part: str | None = None) -> Verdict:
     """Veredicto del evaluador (C.5): INCONCLUSIVE no cambia por sí solo el estado del
     experimento; cualquier veredicto distinto de ELIGIBLE_FOR_HUMAN_REVIEW lo hace no elegible
     para aprobación (TC-ML-006)."""
@@ -191,7 +192,7 @@ def evaluate(ev: ExperimentEvidence, registry, *, preregistration, selection_inp
     if not rec["ok"]:
         return Verdict("INCONCLUSIVE", list(rec["reasons"]),
                        {"trials_count": None, "trials_accounting": accounting, "buy_and_hold": ev.buy_and_hold_report})
-    return _evaluate_with_trials(ev, rec["N_eval"], {"trials_accounting": accounting})
+    return _evaluate_with_trials(ev, rec["N_eval"], {"trials_accounting": accounting}, p15_part=p15_part)
 
 
 def _check_inputs(ev: ExperimentEvidence) -> None:
@@ -203,7 +204,8 @@ def _check_inputs(ev: ExperimentEvidence) -> None:
         raise ValueError(f"trades OOS declarados ({ev.trades.get('oos')}) ≠ serie ({len(ev.oos_net_r)}) (QA3-07)")
 
 
-def _evaluate_with_trials(ev: ExperimentEvidence, trials: int, extra: dict | None = None) -> Verdict:
+def _evaluate_with_trials(ev: ExperimentEvidence, trials: int, extra: dict | None = None, *,
+                          p15_part: str | None = None) -> Verdict:
     """Métricas y umbrales con un número de pruebas ya conciliado. Uso interno: solo `evaluate`
     lo obtiene del registro (las pruebas unitarias de umbrales lo llaman directamente)."""
     _check_inputs(ev)
@@ -217,9 +219,12 @@ def _evaluate_with_trials(ev: ExperimentEvidence, trials: int, extra: dict | Non
         return Verdict("INCONCLUSIVE", [f"entradas fuera de dominio o incoherentes (Fail-Closed): {e}"
                                         for e in domain], metrics)
     reasons = []
-    for part, need in MIN_TRADES.items():
-        if ev.trades.get(part, 0) < need:
-            reasons.append(f"muestra insuficiente en {part}: {ev.trades.get(part, 0)} < {need}")
+    # CR-023 B7.2: con `p15_part` (oos | lockbox) la muestra mínima P15 se exige solo a esa ventana,
+    # cuya serie viaja en los campos `oos_*` (incluye los cierres forzados de la ventana).
+    for part, need in (MIN_TRADES.items() if p15_part is None else [(p15_part, MIN_TRADES[p15_part])]):
+        n = ev.trades.get("oos" if p15_part else part, 0)
+        if n < need:
+            reasons.append(f"muestra insuficiente en {part}: {n} < {need}")
     if reasons:
         return Verdict("INCONCLUSIVE", reasons, metrics)
     try:

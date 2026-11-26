@@ -75,7 +75,7 @@ from . import independence as I
 from .independence import consumption_error
 from .prereg_store import PreregStoreError
 from .snapshot import (KIND_DEVELOPMENT, KIND_EVALUATION, MODE_SEALED, SEALED, SEALED_FILES, SealingError,
-                       enforce_sealing, load_manifest, sha256_file)
+                       canonical_content_digest, enforce_sealing, load_manifest, sha256_file)
 
 
 def _classify(checks: dict) -> str | None:
@@ -126,6 +126,32 @@ class PartitionAccessError(PermissionError):
     pass
 
 
+# B7.4d (CR-023): credencial en proceso de la procedencia emitida por el cargador. Solo `load_final` construye
+# `FinalWindowProvenance` (precedente `ConsumptionCheck`). Control en proceso, no tamper-evidence.
+_PROVENANCE_KEY = object()
+
+
+class FinalWindowProvenance:
+    """Evidencia inmutable emitida por `load_final` y ligada a la grant (experimento, partición, snapshot,
+    decisión, aprobador), a la ventana, al registro de consumo devuelto por `claim_partition` y a los digests
+    canónicos de la partición y del `context` realmente entregados. No añade campos al registro."""
+    __slots__ = ("grant", "window_id", "consumption", "digests")
+
+    def __init__(self, key, grant: tuple, window_id: str, consumption: dict, digests: dict):
+        if key is not _PROVENANCE_KEY:
+            raise PartitionAccessError("FinalWindowProvenance solo la emite PartitionLoader.load_final (CR-023 B7.4d)")
+        for name, value in (("grant", tuple(grant)), ("window_id", window_id),
+                            ("consumption", json.dumps(consumption, sort_keys=True)),
+                            ("digests", json.dumps(digests, sort_keys=True))):
+            object.__setattr__(self, name, value)
+
+    def __setattr__(self, name, value):
+        raise AttributeError("FinalWindowProvenance es inmutable")
+
+    def __delattr__(self, name):
+        raise AttributeError("FinalWindowProvenance es inmutable")
+
+
 @dataclass(frozen=True)
 class FinalEvaluationData:
     """B6.5b (CR-023 §C.9.4): resultado único de `load_final`: la partición pedida y el `context` de su propia
@@ -134,6 +160,7 @@ class FinalEvaluationData:
     partition: str
     data: pd.DataFrame
     context: pd.DataFrame
+    provenance: FinalWindowProvenance | None = None     # B7.4d: sin ella la evaluación se niega (Fail-Closed)
 
     def __len__(self) -> int:
         return len(self.data)
@@ -322,7 +349,12 @@ class PartitionLoader:
         self._log(partition, True, f"evaluación final única ({grant.decision_ref})", exp)
         try:        # B6.5b: context + partición bajo el mismo consumo; si falla cualquiera no se entrega nada
             context = self._read("context")
-            return FinalEvaluationData(partition, self._read(partition), context)
+            frame = self._read(partition)
+            prov = FinalWindowProvenance(
+                _PROVENANCE_KEY, (grant.experiment_id, grant.partition, grant.snapshot_id, grant.decision_ref,
+                                  grant.approved_by), str(self.manifest.get("window_id") or ""), claimed,
+                {"context": canonical_content_digest(context), partition: canonical_content_digest(frame)})
+            return FinalEvaluationData(partition, frame, context, prov)
         except BaseException as exc:
             self._log(partition, False, f"lectura fallida tras el consumo; la partición queda consumida: {exc!r}", exp)
             raise

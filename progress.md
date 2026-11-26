@@ -1940,3 +1940,23 @@ Condiciones del propietario:
 **Compatibilidad confirmada (sin conflicto contractual):** (a) C.6.4/ET-6 «reclamación atómica vigente» se conserva y se amplía dentro del mismo bloqueo; (b) forma de `PARTITION_CONSUMED` intacta (C.6.4; «registro sin campos nuevos»); (c) C2: todas las denegaciones nuevas son técnicas (`INDETERMINATE`/`UNDETERMINABLE`; `ELIGIBILITY_UNDETERMINED`), las metodológicas siguen viniendo de V1 `INVALIDA`, `DEVIATION` y `LIBERACION`; (d) CR-020/021/022: contabilidad, durabilidad (`_write` con `_load` y `fsync`) y almacén de preregistros sin cambio; el cierre fail-closed ante registro corrupto se preserva; (e) C.9 «solo existencia y sintaxis» de V1/V6/V7: la línea añade sintaxis y ligadura, no valida el fondo; (f) `_FINAL_ACCESS_BLOCKED_UNTIL_B6` se conserva hasta B6.
 **Costes/riesgos registrados:** cambio de firma de `claim_partition` (adaptar pruebas de `test_research`, `test_snapshot`, `test_cr021_durability`, `test_qa_cr020_02`, `test_trials_accounting`, `test_cr023_b5_evaluation_snapshot`); B5 requiere ajuste (duplicados y publicación bajo bloqueo) con autorización; un duplicado no consumido solo se elimina manualmente; controles en proceso sin tamper-evidence.
 **Sin cambios:** contrato v1.11, `feature_list.json` v1.23.0, código, pruebas, FEAT, conflictos, gates; decisiones abiertas restantes siguen abiertas (decisiones 1–4 resueltas aparte); B6–B9 sin iniciar; D3 ABIERTA; D4 bloqueada. Sin sub-agentes ni commit.
+
+### CR-023 B7 — evaluación por ventana final: evidencia de cierre B7.4c (2026-11-26)
+
+**Alcance B7:** `src/swingpilot/research/window_evaluation.py` (nuevo; evaluador por ventana, ET-7, AC-017-6, P15); cambios en `acceptance.py`, `backtest.py` (modo ventana) y `partitions.py`; `tests/unit/tape.py` (auxiliar) y `tests/unit/test_cr023_b7_{acceptance,backtest,e2e,provenance}_window.py`. Sin commit ni push; HEAD `8a50604`; árbol con 3 modificados y 6 sin seguimiento, todos de B7.
+
+**Evidencia B7.4c (códigos de salida reales):** `pytest tests/unit` → 1353 passed, exit 0 (326 s); `pytest tests/security` (guardas de aislamiento) → 3 passed, exit 0; `validate_gates.py` OK, exit 0; `validate_manifest.py` OK, exit 0; `validate_requirements.py` OK, exit 0. `research/experiments/registry.jsonl` sin cambios (md5 `8af8e3e0…` idéntico antes y después; 2439 bytes). Sin datos reales, sin sub-agentes.
+
+**Decisiones aprobadas reflejadas:** (a) procedencia de la ventana final verificada vía `FinalEvaluationData` (B6.5b), cubierta por `test_cr023_b7_provenance_window.py`; (b) carga perezosa del LOCKBOX: solo se carga (y consume) si el veredicto OOS es ELIGIBLE_FOR_HUMAN_REVIEW; tras OOS desfavorable o INCONCLUSIVE el cargador no se invoca. El módulo nunca escribe en el registro, no revierte consumos, `retry_allowed` es siempre False y nunca devuelve APPROVED.
+
+**Diferido:** esquema D6 y métodos estadísticos (sin implementar ni fijar).
+
+**Limitaciones restantes:** controles en proceso sin tamper-evidence (misma limitación que `FreezeCheck`); ninguna evaluación real autorizada (O3/O4 del propietario); B8–B9 sin iniciar; D3 abierta, D4 bloqueada; sin cambios de contrato (v1.11), `feature_list.json`, FEAT ni gates.
+
+**Obligaciones de QA independiente:** revisión de solo lectura de B7 por una sesión distinta antes de cualquier cierre de FEAT; verificar carga perezosa del LOCKBOX, ausencia de escrituras en el registro, tratamiento técnico vs metodológico en ET-7 y que `tape.py` no filtre a `src/`.
+
+**B7.4d — Resoluciones aprobadas por el propietario (2026-11-26; corrige la descripción de procedencia de B7.4c, que era una inferencia):**
+- **R1 (opción B):** se exige un `FinalWindowProvenance` inmutable, emitido por el cargador y adjunto a `FinalEvaluationData`, que vincula grant, experimento, snapshot, ventana, registro de consumo y digests canónicos del contenido.
+- **R2:** el manifiesto y el cargador del LOCKBOX se resuelven de forma perezosa, solo tras una evaluación OOS favorable, preservando la autorización humana explícita.
+- La forma del registro no cambia. La protección de procedencia opera dentro del modelo de proceso confiable y no es tamper-evident frente a un proceso Python comprometido.
+- **Estado:** resoluciones registradas; la implementación de R1/R2 no se ha realizado ni verificado en esta entrada. Sin cambios de código, contrato, FEAT ni gates; sin commit ni push.
