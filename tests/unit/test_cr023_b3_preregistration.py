@@ -16,6 +16,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
+from historical_approval import seed_historical_approval  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -1111,7 +1112,7 @@ def _confirmatory_in(env, state):
         env.reg.transition("EXP-0201", "OOS_EVALUATION", actor="propietario", evidence=_oos_ev("EXP-0201"))
         env.reg.transition("EXP-0201", "AUDIT", actor=ACTOR)
         env.reg.transition("EXP-0201", "HUMAN_REVIEW", actor=ACTOR)
-        env.reg.transition("EXP-0201", "APPROVED", actor="propietario", evidence={"decision_ref": "DEC-900_ok.md"})
+        seed_historical_approval(env.reg, "EXP-0201", "DEC-900_ok.md")   # B8.2: histórico sembrado
     assert env.reg.state("EXP-0201") == state
     return fz
 

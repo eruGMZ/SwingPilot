@@ -354,3 +354,10 @@ Reevaluación de CONF-009 antes del cierre de FEAT-017; CONF-010 OPEN con O3 y O
 - **§C.9, ET-8 y la frase «V1, V6 y V7 solo verifican existencia y sintaxis»:** ampliados; ET-8 verifica además los `evaluation_hash` de OOS y LOCKBOX (CR-024 §B.8). V4-post, la gramática y la unicidad de la decisión 5 no cambian.
 - **B7 («no escribe en el registro»):** se conserva para `evaluate_window`; la persistencia vive en un módulo de orquestación.
 - **CR-021 (Train+Val):** semántica sin cambios.
+
+## Notas de vigencia (CR-025, contrato v1.13; el texto original de CR-023 se conserva)
+
+- **§C.9 (matriz ET-1..ET-10):** ET-9 y ET-10 añaden la comprobación V9 (integridad autoritativa ligada a la aprobación, CR-025); ET-8 comparte con V9 la verificación de evidencia de resultados.
+- **§D.8 (clasificación):** la lista de causas `UNDETERMINABLE` añade «V9: integridad del resultado ligado a la aprobación» (siempre técnica; incluye el bloqueo del registro no obtenido en 2 s en ET-10).
+- **§H («sin cambios de tipos de registro»):** vigente; la ligadura es una clave de la evidencia de la transición APPROVED (`approval_binding`), no un tipo de registro.
+- **ET-10 en el Strategy Engine:** diferido a B9.

@@ -11,6 +11,7 @@ import uuid
 from pathlib import Path
 
 import pytest
+from historical_approval import legacy_promotion_check, seed_historical_approval  # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
@@ -180,7 +181,7 @@ def _approve(exps, eid="EXP-0301"):
     exps.transition(eid, "OOS_EVALUATION", actor="propietario", evidence=_cr020_oos_ev(exps, eid, "DEC-900_x.md"))
     exps.transition(eid, "AUDIT", actor="orquestador")
     exps.transition(eid, "HUMAN_REVIEW", actor="orquestador")
-    exps.transition(eid, "APPROVED", actor="propietario", evidence={"decision_ref": "DEC-900_x.md"})
+    seed_historical_approval(exps, eid, "DEC-900_x.md")   # B8.2: histórico sembrado
 
 
 class FakePredictor:
@@ -194,7 +195,7 @@ def test_ml_active_suspended_and_missing_predictor(regs):
     exps, mr = regs
     _approve(exps)
     mr.register("M1", "1.0.0", data_hash="d" * 64, code_hash="c" * 64, params={}, experiment_id="EXP-0301")
-    mr.promote("M1", "1.0.0", requested_by="orquestador")
+    mr.promote("M1", "1.0.0", requested_by="orquestador", promotion_check=legacy_promotion_check(exps))
     assert MLEngine(mr).run(e1(), market())["payload"]["error"]["code"] == "SPEC_NOT_FOUND"
     p = MLEngine(mr, FakePredictor()).run(e1(), market())["payload"]
     assert p["inference_status"] == "INFERENCE_AVAILABLE" and p["approval_ref"] == "EXP-0301" and p["prediction"]["value"] == 0.01
@@ -349,7 +350,7 @@ def test_qa3e_03_strategy_and_ml_inconsistent_candles(regs, case, mk):
     exps, mr = regs
     _approve(exps)
     mr.register("M1", "1.0.0", data_hash="d" * 64, code_hash="c" * 64, params={}, experiment_id="EXP-0301")
-    mr.promote("M1", "1.0.0", requested_by="orquestador")
+    mr.promote("M1", "1.0.0", requested_by="orquestador", promotion_check=legacy_promotion_check(exps))
     pm = MLEngine(mr, FakePredictor()).run(e1(), mk())["payload"]
     assert pm["result_status"] == "ERROR" and pm["error"]["code"] == "DATA_INCONSISTENT", (case, pm)
     assert pm["prediction"] is None

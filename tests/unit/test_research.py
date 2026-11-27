@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from consumption_helpers import ok_consumption_check  # noqa: E402
+from historical_approval import seed_historical_approval  # noqa: E402
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -119,7 +120,7 @@ def test_req_g_107_ai_cannot_approve_or_open_oos(reg):
     reg.transition("EXP-0101", "HUMAN_REVIEW", actor="orquestador")
     with pytest.raises(ExperimentError, match="propietario"):
         reg.transition("EXP-0101", "APPROVED", actor="orquestador", evidence={"decision_ref": "DEC-900_ok.md"})
-    reg.transition("EXP-0101", "APPROVED", actor="propietario", evidence={"decision_ref": "DEC-900_ok.md"})
+    seed_historical_approval(reg, "EXP-0101", "DEC-900_ok.md")      # B8.2: la transición real exige ET-8 (ver b8_2)
     assert reg.state("EXP-0101") == "APPROVED" and reg.eligible_state("EXP-0101") == "APPROVED"
     with pytest.raises(ExperimentError, match="terminal"):
         reg.transition("EXP-0101", "REJECTED", actor="propietario")
@@ -234,7 +235,10 @@ def test_qa3r2_04b_malformed_or_other_state_line_does_not_approve(reg, tmp_path,
 def test_qa3r2_04b_owner_decision_with_its_exact_line_succeeds(reg, tmp_path, target):
     _to_state_before(reg, tmp_path, target)
     (tmp_path / "decisions" / "DEC-914_ok.md").write_text(f"# Decisión\n\nAUTORIZA: EXP-0101 {target}\n")
-    reg.transition("EXP-0101", target, actor="propietario", evidence={"decision_ref": "DEC-914_ok.md"})
+    if target == "APPROVED":                                         # B8.2: APPROVED exige ET-8; histórico sembrado
+        seed_historical_approval(reg, "EXP-0101", "DEC-914_ok.md")
+    else:
+        reg.transition("EXP-0101", target, actor="propietario", evidence={"decision_ref": "DEC-914_ok.md"})
     assert reg.state("EXP-0101") == target
 
 

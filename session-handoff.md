@@ -1,5 +1,14 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-26) — CR-025 aplicada contractualmente (contrato v1.13); B8.1–B8.3 sin commit conservados; ET-10 diferido a B9
+
+**Base:** `0f2185c` (CR-024 implementada y commiteada). **Cambios sin commit:** documentos de CR-025 (CR-025, CR-023/024 notas, `implementation/*`, `feature_list.json` v1.25.0, `progress.md`, este archivo) y el trabajo de B8.1–B8.3 (`independence.py`, `experiments.py`, `ml/registry.py` y pruebas: `test_cr024_b8_1_approval_attestation.py`, `test_cr024_b8_2_approval_transition.py`, `test_cr024_b8_3_promotion_eligibility.py`, `historical_approval.py` y ajustes en `test_engines.py`, `test_ml_registry.py`, `test_research.py`, `test_cr023_b3_preregistration.py`). Comprobar con `git status -sb`.
+**B8.4a/b (2026-11-26):** CLI `approve` implementada y probada; `pytest tests/unit tests/security` → 1500 passed, 0 skipped, 0 failed; validadores 0/0/0; registro real intacto. B8.1–B8.4 siguen sin commit; QA independiente pendiente; ET-10 y CLI de promoción ML diferidos a B9. Ver `progress.md` y `research/README.md`.
+**Corrección:** las notas «B8 bloqueada» y «B8 sin iniciar» de los puntos inferiores están **obsoletas**: B8.1–B8.3 existen sin commit y sin verificar en esta sesión (no se ejecutaron pruebas); B8 no está cerrada. Texto original conservado.
+**CR-025 (contrato v1.13):** V9 técnica en ET-9 y ET-10; `approval_binding` (con `attestation_sha256`) persistida en la evidencia de APPROVED; `HISTORICAL_APPROVALS` cerrado y vacío; plazo de 2 s para el bloqueo de ET-10. **B8 debe integrar CR-025 antes de cerrarse** (D5): contrato de retorno de `ApprovalCheck`, V9 en ET-9, fixtures históricas solo con parche por prueba. **ET-10 en el Strategy Engine: B9.**
+**Pendientes:** implementación y verificación independiente de CR-025 (autorización separada); P5 de CR-021; O3/O4; D6 diferida; CONF-010 OPEN; D3 ABIERTA; D4 bloqueada; SNAP-0001 no creada. Ningún FEAT cerrado.
+**Siguiente acción autorizada:** ninguna hasta la revisión del propietario. Sin commit ni push.
+
 ## PUNTO DE REANUDACIÓN (2026-11-26) — CR-024 aplicada contractualmente (contrato v1.12); B8 sigue bloqueada
 
 **Base:** `a762f72`; cambios documentales **sin commit**. CR-024 (aprobada por el propietario) aplicada: contrato v1.12, `feature_list.json` v1.24.0 (REQ-G-104/106/109/P23; AC-015-7, AC-015-9, AC-017-1, AC-017-8, AC-017-9, AC-017-14, AC-017-15 nuevo, AC-019-2; TC-ML-007/012/019/025/027 y TC-ML-029 nueva). Detalle en `progress.md` (entrada CR-024).

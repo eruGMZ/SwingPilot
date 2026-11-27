@@ -9,6 +9,7 @@ la referencia (§C.9); su validez la acredita el propietario.
 """
 from __future__ import annotations
 
+import hashlib
 import re
 from datetime import timedelta
 from pathlib import Path
@@ -40,11 +41,13 @@ STAGES = {
     "ET-6": ("V2", "V3", "V4pre", "V5", "V8"),
     "ET-7": ("V2", "V3", "V4post", "V5", "V8"),
     "ET-8": ("V1b", "V2", "V3", "V4post", "V5", "V6", "V7m", "V7d", "V8"),
-    "ET-9": ("V2", "V3", "V4post", "V5", "V8"),
+    "ET-9": ("V2", "V3", "V4post", "V5", "V8", "V9"),
     "ET-10": ("V2", "V3", "V4post", "V5", "V8"),
 }
 _LIBERACION = re.compile(rf"AUTORIZA: LIBERACION (EXP-[0-9]{{4}}/(?:OOS|LOCKBOX)) SHA256=({_HEX})", re.ASCII)
 _ATESTACION = re.compile(rf"AUTORIZA: ATESTACION (EXP-[0-9]{{4}}/(?:OOS|LOCKBOX)) (SNAP-[0-9]{{4}}) SHA256=({_HEX}) "
+                         rf"V1=CONFIRMADA V6=CONFIRMADA V7=CONFIRMADA", re.ASCII)
+_APROBACION = re.compile(rf"AUTORIZA: APROBACION (EXP-[0-9]{{4}}) SHA256=({_HEX}) OOS=({_HEX}) LOCKBOX=({_HEX}) "
                          rf"V1=CONFIRMADA V6=CONFIRMADA V7=CONFIRMADA", re.ASCII)
 _REINTENTO = re.compile(rf"AUTORIZA: REINTENTO (EXP-[0-9]{{4}}/LOCKBOX) EVIDENCIA=({_HEX})", re.ASCII)
 _DISPOSICION = re.compile(r"AUTORIZA: DISPOSICION (EXP-[0-9]{4}/LOCKBOX) INCONCLUSIVE", re.ASCII)
@@ -87,7 +90,13 @@ def _context(registry, store, eid) -> dict:
     cls = (pre.get("evidence") or {}).get("independence_class")
     if cls != B.CONFIRMATORY:
         _tech("la clase de independencia congelada no es CONFIRMATORY")
-    return {"records": records, "sha": sha, "content": content, "ib": ib, "pre_at": pre.get("at_utc")}
+    try:
+        lines = registry._load()[0]                 # líneas exactas (bytes) para el SHA-256 del consumo y de APPROVED
+    except Exception as exc:
+        _tech(f"registro ilegible: {exc!r}")
+    if len(lines) != len(records):
+        _tech("el registro cambió durante la lectura (líneas ≠ registros)")
+    return {"records": records, "lines": lines, "sha": sha, "content": content, "ib": ib, "pre_at": pre.get("at_utc")}
 
 
 def _check_manifest(ctx, eid, manifest, window_id=None) -> None:
@@ -401,6 +410,141 @@ def _v6_v7d(ctx, eid, decisions_dir, grant, manifest) -> None:
         _tech("V6/V7: la línea ATESTACION no está ligada a la snapshot de la grant o al preregistro congelado")
 
 
+def _approval_lines(decisions_dir, eid: str) -> list[tuple]:
+    """Líneas `AUTORIZA: APROBACION` del experimento en todo `DEC-*.md`: (documento, SHA256, OOS, LOCKBOX).
+    Gramática estricta (`fullmatch`, ASCII); una línea que nombra el experimento y no la cumple → TECH."""
+    out = []
+    try:
+        for path in sorted(Path(decisions_dir).glob("DEC-*.md")):
+            for line in path.read_bytes().decode("utf-8").split("\n"):
+                if not line.strip().startswith("AUTORIZA: APROBACION"):
+                    continue
+                m = _APROBACION.fullmatch(line)
+                if m and m.group(1) == eid:
+                    out.append((path.name, *m.groups()[1:], hashlib.sha256(line.encode("utf-8")).hexdigest()))
+                elif not m and eid in line:
+                    _tech(f"APROBACION: línea mal formada en {path.name}")
+    except _Fail:
+        raise
+    except Exception as exc:
+        _tech(f"APROBACION: documentos de decisión ilegibles: {exc!r}")
+    return out
+
+
+def _approval(ctx, eid, ddir, approval_ref) -> dict:
+    """ET-8 (CR-023 decisión 5 + CR-024 B.8): una única línea APROBACION del experimento, en el documento del
+    `decision_ref` de la aprobación, ligada al preregistro congelado y a los `evaluation_hash` autoritativos de
+    OOS y LOCKBOX (marcador = SHA-256 de la evidencia, favorable, V4-post). Sin anulaciones. Todo fallo → TECH."""
+    if ddir is None:
+        _tech("APROBACION: sin directorio de decisiones")
+    if not (isinstance(approval_ref, str) and _DEC_REF.fullmatch(approval_ref)) or not (Path(ddir) / approval_ref).is_file():
+        _tech("APROBACION: decision_ref de la aprobación ausente, inválido o inexistente")
+    lines = _approval_lines(ddir, eid)
+    if len(lines) != 1:
+        _tech(f"APROBACION: se exige exactamente una línea de {eid} (hay {len(lines)})")
+    doc, sha, hashes = lines[0][0], lines[0][1], {"oos": lines[0][2], "lockbox": lines[0][3]}
+    if doc != approval_ref:
+        _tech("APROBACION: la línea no consta en el documento del decision_ref de la aprobación")
+    if sha != ctx["sha"]:
+        _tech("APROBACION: el SHA-256 citado no es el del preregistro congelado")
+    results, records = ctx.get("results"), ctx["records"]
+    ev = {}
+    for part, h in hashes.items():
+        ev[part], _ = verify_result_evidence(records, results, eid, part, prereg_sha=ctx["sha"], cited_hash=h,
+                                             lines=ctx["lines"], label="APROBACION")
+    if ev["oos"] == ev["lockbox"]:
+        _tech("APROBACION: los evaluation_hash de OOS y LOCKBOX deben ser distintos")
+    return {"schema": 1, "prereg_sha256": ctx["sha"], "oos_evaluation_hash": ev["oos"],
+            "lockbox_evaluation_hash": ev["lockbox"], "attestation_sha256": lines[0][4]}
+
+
+def verify_result_evidence(records, store, eid, partition, *, prereg_sha, lines, cited_hash=None, label="APROBACION"):
+    """CR-025 B.3 (módulo compartido, extraído de ET-8): marcador único (copia idéntica = el mismo), evidencia con
+    SHA-256 = `evaluation_hash`, `prereg_sha256` vigente, favorable autoritativo y V4-post (consumo único del
+    dueño, con `consumed_line_sha256` = SHA-256 de su línea cruda). Devuelve `(evaluation_hash, consumo)`; todo fallo → TECH. `cited_hash` (si se da) = el citado."""
+    from .experiments import RESULT_KIND, ExperimentRegistry, RegistryCorruptError, authoritative_favorable
+    part = partition
+    if store is None:
+        _tech(f"{label}: sin almacén de resultados")
+    marks = [r for r in records if r.get("kind") == RESULT_KIND and r.get("experiment_id") == eid
+             and r.get("partition") == part]
+    cons = [r for r in records if r.get("kind") == "PARTITION_CONSUMED" and r.get("experiment_id") == eid
+            and r.get("partition") == part]
+    marks = [m for i, m in enumerate(marks) if m not in marks[:i]]     # CR-024 B.5: copia idéntica = el mismo
+    if len(marks) != 1:
+        _tech(f"{label}: se exige exactamente un resultado persistido de {part} (hay {len(marks)})")
+    m = marks[0]
+    try:
+        ExperimentRegistry.verify_window_result(m, store)         # evidencia: SHA-256 = evaluation_hash
+        favorable = authoritative_favorable(records, store, eid, part)
+    except RegistryCorruptError as exc:
+        _tech(f"{label}: resultado {part} no verificable ({exc})")
+    h = m.get("evaluation_hash")
+    if (cited_hash is not None and h != cited_hash) or m.get("prereg_sha256") != prereg_sha:
+        _tech(f"{label}: el hash de {part} citado no es el del resultado persistido o su preregistro difiere")
+    if not favorable:
+        _tech(f"{label}: el resultado autoritativo de {part} no es favorable")
+    if len(cons) != 1 or cons[0].get("actor") != "propietario":
+        _tech(f"{label}: V4-post de {part}: se exige exactamente un consumo autorizado del dueño")
+    if len(lines) != len(records):
+        _tech(f"{label}: líneas crudas del registro incoherentes con los registros")
+    idx = next(i for i, r in enumerate(records) if r is cons[0])
+    if m.get("consumed_line_sha256") != hashlib.sha256(lines[idx]).hexdigest():
+        _tech(f"{label}: consumed_line_sha256 de {part} no es el SHA-256 de la línea PARTITION_CONSUMED")
+    return h, cons[0]
+
+
+HISTORICAL_APPROVALS: frozenset = frozenset()   # CR-025 B.5: SHA-256 de la línea TRANSITION→APPROVED; vacío en v1.13
+
+
+def _v9(ctx, registry, eid, ddir):
+    """CR-025 V9: integridad autoritativa ligada a la aprobación (solo lectura). Devuelve "HISTORICAL" si la línea
+    APPROVED está en `HISTORICAL_APPROVALS`; None si OK; todo fallo → TECH (nunca METHOD)."""
+    from .experiments import RESULT_KIND, _approval_binding_ok
+    records, lines, results = ctx["records"], ctx["lines"], ctx.get("results")
+    if registry.experiments().get(eid, {}).get("state") != "APPROVED":
+        _tech("V9: el experimento no está en APPROVED")
+    appr = [i for i, r in enumerate(records) if r.get("kind") == "TRANSITION" and r.get("experiment_id") == eid
+            and r.get("to") == "APPROVED"]
+    if len(appr) != 1:
+        _tech(f"V9: se exige exactamente una transición APPROVED (hay {len(appr)})")
+    ai = appr[0]
+    if hashlib.sha256(lines[ai]).hexdigest() in HISTORICAL_APPROVALS:
+        return "HISTORICAL"
+    ev = records[ai].get("evidence")
+    b = ev.get("approval_binding") if isinstance(ev, dict) else None
+    if not _approval_binding_ok(b):
+        _tech("V9: approval_binding ausente o inválida y APPROVED fuera de HISTORICAL_APPROVALS")
+    if b["prereg_sha256"] != ctx["sha"]:
+        _tech("V9: prereg_sha256 de la ligadura no es el del preregistro congelado")
+    for part, key in (("oos", "oos_evaluation_hash"), ("lockbox", "lockbox_evaluation_hash")):
+        verify_result_evidence(records, results, eid, part, prereg_sha=b["prereg_sha256"], cited_hash=b[key],
+                               lines=lines, label="V9")
+
+    def at(kind, part):
+        return [i for i, r in enumerate(records) if r.get("kind") == kind and r.get("experiment_id") == eid
+                and r.get("partition") == part]
+    c = {p: at("PARTITION_CONSUMED", p) for p in ("oos", "lockbox")}
+    m = {p: at(RESULT_KIND, p) for p in ("oos", "lockbox")}
+    if not (c["oos"][0] < m["oos"][0] and c["lockbox"][0] < m["lockbox"][0] and max(m["oos"]) < c["lockbox"][0]
+            and max(m["lockbox"]) < ai):
+        _tech("V9: orden de eventos inválido (consumo < marcador; OOS completo < consumo LOCKBOX; LOCKBOX < APPROVED)")
+    if ddir is None:
+        _tech("V9: sin directorio de decisiones")
+    ref = ev.get("decision_ref")
+    _, why = registry._decision_text(ref)
+    if why:
+        _tech(f"V9: documento de la aprobación no verificable ({why})")
+    al = _approval_lines(ddir, eid)
+    if len(al) != 1 or al[0][0] != ref:
+        _tech("V9: se exige exactamente una línea APROBACION del experimento, en el documento de la aprobación")
+    _, sha, oos, lb, line_sha = al[0]
+    if line_sha != b["attestation_sha256"] or (sha, oos, lb) != (b["prereg_sha256"], b["oos_evaluation_hash"],
+                                                                  b["lockbox_evaluation_hash"]):
+        _tech("V9: la línea APROBACION original fue alterada o no coincide con la ligadura")
+    return None
+
+
 def _v7m(ctx) -> None:
     recorded = []
     for r in ctx["records"]:
@@ -419,7 +563,7 @@ def _v7m(ctx) -> None:
 # --- comprobaciones por etapa y clasificación (D.8) --------------------------------------------------
 
 def stage_checks(registry, store, experiment_id: str, stage: str, *, decisions_dir=None, manifest=None,
-                 decision_ref=None, grant=None, manifest_dir=None, window_id=None) -> dict:
+                 decision_ref=None, grant=None, manifest_dir=None, window_id=None, approval_ref=None, binding_out=None) -> dict:
     """Resultado de cada comprobación requerida de `stage` (§C.9): OK | METHOD | TECH. Una evidencia
     faltante es TECH (Fail-Closed). Las no aplicables no se evalúan y nunca bloquean."""
     if stage not in STAGES:
@@ -463,11 +607,25 @@ def stage_checks(registry, store, experiment_id: str, stage: str, *, decisions_d
             run(name, lambda: _v6_v7d(ctx, eid, ddir, grant, manifest))
         elif name == "V7m":
             run(name, lambda: _v7m(ctx))
+        elif name == "V9":
+            hist: list = []
+            run(name, lambda: hist.append(_v9(ctx, registry, eid, ddir)))
+            if hist and hist[0] == "HISTORICAL":
+                out[name] = (OK, "HISTORICAL")
         elif name == "V8":
             st, why = independence_assessment(registry, store, eid, manifest=manifest if "V5" in STAGES[stage] else None)
             out[name] = ((OK, "") if st == INDEPENDENT else (METHOD if st == CONTAMINATED else TECH, why))
     if ctx is not None and stage in ("ET-4", "ET-5", "ET-6", "ET-7", "ET-8", "ET-9", "ET-10"):
         run("RELEASE", lambda: _no_release(ctx, eid, ddir))
+    if stage == "ET-8":                                  # atestación del propietario (B8.1); sin contexto → TECH
+        if ctx is None:
+            out["APROBACION"] = (TECH, "contexto del preregistro no verificable")
+        else:
+            def _ap():
+                b = _approval(ctx, eid, ddir, approval_ref)
+                if binding_out is not None:
+                    binding_out.update(b)
+            run("APROBACION", _ap)
     return out
 
 
@@ -493,3 +651,68 @@ def eligibility(registry, store, experiment_id: str, stage: str, *, preregistrat
     if meth:
         return {"result": NOT_ELIGIBLE, "nature": "METHODOLOGICAL", "causes": meth, "checks": checks}
     return {"result": ELIGIBLE, "nature": None, "causes": {}, "checks": checks}
+
+
+# --- B8.2: comprobación vinculante de HUMAN_REVIEW → APPROVED ----------------------------------------
+
+def build_approval_check(registry, store, windows, *, decisions_dir=None, preregistration=None,
+                         selection_inputs=None):
+    """`ApprovalCheck` (B8.2): lo ejecuta `ExperimentRegistry.transition` DENTRO del bloqueo. `windows` = una entrada
+    por ventana final (OOS y LOCKBOX) con `grant` (`FinalEvaluationGrant` de esa ventana, con SU `decision_ref`),
+    `manifest`, `manifest_dir` y `window_id`. El `decision_ref` de la aprobación es el de la evidencia de la
+    transición (ya validado por `decision_ok`) y se usa solo para la línea APROBACION; nunca sustituye al de la
+    grant (V4-post, V6/V7d). Exige ET-8 `ELIGIBLE` en cada ventana, con registros y evidencia releídos."""
+    from .experiments import _APPROVAL_CHECK_KEY, ApprovalCheck
+
+    def check(records, experiment_id, evidence):
+        eid = experiment_id
+        ref = evidence.get("decision_ref")
+        by_win = {w.get("window_id"): w for w in windows}
+        if len(by_win) != len(windows) or set(by_win) != {f"{eid}/OOS", f"{eid}/LOCKBOX"}:
+            return "se exigen exactamente las ventanas OOS y LOCKBOX del experimento", None
+        if registry.records() != records:                 # releído con _load en este mismo bloqueo
+            return "el registro cambió durante la comprobación", None
+        bindings = []
+        for wid, w in sorted(by_win.items()):
+            grant = w.get("grant")
+            bout: dict = {}
+            res = eligibility(registry, store, eid, "ET-8", preregistration=preregistration,
+                              selection_inputs=selection_inputs, decisions_dir=decisions_dir, manifest=w.get("manifest"),
+                              decision_ref=getattr(grant, "decision_ref", None), grant=grant,
+                              manifest_dir=w.get("manifest_dir"), window_id=wid, approval_ref=ref,
+                              binding_out=bout)
+            if res["result"] != ELIGIBLE:
+                return f"ET-8 {wid}: {res['result']} {res['causes']}", None
+            bindings.append(bout)
+        if len(bindings) != 2 or not bindings[0] or bindings[0] != bindings[1]:
+            return "ET-8 no produjo una approval_binding coherente", None
+        return None, bindings[0]
+    return ApprovalCheck(_APPROVAL_CHECK_KEY, check, registry)
+
+
+# --- B8.3: elegibilidad de promoción ML (ET-9, DEC-025 U1) ------------------------------------------
+
+def build_promotion_check(registry, store, windows, *, decisions_dir=None, preregistration=None,
+                          selection_inputs=None):
+    """`PromotionCheck` (B8.3): lo ejecuta `ModelRegistry.promote` DENTRO del bloqueo del registro. Recalcula ET-9
+    (sin reutilizar veredictos previos) en OOS y LOCKBOX con registros releídos; solo `ELIGIBLE` en ambas pasa.
+    `windows` como en `build_approval_check`. NOT_ELIGIBLE y UNDETERMINABLE bloquean (Fail-Closed)."""
+    from .experiments import _PROMOTION_CHECK_KEY, PromotionCheck
+
+    def check(records, experiment_id):
+        eid = experiment_id
+        by_win = {w.get("window_id"): w for w in windows}
+        if len(by_win) != len(windows) or set(by_win) != {f"{eid}/OOS", f"{eid}/LOCKBOX"}:
+            return "se exigen exactamente las ventanas OOS y LOCKBOX del experimento"
+        if registry.records() != records:
+            return "el registro cambió durante la comprobación"
+        for wid, w in sorted(by_win.items()):
+            grant = w.get("grant")
+            res = eligibility(registry, store, eid, "ET-9", preregistration=preregistration,
+                              selection_inputs=selection_inputs, decisions_dir=decisions_dir, manifest=w.get("manifest"),
+                              decision_ref=getattr(grant, "decision_ref", None), grant=grant,
+                              manifest_dir=w.get("manifest_dir"), window_id=wid)
+            if res["result"] != ELIGIBLE:
+                return f"ET-9 {wid}: {res['result']} {res['causes']}"
+        return None
+    return PromotionCheck(_PROMOTION_CHECK_KEY, check, registry)

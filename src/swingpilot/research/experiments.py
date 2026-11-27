@@ -177,6 +177,70 @@ class ConsumptionCheck:
         return self._fn(records, snapshot_id, partition, experiment_id, decision_ref)
 
 
+# B8.2 (CR-023 decisión 5, CR-024 B.8): credencial en proceso de la comprobación ET-8 de APPROVED. Solo la
+# usa `independence.build_approval_check`.
+_APPROVAL_CHECK_KEY = object()
+
+
+_BINDING_KEYS = {"schema", "prereg_sha256", "oos_evaluation_hash", "lockbox_evaluation_hash", "attestation_sha256"}
+
+
+def _approval_binding_ok(b) -> bool:
+    """CR-025 B.2: esquema cerrado; schema == 1; hex minúsculas de 64; los dos evaluation_hash distintos."""
+    if type(b) is not dict or set(b) != _BINDING_KEYS or type(b["schema"]) is not int or b["schema"] != 1:
+        return False
+    hx = [b[k] for k in sorted(_BINDING_KEYS - {"schema"})]
+    return all(type(v) is str and re.fullmatch(r"[0-9a-f]{64}", v) for v in hx) \
+        and b["oos_evaluation_hash"] != b["lockbox_evaluation_hash"]
+
+
+class ApprovalCheck:
+    """Comprobación ET-8 que `transition` exige para HUMAN_REVIEW → APPROVED (precedente `FreezeCheck`). Solo la
+    construye `independence.build_approval_check`; un invocable arbitrario se rechaza. Se ejecuta DENTRO del
+    bloqueo del registro, sobre registros releídos con `_load`, y está ligada a ESE registro. Inmutable.
+    Control en proceso, no tamper-evidence."""
+    __slots__ = ("_fn", "registry")
+
+    def __init__(self, key, fn, registry):
+        if key is not _APPROVAL_CHECK_KEY:
+            raise ExperimentError("ApprovalCheck solo lo construye independence.build_approval_check (CR-024 B.8)")
+        if not callable(fn):
+            raise ExperimentError("ApprovalCheck exige un invocable")
+        object.__setattr__(self, "_fn", fn)
+        object.__setattr__(self, "registry", registry)
+
+    def __setattr__(self, name, value):
+        raise AttributeError("ApprovalCheck es inmutable")
+
+    def __call__(self, records, experiment_id, evidence):
+        return self._fn(records, experiment_id, evidence)
+
+
+# B8.3 (CR-023 ET-9, DEC-025 U1): credencial en proceso de la comprobación de elegibilidad de promoción ML.
+# Solo la construye `independence.build_promotion_check`.
+_PROMOTION_CHECK_KEY = object()
+
+
+class PromotionCheck:
+    """Comprobación ET-9 que `ModelRegistry.promote` exige, ejecutada DENTRO del bloqueo del registro de
+    experimentos sobre registros releídos con `_load`. Ligada a ESE registro; inmutable. Control en proceso."""
+    __slots__ = ("_fn", "registry")
+
+    def __init__(self, key, fn, registry):
+        if key is not _PROMOTION_CHECK_KEY:
+            raise ExperimentError("PromotionCheck solo lo construye independence.build_promotion_check (ET-9)")
+        if not callable(fn):
+            raise ExperimentError("PromotionCheck exige un invocable")
+        object.__setattr__(self, "_fn", fn)
+        object.__setattr__(self, "registry", registry)
+
+    def __setattr__(self, name, value):
+        raise AttributeError("PromotionCheck es inmutable")
+
+    def __call__(self, records, experiment_id):
+        return self._fn(records, experiment_id)
+
+
 OWNER = "propietario"
 DECLARED_ANTECEDENT = "DECLARED_ANTECEDENT"
 REGISTRY_ORIGIN = "REGISTRY"
@@ -1095,7 +1159,7 @@ class ExperimentRegistry:
             return None, f"la decisión no se puede leer: {exc!r}"
 
     def transition(self, experiment_id: str, to: str, *, actor: str, evidence: dict | None = None,
-                   reason: str = "", freeze_check=None) -> dict:
+                   reason: str = "", freeze_check=None, approval_check=None) -> dict:
         """Transición de estado. `freeze_check` (solo PREREGISTERED; CR-023 ET-1) es obligatorio: un
         `FreezeCheck` de `preregistration.build_freeze_check` (B3-01: no se acepta otro invocable) que se
         ejecuta DENTRO del bloqueo con los registros vigentes, el experimento y una copia de la evidencia,
@@ -1131,6 +1195,12 @@ class ExperimentRegistry:
                 why = self.decision_ok(evidence.get("decision_ref"), experiment_id, target_state=to)
                 if why:
                     raise ExperimentError(why)
+            if to == "APPROVED":
+                if "approval_binding" in evidence:
+                    raise ExperimentError("«approval_binding» la escribe solo transition() (CR-025 B.2); "
+                                          "no se acepta del llamador")
+                evidence = {**evidence, "approval_binding": self._run_approval_check(
+                    approval_check, records, experiment_id, evidence)}
             if to == "PREREGISTERED":
                 self._check_freeze_accounting(records, experiment_id, evidence)
                 self._run_freeze_check(freeze_check, records, experiment_id, evidence)
@@ -1157,6 +1227,27 @@ class ExperimentRegistry:
             raise ExperimentError("histórico insuficiente: el experimento no pasa de DESIGN (TC-ML-014)")
         if cls not in INDEPENDENCE_CLASSES:
             raise ExperimentError(f"PREREGISTERED exige «independence_class» ∈ {INDEPENDENCE_CLASSES} (CR-023)")
+
+    def _run_approval_check(self, approval_check, records: list[dict], experiment_id: str, evidence: dict) -> dict:
+        """B8.2: HUMAN_REVIEW → APPROVED exige ET-8 ELIGIBLE (CR-023 decisión 5), sin anulaciones: solo un
+        `ApprovalCheck` de este registro, ejecutado dentro del bloqueo. Cualquier fallo → rechazo (Fail-Closed)."""
+        if type(approval_check) is not ApprovalCheck or approval_check.registry is not self:
+            raise ExperimentError("APPROVED exige un «approval_check» ApprovalCheck de este registro, de "
+                                  "independence.build_approval_check (CR-023 decisión 5; sin anulaciones)")
+        try:
+            out = approval_check(records, experiment_id, copy.deepcopy(evidence))
+        except ExperimentError:
+            raise
+        except Exception as exc:
+            raise ExperimentError(f"ET-8 no pudo comprobarse (Fail-Closed): {exc!r}") from exc
+        if not (type(out) is tuple and len(out) == 2):
+            raise ExperimentError("APPROVED rechazado: el check no devolvió (motivo, ligadura) (CR-025 B.2)")
+        why, binding = out
+        if why:
+            raise ExperimentError(f"APPROVED rechazado por ET-8: {why}")
+        if not _approval_binding_ok(binding):
+            raise ExperimentError("APPROVED rechazado: approval_binding ausente o mal formada (CR-025 B.2)")
+        return copy.deepcopy(binding)
 
     @staticmethod
     def _run_freeze_check(freeze_check, records: list[dict], experiment_id: str, evidence: dict) -> None:

@@ -140,22 +140,49 @@ class ModelRegistry:
                 return {"model_id": mid, "version": ver, "model_hash": row[0], "experiment_id": row[1]}
         return None
 
-    def promote(self, model_id: str, version: str, *, requested_by: str) -> None:
+    def promote(self, model_id: str, version: str, *, requested_by: str, promotion_check=None) -> None:
+        """P23 + ET-9/U1: exige APPROVED y elegibilidad ET-9 ELIGIBLE recalculada, DENTRO del bloqueo del registro
+        de experimentos (misma sección crítica que la escritura del evento PROMOTED). Sin `PromotionCheck` de este
+        registro, o ante cualquier fallo/corrupción/no verificable → rechazo registrado (Fail-Closed). Los APPROVED
+        históricos se conservan, pero no promueven sin ET-9."""
+        from swingpilot.research.experiments import ExperimentRegistry, PromotionCheck
         row = self._db.execute("SELECT experiment_id FROM models WHERE model_id=? AND version=?",
                                (model_id, version)).fetchone()
-        reason = None
-        if row is None:
-            reason = "modelo no registrado"
-        elif self.state(model_id, version) != "REGISTERED":
-            reason = f"estado {self.state(model_id, version)}: solo se promueve un modelo REGISTERED"
-        elif self.experiments.eligible_state(row[0]) != "APPROVED":   # QA3-03
-            reason = f"el experimento {row[0]} no está en APPROVED (HUMAN_REVIEW → APPROVED, P23)"
-        elif self.active_model() is not None:
-            reason = "ya hay un modelo ACTIVE: retirarlo antes"
-        if reason:
-            self._event(model_id, version, "PROMOTION_REJECTED", {"reason": reason, "requested_by": requested_by})
-            raise ModelRegistryError(reason)
-        self._event(model_id, version, "PROMOTED", {"requested_by": requested_by, "experiment_id": row[0]})
+        eid = row[0] if row else None
+
+        def gate(records):
+            if row is None:
+                raise ModelRegistryError("modelo no registrado")
+            if self.state(model_id, version) != "REGISTERED":
+                raise ModelRegistryError(f"estado {self.state(model_id, version)}: solo se promueve un modelo REGISTERED")
+            exp = ExperimentRegistry._experiments_from(records).get(eid)
+            if exp is None or exp["origin"] != "REGISTRY" or exp["state"] != "APPROVED":   # QA3-03
+                raise ModelRegistryError(f"el experimento {eid} no está en APPROVED (HUMAN_REVIEW → APPROVED, P23)")
+            if self.active_model() is not None:
+                raise ModelRegistryError("ya hay un modelo ACTIVE: retirarlo antes")
+            if type(promotion_check) is not PromotionCheck or promotion_check.registry is not self.experiments:
+                raise ModelRegistryError("la promoción exige un «promotion_check» PromotionCheck de este registro "
+                                         "(independence.build_promotion_check; ET-9, sin anulaciones)")
+            try:
+                why = promotion_check(records, eid)
+            except Exception as exc:
+                raise ModelRegistryError(f"ET-9 no pudo comprobarse (Fail-Closed): {exc!r}") from exc
+            if why:
+                raise ModelRegistryError(f"promoción rechazada por ET-9: {why}")
+
+        def publish():
+            self._event(model_id, version, "PROMOTED", {"requested_by": requested_by, "experiment_id": eid})
+
+        try:
+            self.experiments.publish_under_lock(gate, publish)
+        except ModelRegistryError as exc:
+            reason = str(exc)
+        except Exception as exc:                       # registro corrupto / ilegible: no verificable
+            reason = f"elegibilidad no verificable (Fail-Closed): {exc!r}"
+        else:
+            return
+        self._event(model_id, version, "PROMOTION_REJECTED", {"reason": reason, "requested_by": requested_by})
+        raise ModelRegistryError(reason)
 
     def retire(self, model_id: str, version: str, *, reason: str) -> None:
         if self.state(model_id, version) not in ("ACTIVE", "SUSPENDED", "REGISTERED"):

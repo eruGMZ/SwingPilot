@@ -1,7 +1,7 @@
 # CR-024 — Persistencia autoritativa de resultados de evaluación OOS y LOCKBOX (`evaluation_hash`)
 
 **Fecha:** 2026-11-26 (revisión 3)
-**Estado:** **APROBADA por el propietario (2026-11-26) y APLICADA contractualmente** (contrato v1.12; `feature_list.json` v1.24.0). La implementación, las pruebas ejecutables, la verificación independiente y el cierre de FEAT siguen **PENDIENTES**; sin commit ni push.
+**Estado:** **APROBADA por el propietario (2026-11-26) y APLICADA contractualmente** (contrato v1.12; `feature_list.json` v1.24.0). Implementada (I1–I3, commit `0f2185c`) y B8.1–B8.4 sin commit (ver CR-025 y `research/README.md`); la verificación independiente y el cierre de FEAT siguen **PENDIENTES**; sin push.
 **Origen:** bloqueo de B8.0 (`progress.md`, 2026-11-26, decisión 5). Opción **B** aprobada; decisiones 1–6 de la revisión 1 resueltas por el propietario (§E).
 **Vinculada a:** CR-021 (se reutilizan S1–S4, P1–P4 y `PersistenceUncertainError` sin modificarlos), CR-023 (ET-4..ET-8, V4, B6, B7), decisión 5.
 **Alcance mínimo:** persistir de forma durable, inmutable y única el resultado de OOS y LOCKBOX; ligarlo al preregistro congelado y al consumo autorizado; exigir un OOS favorable autoritativo antes de progresar al LOCKBOX; definir el `evaluation_hash` de ET-8.
@@ -100,3 +100,9 @@ Modelo de proceso confiable (sin protección frente a un proceso Python comprome
 ## G. Aplicación contractual (2026-11-26)
 
 Contrato v1.11 → **v1.12** y `feature_list.json` v1.23.0 → **v1.24.0**: REQ-G-104, REQ-G-106, REQ-G-109 y REQ-G-P23; AC-015-7, AC-015-9, AC-017-1, AC-017-8, AC-017-9, AC-017-14, AC-017-15 (nuevo) y AC-019-2; TC-ML-007, TC-ML-012, TC-ML-019, TC-ML-025, TC-ML-027 y TC-ML-029 (nueva); notas de vigencia en CR-023. Sin cambios: CR-020, CR-021, CR-022, forma de `PARTITION_CONSUMED`, REQ-G-P17, REQ-G-103. **Pendientes:** implementación y pruebas (autorización separada), verificación independiente, P5, O3/O4 y D6; B8 permanece bloqueada hasta implementar y verificar CR-024.
+
+## Notas de vigencia (CR-025, contrato v1.13; el texto original de CR-024 se conserva)
+
+- **§B.8 y REQ-G-P23 («el recálculo de ET-9/ET-10 no cambia»):** ~~no cambia~~ — enmendado por CR-025: ET-9 y ET-10 incorporan V9. La verificación de `evaluation_hash` de ET-8 se mantiene y su núcleo (`verify_result_evidence`) se comparte con V9.
+- **§F (limitaciones):** se añade la limitación continua de CR-025 §F (editar la línea `APROBACION` o su documento bloquea como `TECH`).
+- **§E decisión 6 (B8 bloqueada hasta implementar y verificar CR-024):** sin cambios.

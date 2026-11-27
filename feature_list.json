@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/07/schema",
   "metadata": {
-    "version": "1.24.0",
+    "version": "1.25.0",
     "phase": "FASE 2",
     "status": "IMPL-3_EN_CURSO",
     "description": "Criterios de aceptación de SwingPilot. IMPL-1 (Fundamentos de integración) registrada desde el contrato v1.5 y cerrada; IMPL-2 (Agentes especializados, FEAT-008..014) registrada desde el contrato v1.5 y cerrada (2026-11-20). Los status solo pasan a DONE con implementación + prueba + ejecución + evidencia (AGENTS.md). IMPL-3 (Integración cuantitativa, FEAT-015..022) registrada desde el contrato v1.5 con status PENDING; planificación aprobada (DEC-017); implementación parcial autorizada (DEC-018, 2026-11-20): FEAT-015/016/017/019 IN_PROGRESS, FEAT-018/020/021/022 BLOCKED.",
@@ -1691,10 +1691,11 @@
         "CR-022",
         "DEC-024",
         "CR-023",
-        "DEC-025"
+        "DEC-025",
+        "CR-025"
       ],
       "acceptance_criteria": [
-        "AC-017-1 Registro de experimentos con los 12 estados (IDEA..APPROVED/REJECTED/INCONCLUSIVE) y transiciones condicionadas; ninguna transición a APPROVED sin HUMAN_REVIEW del propietario; la IA no puede aprobar (REQ-G-104, REQ-G-107) CR-024 (contrato v1.12): la aprobación exige además ET-8 con los evaluation_hash de OOS y LOCKBOX verificados (AC-017-15)",
+        "AC-017-1 Registro de experimentos con los 12 estados (IDEA..APPROVED/REJECTED/INCONCLUSIVE) y transiciones condicionadas; ninguna transición a APPROVED sin HUMAN_REVIEW del propietario; la IA no puede aprobar (REQ-G-104, REQ-G-107) CR-024 (contrato v1.12): la aprobación exige además ET-8 con los evaluation_hash de OOS y LOCKBOX verificados (AC-017-15) CR-025 (contrato v1.13): la transición a APPROVED persiste en su evidence la clave reservada approval_binding (esquema cerrado schema 1, prereg_sha256, oos_evaluation_hash, lockbox_evaluation_hash y attestation_sha256 = SHA-256 de los bytes UTF-8 exactos de la línea AUTORIZA: APROBACION sin salto final), escrita solo por la transición a partir del ApprovalCheck; una ligadura aportada por el llamador la rechaza (TC-ML-030).",
         "AC-017-2 Experimentos REJECTED o INCONCLUSIVE se conservan con sus resultados; el registro es append-only (TC-ML-010)",
         "AC-017-3 Preregistro con los campos de REQ-G-103 (incluidas ventanas WF, embargo, step, roll, nº de ventanas, modelo de ejecución, hash de la snapshot, conteo de huecos y declaración de régimen) que se congela con hash antes de cualquier evaluación confirmatoria; un cambio posterior queda como desviación y el experimento deja de ser confirmatorio; incluye además la contabilidad de pruebas congelada (conteo histórico documentado, cotas conservadoras, configuraciones nativas evaluadas y configuraciones planificadas con su identificador) y la regla determinista `candidate_selection_rule` (REQ-G-103, CR-020; TC-ML-013, TC-ML-022); CR-023 (DEC-025): en un experimento confirmatorio con frontera, el diseño completo de CR-023 §C.5 (versiones y SHA-256 de estrategia y configuraciones, conditioning_components, independence_boundary con ventanas, regla de parada de calendario y posiciones abiertas, inventario de exposición) se congela antes de B; el contenido exacto se guarda antes de PREREGISTERED en el almacén recuperable research/preregistrations/<experiment_id>/<sha256>.json (sin sobrescritura; falta o incoherencia ⇒ Fail-Closed; no satisface por sí solo O4); un DEVIATION de cualquier campo posterior a PREREGISTERED lo hace no confirmatorio (TC-ML-025)",
         "AC-017-4 Histórico mínimo de la región de desarrollo H_dev,min = max(38; 100/r) y longitud de cada ventana prospectiva L ≥ k·30/r (k ≥ 1 congelado), con r estimada solo con Train en un piloto de tasa; si la región de desarrollo no alcanza, el experimento no pasa de DESIGN; el piloto de tasa (confirmatory_eligible = false, TRADE_RATE_PILOT, TRAIN_ONLY) está exento del cálculo con r, solo recibe Train, nunca es confirmatorio y sus pares cuentan según CR-020 (REQ-G-103, REQ-G-106; CR-023; TC-ML-014)",
@@ -1708,7 +1709,8 @@
         "AC-017-12 Todo se ejecuta en modo Research, sin órdenes (REQ-G-081)",
         "AC-017-13 El historial de experimentación incluye EXP-0001 y Mean Reversion H1 (REJECTED) como antecedentes declarados por el propietario y los cuenta por configuraciones con su clase de evidencia: Mean Reversion H1, 4 evaluadas documentadas; EXP-0001, 4 como cota conservadora, no verificadas (DEC-018 decisión 4, REQ-G-P17, CR-020)",
         "AC-017-14 Frontera de independencia y contaminación (CR-023, DEC-025): validez de B (00:00 UTC, publicación de la declaración ≥ 24 h antes como evidencia operativa de Git, posterior a D_dev, a la exposición inventariada y a ventanas anteriores; un experimento confirmatorio por frontera); comprobaciones V1–V8 según la etapa ET-1..ET-10 (V4-pre antes del consumo y V4-post después; CR-023 §C.9); independence_status común a confirmatory_status, cargador, evaluador, HUMAN_REVIEW, promoción y uso; contaminación registrada con DEVIATION del campo independence_boundary del dueño de la ventana, con alcance por periodo (el dueño en cualquier estado; sin efecto sobre experimentos sin intersección) y sin reinterpretar DEVIATION históricos; evidencia ausente, incoherente o no verificable ⇒ Fail-Closed; la exposición externa no declarada no es detectable por software (TC-ML-025, TC-ML-026, TC-ML-027); CR-024: V4-pre del LOCKBOX exige el OOS consumido y favorable autoritativo en ET-4..ET-6, y ET-8 verifica los evaluation_hash (TC-ML-025, TC-ML-029)",
-        "AC-017-15 Persistencia autoritativa de resultados OOS y LOCKBOX (CR-024, contrato v1.12): documento canónico schema 1 con tipos cerrados (float etiquetado $f64 con la clave reservada; lectura estricta que reserializa a los mismos bytes), evaluator_version derivado por el sistema que no acredita las fuentes del evaluador, evidencia inmutable en almacén separado y marcador WINDOW_RESULT_PERSISTED; solo IssuedWindowResult es persistible; unicidad por experimento y partición; fallo de persistencia tras emitirse el resultado técnico ⇒ PersistenceUncertainError sin reevaluación ni reversión del consumo; estados NOT_CONSUMED, RESULT_VALID, CONSUMED_NO_RESULT, EVIDENCE_ONLY y CORRUPT Fail-Closed; EVIDENCE_ONLY solo por CLI explícito con revalidación de durabilidad; el OOS favorable autoritativo condiciona ET-4, ET-5, ET-6, resolve_lockbox y ET-8 (TC-ML-007, TC-ML-012, TC-ML-019, TC-ML-025, TC-ML-027, TC-ML-029)"
+        "AC-017-15 Persistencia autoritativa de resultados OOS y LOCKBOX (CR-024, contrato v1.12): documento canónico schema 1 con tipos cerrados (float etiquetado $f64 con la clave reservada; lectura estricta que reserializa a los mismos bytes), evaluator_version derivado por el sistema que no acredita las fuentes del evaluador, evidencia inmutable en almacén separado y marcador WINDOW_RESULT_PERSISTED; solo IssuedWindowResult es persistible; unicidad por experimento y partición; fallo de persistencia tras emitirse el resultado técnico ⇒ PersistenceUncertainError sin reevaluación ni reversión del consumo; estados NOT_CONSUMED, RESULT_VALID, CONSUMED_NO_RESULT, EVIDENCE_ONLY y CORRUPT Fail-Closed; EVIDENCE_ONLY solo por CLI explícito con revalidación de durabilidad; el OOS favorable autoritativo condiciona ET-4, ET-5, ET-6, resolve_lockbox y ET-8 (TC-ML-007, TC-ML-012, TC-ML-019, TC-ML-025, TC-ML-027, TC-ML-029) CR-025 (contrato v1.13): la integridad del resultado persistido es continua tras APPROVED (V9; AC-017-16, TC-ML-030).",
+        "AC-017-16 Integridad autoritativa continua V9 (CR-025, contrato v1.13): en ET-9 y ET-10 los resultados OOS y LOCKBOX siguen RESULT_VALID y favorables autoritativos (verify_result_evidence compartido con ET-8, que se separa de los controles de orden posteriores a la aprobación); sus evaluation_hash y el SHA-256 del preregistro coinciden con approval_binding; orden consumo < marcador por partición, OOS completo < consumo LOCKBOX, LOCKBOX completo < APPROVED; la línea AUTORIZA: APROBACION original del decision_ref (nombre DEC-NNN…md, sin enlace simbólico, exactamente una línea) coincide con attestation_sha256 y con la ligadura, sin atestación nueva; esquema de approval_binding cerrado (claves, hex de 64 minúsculas, hashes distintos); un APPROVED sin ligadura es TECH salvo que conste en HISTORICAL_APPROVALS (conjunto cerrado, vacío en producción; la ausencia nunca exime; ampliable solo por enmienda contractual); todo fallo es TECH, nunca METHOD; el registro no se reescribe; las fixtures históricas solo con parche de módulo por prueba y las pruebas genuinas de ET-8/9/10 y de esquiva sin parches (TC-ML-030)."
       ],
       "test_cases": [
         "TC-ML-002",
@@ -1732,7 +1734,8 @@
         "TC-ML-025",
         "TC-ML-026",
         "TC-ML-027",
-        "TC-ML-029"
+        "TC-ML-029",
+        "TC-ML-030"
       ],
       "implementation_paths": [
         "src/swingpilot/research/experiments.py",
@@ -1790,7 +1793,7 @@
       "blocked_by": [
         "AC-017-10: documentación de EXP-0001 y comprobación de la integridad de las particiones (DEC-018 decisión 4)"
       ],
-      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20) CR-024 (aprobada 2026-11-26; contrato v1.12): AC-017-1, AC-017-8, AC-017-9 y AC-017-14 enmendados y AC-017-15 nuevo; implementación y verificación independiente PENDIENTES; la evidencia registrada no acredita CR-024.",
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20) CR-024 (aprobada 2026-11-26; contrato v1.12): AC-017-1, AC-017-8, AC-017-9 y AC-017-14 enmendados y AC-017-15 nuevo; implementación y verificación independiente PENDIENTES; la evidencia registrada no acredita CR-024. CR-025 (aprobada 2026-11-26; contrato v1.13): AC-017-1 y AC-017-15 enmendados y AC-017-16 nuevo; implementación y verificación independiente PENDIENTES.",
       "authorization": {
         "authorized_by": "DEC-018 (2026-11-20)",
         "scope": "infraestructura general; SIN preregistro definitivo del piloto (AC-017-10) ni evaluación OOS/LOCKBOX"
@@ -2118,6 +2121,31 @@
           "D6"
         ],
         "preserved": "CR-020, CR-021 (Train+Val), CR-022; forma de PARTITION_CONSUMED; D3 ABIERTA; D4 bloqueada; ningún FEAT cerrado"
+      },
+      "cr025": {
+        "status": "APROBADA (propietario, 2026-11-26) y APLICADA contractualmente (contrato v1.13); implementación y verificación independiente PENDIENTES; ET-10 diferido a B9",
+        "change_request": "harness/change_requests/CR-025_integridad-autoritativa-continua.md",
+        "acceptance_criteria_affected": [
+          "AC-017-1",
+          "AC-017-15",
+          "AC-017-16",
+          "AC-019-2",
+          "AC-020-2"
+        ],
+        "test_cases": [
+          "TC-ML-009",
+          "TC-ML-028",
+          "TC-ML-030"
+        ],
+        "blocks": "B8 permanece abierta hasta integrar CR-025 (B8.1–B8.3 sin commit se conservan); ET-10 en el Strategy Engine diferido a B9",
+        "pending": [
+          "Implementación (autorización separada)",
+          "Verificación independiente",
+          "P5 de CR-021",
+          "O3/O4",
+          "D6"
+        ],
+        "preserved": "CR-020, CR-021, CR-022, CR-024 (con enmienda de ET-9/ET-10); forma de PARTITION_CONSUMED; D3 ABIERTA; D4 bloqueada; ningún FEAT cerrado"
       }
     },
     {
@@ -2203,11 +2231,12 @@
         "DEC-005",
         "data_flow.md §5 (E3)",
         "CR-023",
-        "DEC-025"
+        "DEC-025",
+        "CR-025"
       ],
       "acceptance_criteria": [
         "AC-019-1 Registro de modelos: ID + versión no reutilizable, hash de datos + código + parámetros (REQ-G-092, REQ-G-P23)",
-        "AC-019-2 Promoción solo desde HUMAN_REVIEW → APPROVED con registro de aprobación; cualquier otro intento se rechaza y se registra (TC-ML-009). CR-023 (DEC-025): antes de la promoción se recalcula la elegibilidad confirmatoria (confirmatory_status, independence_status y CR-023 §C.9, ET-9); una determinación metodológica válida de no elegibilidad rechaza la promoción con motivo metodológico; un fallo técnico que impide determinarla la rechaza y se registra como fallo técnico con su causa; ningún registro de estado histórico se reescribe (REQ-G-P23; TC-ML-028). CR-024 (contrato v1.12): la aprobación HUMAN_REVIEW → APPROVED (ET-8) exige los evaluation_hash verificados de resultados OOS y LOCKBOX favorables autoritativos; ausentes o no verificables la impiden (TC-ML-029)",
+        "AC-019-2 Promoción solo desde HUMAN_REVIEW → APPROVED con registro de aprobación; cualquier otro intento se rechaza y se registra (TC-ML-009). CR-023 (DEC-025): antes de la promoción se recalcula la elegibilidad confirmatoria (confirmatory_status, independence_status y CR-023 §C.9, ET-9); una determinación metodológica válida de no elegibilidad rechaza la promoción con motivo metodológico; un fallo técnico que impide determinarla la rechaza y se registra como fallo técnico con su causa; ningún registro de estado histórico se reescribe (REQ-G-P23; TC-ML-028). CR-024 (contrato v1.12): la aprobación HUMAN_REVIEW → APPROVED (ET-8) exige los evaluation_hash verificados de resultados OOS y LOCKBOX favorables autoritativos; ausentes o no verificables la impiden (TC-ML-029) CR-025 (contrato v1.13): ET-9 incorpora V9 dentro del bloqueo de promote; cualquier fallo de integridad (resultado OOS o LOCKBOX, ligadura approval_binding, atestación original) rechaza la promoción como fallo técnico (TC-ML-009, TC-ML-030).",
         "AC-019-3 Degradación: expectancy de los últimos 20 trades bajo el límite inferior del IC OOS, o PSI > 0.25 → modelo suspendido, Fail-Closed, sin reentrenamiento automático (REQ-G-P21/P22, TC-ML-008)",
         "AC-019-4 Emite ML_INFERENCE_COMPLETED conforme a CR-018 §B.3; sin modelo APPROVED → inference_status = NO_ACTIVE_MODEL y la familia ML-Based no es elegible",
         "AC-019-5 Sin modelo entrenado ni inferencias productivas en IMPL-3; las pruebas usan un modelo de juguete solo dentro de tests/ (DEC-017 Q44)",
@@ -2218,7 +2247,8 @@
         "TC-ML-009",
         "TC-AC-07",
         "TC-FLOW-007",
-        "TC-ML-028"
+        "TC-ML-028",
+        "TC-ML-030"
       ],
       "implementation_paths": [
         "src/swingpilot/engines/ml.py",
@@ -2263,7 +2293,7 @@
         "Esquema del payload de ML_INFERENCE_COMPLETED: no definido (Q45, CR propuesta) → CR-018 (borrador)"
       ],
       "blocked_by": [],
-      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20) CR-024 (contrato v1.12): AC-019-2 ampliado (ET-8 con evaluation_hash); implementación y verificación independiente PENDIENTES.",
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20) CR-024 (contrato v1.12): AC-019-2 ampliado (ET-8 con evaluation_hash); implementación y verificación independiente PENDIENTES. CR-025 (contrato v1.13): AC-019-2 ampliado (V9 en ET-9); implementación y verificación independiente PENDIENTES.",
       "authorization": {
         "authorized_by": "Propietario, 2026-11-20: «Autorizo iniciar el código de FEAT-018 a FEAT-022»",
         "scope": "código conforme al contrato v1.6"
@@ -2306,11 +2336,12 @@
         "api_contracts.md §2 (STRATEGY_CANDIDATE, NO_SETUP)",
         "DEC-011",
         "CR-023",
-        "DEC-025"
+        "DEC-025",
+        "CR-025"
       ],
       "acceptance_criteria": [
         "AC-020-1 Estrategias como definiciones versionadas (ID + versión, entrada, salida, invalidación, familia, estado APPROVED|RESEARCH, referencia al experimento) (REQ-G-072)",
-        "AC-020-2 En modo Paper/Live solo son elegibles estrategias APPROVED con elegibilidad confirmatoria vigente, recalculada en cada ciclo con posible entrada (REQ-G-P23; CR-023 §C.9 ET-10, §D.8); una estrategia excluida por determinación metodológica válida figura como NOT_ELIGIBLE y, si no queda ninguna elegible, NO_SETUP con NO_APPROVED_STRATEGY (reason_detail NONE_APPROVED o CONFIRMATORY_ELIGIBILITY_LOST) (DEC-017 Q43); un fallo técnico que impide determinar la elegibilidad no es NO_SETUP: STRATEGY_CANDIDATE con result_status = ERROR, error.code = ELIGIBILITY_UNDETERMINED y sobre FAILED (B.7.1); en ambos casos cero entradas nuevas, mientras STRATEGY_EXIT_SIGNAL y STOP_ADJUSTMENT_REQUESTED de las posiciones abiertas se siguen emitiendo (TC-ML-028)",
+        "AC-020-2 En modo Paper/Live solo son elegibles estrategias APPROVED con elegibilidad confirmatoria vigente, recalculada en cada ciclo con posible entrada (REQ-G-P23; CR-023 §C.9 ET-10, §D.8); una estrategia excluida por determinación metodológica válida figura como NOT_ELIGIBLE y, si no queda ninguna elegible, NO_SETUP con NO_APPROVED_STRATEGY (reason_detail NONE_APPROVED o CONFIRMATORY_ELIGIBILITY_LOST) (DEC-017 Q43); un fallo técnico que impide determinar la elegibilidad no es NO_SETUP: STRATEGY_CANDIDATE con result_status = ERROR, error.code = ELIGIBILITY_UNDETERMINED y sobre FAILED (B.7.1); en ambos casos cero entradas nuevas, mientras STRATEGY_EXIT_SIGNAL y STOP_ADJUSTMENT_REQUESTED de las posiciones abiertas se siguen emitiendo (TC-ML-028) CR-025 (contrato v1.13): ET-10 incorpora V9 una vez por ciclo con posible entrada, con instantánea de solo lectura bajo el bloqueo del registro (plazo de 2 s con time.monotonic(), una sola ventana, sin reintentos; vencimiento = TECH) y sin caché entre ciclos; fallo → STRATEGY_CANDIDATE con result_status = ERROR y error.code = ELIGIBILITY_UNDETERMINED, sin entradas nuevas y sin suprimir salidas ni gestión protectora (TC-ML-028, TC-ML-030). El cableado de ET-10 en el Strategy Engine queda diferido a B9.",
         "AC-020-3 Emite STRATEGY_CANDIDATE conforme a CR-018 §B.4, sin campo de confianza, con exit_mechanism completo (INV-007)",
         "AC-020-4 Sin candidato → NO_SETUP (NO_CANDIDATE) y cero llamadas a LLM (TC-FLOW-001)",
         "AC-020-5 2+ candidatos de entrada (aunque coincidan) → NO_SETUP (MULTIPLE_ENTRY_CANDIDATES) con descartados y motivo; exactamente 1 → STRATEGY_CANDIDATE (TC-FLOW-004, TC-FLOW-005)",
@@ -2327,7 +2358,8 @@
         "TC-FLOW-007",
         "TC-AI-007",
         "TC-AC-07",
-        "TC-ML-028"
+        "TC-ML-028",
+        "TC-ML-030"
       ],
       "implementation_paths": [
         "src/swingpilot/engines/schemas.py",
@@ -2370,7 +2402,7 @@
       "blocked_by": [
         "AC-020-8: piloto TF H4 no definido (DEC-018 decisión 4, EXP-0001)"
       ],
-      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20)",
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20) CR-025 (contrato v1.13): AC-020-2 ampliado (V9 en ET-10; cableado diferido a B9); implementación y verificación independiente PENDIENTES.",
       "authorization": {
         "authorized_by": "Propietario, 2026-11-20: «Autorizo iniciar el código de FEAT-018 a FEAT-022»",
         "scope": "código conforme al contrato v1.6"

@@ -10,6 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from historical_approval import legacy_promotion_check, seed_historical_approval  # noqa: E402
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
@@ -47,7 +48,7 @@ def approve(exps, eid):
     exps.transition(eid, "OOS_EVALUATION", actor="propietario", evidence=_cr020_oos_ev(exps, eid, "DEC-901_ok.md"))
     exps.transition(eid, "AUDIT", actor="orquestador")
     exps.transition(eid, "HUMAN_REVIEW", actor="orquestador")
-    exps.transition(eid, "APPROVED", actor="propietario", evidence={"decision_ref": "DEC-901_ok.md"})
+    seed_historical_approval(exps, eid, "DEC-901_ok.md")   # B8.2: histórico sembrado
 
 
 def reg_model(reg, mid="M1", ver="1.0.0", eid="EXP-0203", data=D, code=C):
@@ -57,7 +58,7 @@ def reg_model(reg, mid="M1", ver="1.0.0", eid="EXP-0203", data=D, code=C):
 def active(reg, exps):
     approve(exps, "EXP-0201")
     reg_model(reg, "M2", "1.0.0", "EXP-0201")
-    reg.promote("M2", "1.0.0", requested_by="orquestador")
+    reg.promote("M2", "1.0.0", requested_by="orquestador", promotion_check=legacy_promotion_check(exps))
 
 
 def test_identity_and_hash_of_data_code_params(env):
@@ -97,7 +98,7 @@ def test_tc_ml_009_promotion_only_after_human_review_approved(env):
     approve(exps, "EXP-0202")
     reg_model(reg, "M3", "1.0.0", "EXP-0202")
     with pytest.raises(ModelRegistryError, match="ACTIVE"):
-        reg.promote("M3", "1.0.0", requested_by="orquestador")
+        reg.promote("M3", "1.0.0", requested_by="orquestador", promotion_check=legacy_promotion_check(exps))
 
 
 def test_qa3_03_antecedent_cannot_back_a_model(env):
@@ -120,7 +121,7 @@ def test_tc_ml_008_degradation_suspends_without_retraining(env):
                                 ic_lower_bound_oos=0.1, psi_by_feature={"f1": 0.05})
     assert bad["suspended"] and reg.state("M2", "1.0.0") == "SUSPENDED" and reg.active_model() is None
     with pytest.raises(ModelRegistryError):
-        reg.promote("M2", "1.0.0", requested_by="orquestador")
+        reg.promote("M2", "1.0.0", requested_by="orquestador", promotion_check=legacy_promotion_check(exps))
 
 
 @pytest.mark.parametrize("trades,ic", [([0.3] * 20, float("nan")), ([float("nan")] * 20, 0.1),
