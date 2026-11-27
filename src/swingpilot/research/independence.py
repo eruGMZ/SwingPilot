@@ -529,13 +529,16 @@ def _v9(ctx, registry, eid, ddir):
     if not (c["oos"][0] < m["oos"][0] and c["lockbox"][0] < m["lockbox"][0] and max(m["oos"]) < c["lockbox"][0]
             and max(m["lockbox"]) < ai):
         _tech("V9: orden de eventos inválido (consumo < marcador; OOS completo < consumo LOCKBOX; LOCKBOX < APPROVED)")
-    if ddir is None:
-        _tech("V9: sin directorio de decisiones")
     ref = ev.get("decision_ref")
     _, why = registry._decision_text(ref)
     if why:
         _tech(f"V9: documento de la aprobación no verificable ({why})")
-    al = _approval_lines(ddir, eid)
+    # FIX-E (QA-C3-01): la atestación se lee SOLO del directorio autoritativo del registro (el mismo de
+    # `_decision_text`); un `decisions_dir` aportado por quien llama no puede ocultar una atestación alterada.
+    adir = getattr(registry, "decisions_dir", None)
+    if adir is None:
+        _tech("V9: el registro no tiene directorio de decisiones autoritativo")
+    al = _approval_lines(adir, eid)
     if len(al) != 1 or al[0][0] != ref:
         _tech("V9: se exige exactamente una línea APROBACION del experimento, en el documento de la aprobación")
     _, sha, oos, lb, line_sha = al[0]

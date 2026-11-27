@@ -1,5 +1,20 @@
 # session-handoff.md — SwingPilot Harness
 
+## PUNTO DE REANUDACIÓN (2026-11-27) — D3-CLOSE: FEAT-015 DONE y D3 CERRADA (sin commit)
+
+**Hecho:** por autorización expresa del propietario, FEAT-015 → **DONE** y D3 → **CERRADA**; las cinco condiciones de CR-023 §L cumplidas. Resultados separados: suite completa QA-FINAL-R1 **1572 passed**; posterior focalizada `test_cr023_b4_independence.py` **51 passed**. Detalle en `progress.md` (D3-CLOSE) y `feature_list.json` (`owner_approval_d3_close`, `closure_disposition`). La nota «pendiente de confirmación» de la entrada inferior (D3-CLOSE-PREP) queda **superada** (texto conservado).
+**Sin cambios:** D4 bloqueada (sin autorización); SNAP-0001 no creada; P5, O3/O4, CONF-010 OPEN, D6; FEAT-017 IN_PROGRESS. Sin commit ni push.
+**Siguiente acción autorizada:** ninguna hasta nueva instrucción del propietario.
+
+---
+
+## PUNTO DE REANUDACIÓN (2026-11-27) — D3-CLOSE-PREP completada; disposición de cierre de FEAT-015 y D3 pendiente de confirmación final del propietario
+
+**Hecho:** el propietario aceptó QA-FINAL-R1, las seis correcciones y `SyntheticTransport` (modelo de proceso confiable). Añadida la regresión D.3.3 (51 passed en `test_cr023_b4_independence.py`); `feature_list.json` reconciliado (AC-015-1..9, `closure_disposition_proposal`); detalle en `progress.md` (D3-CLOSE-PREP). Suite QA-FINAL-R1: 1572 passed; validadores 0/0/0; registro real `8af8e3e0…` intacto.
+**Estado:** FEAT-015 **IN_PROGRESS** y **D3 ABIERTA** hasta la confirmación expresa del propietario; D4 bloqueada; P5, O3/O4, CONF-010, D6 sin cambios. Todo sin commit ni push.
+**Siguiente acción autorizada:** ninguna hasta la confirmación del propietario.
+
+---
 ## PUNTO DE REANUDACIÓN (2026-11-27) — B9 (ET-10) implementada y verificada, sin commit; B8 y CR-025 parcial ya en `eb034dc`
 
 **Corrección:** B8 (ET-8, ET-9, V9, `approval_binding`, CLI `approve`) y la integración parcial de CR-025 están **commiteados y publicados en `eb034dc`**; las notas inferiores «B8.1–B8.3 sin commit» y «ET-10 diferido a B9» están **obsoletas** (texto original conservado). **Solo B9 está sin commit** (modificados: `engines/schemas.py`, `engines/strategy.py`, `research/experiments.py`, `research/independence.py`, `tests/unit/test_engines.py`; nuevos: `research/operational_eligibility.py` y cuatro `tests/unit/test_cr025_b9_{1..4}_*.py`) más estos documentos.

@@ -70,12 +70,12 @@ import pyarrow.parquet as pq
 
 from . import boundary as B
 from .experiments import _CONSUMPTION_CHECK_KEY, REGISTRY_ORIGIN, ConsumptionCheck
-from .preregistration import evaluation_evidence_error
+from .preregistration import _manifest_binding_error, evaluation_evidence_error
 from . import independence as I
 from .independence import consumption_error
 from .prereg_store import PreregStoreError
 from .snapshot import (KIND_DEVELOPMENT, KIND_EVALUATION, MODE_SEALED, SEALED, SEALED_FILES, SealingError,
-                       canonical_content_digest, enforce_sealing, load_manifest, sha256_file)
+                       canonical_content_digest, enforce_sealing, load_manifest, sealing_lock, sha256_file)
 
 
 def _classify(checks: dict) -> str | None:
@@ -223,11 +223,12 @@ class PartitionLoader:
         if sealed:
             # QA3R2-08: se abre y se vuelve a sellar de inmediato; hash y parseo usan el
             # descriptor ya abierto, así un SIGKILL durante la lectura no deja el archivo en 0o400.
-            os.chmod(path, stat.S_IRUSR)
-            try:
-                fh = open(path, "rb")
-            finally:
-                os.chmod(path, MODE_SEALED)
+            with sealing_lock(self.data_dir):       # FIX-C: enforce_sealing no puede re-sellar entre chmod y open
+                os.chmod(path, stat.S_IRUSR)
+                try:
+                    fh = open(path, "rb")
+                finally:
+                    os.chmod(path, MODE_SEALED)
             with fh:
                 data = fh.read()
             if hashlib.sha256(data).hexdigest() != info["sha256"]:
@@ -317,6 +318,10 @@ class PartitionLoader:
             return f"clase de independencia no válida o ausente: {cls!r}", None
         if content.get("experiment_id") != experiment_id or B.boundary_class(content.get("independence_boundary")) != cls:
             return "el contenido almacenado no corresponde a la clase de independencia congelada", None
+        if cls == B.CONFIRMATORY:      # FIX-A (QA-C1-03): snapshot_id, train_val_sha256 y d_dev congelados
+            why = _manifest_binding_error(content, self.manifest)
+            if why:
+                return f"snapshot de acceso distinta de la preregistrada: {why}", None
         return None, cls
 
     def split_train_validation(self, df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:

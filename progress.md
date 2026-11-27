@@ -2026,3 +2026,22 @@ Condiciones del propietario:
 - **Verificación (B9.5):** `pytest tests/unit tests/security` → **1537 passed, 0 skipped, 0 failed**, código 0 (902 s); `validate_gates`, `validate_manifest`, `validate_requirements` → 0/0/0. Registro real sin cambios (md5 `8af8e3e0…`, 4 registros); no existen `research/preregistrations` ni `research/snapshots`. No ejecutados: `tests/integration`, `tests/regression`, `tests/calibration` (fuera de alcance); `tests/acceptance` vacío.
 - **Implementación funcional de CR-023/024/025:** completa en código y pruebas sintéticas. **Pendientes:** verificación independiente (sesión distinta, solo lectura) de B8 y B9; cableado de producción del `EvidenceProvider` (sin proveedor, Paper/Live con APPROVED falla cerrado con `ELIGIBILITY_UNDETERMINED`); verificación del aislamiento RESEARCH (las APPROVED en modo Research no pasan por ET-10; sin ejecutor en `src`); deuda técnica: dependencia del resolutor en `cli._approve_inputs`; CLI de promoción ML diferida (no es requisito contractual); commit de B9 (autorización del propietario).
 - **Sin cambios de disposición:** P5 de CR-021 PENDIENTE; O3/O4 abiertos; D3 ABIERTA; D4 bloqueada; D6 diferida; CONF-010 OPEN; SNAP-0001 no creada. Contrato v1.13, gates y FEAT sin cambios; ningún FEAT cerrado. Sin sub-agentes ni datos reales.
+
+## 2026-11-27 — D3-CLOSE-PREP (preparación de cierre; sin cierre, sin commit)
+
+- **Aceptación del propietario (2026-11-27):** acepta QA-FINAL-R1, las seis correcciones y `SyntheticTransport` bajo el modelo de proceso confiable (CR-024 §F, CR-025 §F, `research/README.md`). Contrato v1.13 congelado.
+- **Seis correcciones resueltas (identificadas por etiquetas del código; el informe QA-FINAL original no está en el repositorio):** B1 (ligadura a snapshot preregistrada, FIX-A), D-1 (fsync de archivo, directorio y padre), D-2 (`injected_only` solo con `SyntheticTransport` exacto), D-3 (contigüidad del contexto D1/H4/H1), DOC-01 (trazabilidad de TC-ML-030 en `implementation/test_plan.md`) y D.3.3 (regresión positiva, abajo). Informes históricos intactos.
+- **D.3.3:** añadida `test_d33_unaffected_experiment_with_disjoint_windows_stays_independent` en `tests/unit/test_cr023_b4_independence.py` (EXP-0201 contaminado → CONTAMINATED; EXP-0202 con ventanas disjuntas → INDEPENDENT antes y después, sin `hardened_deviations`). Prueba focalizada: `test_cr023_b4_independence.py` → 51 passed.
+- **FEAT-015:** `evidence.covered` reconciliada con los nueve criterios vigentes (AC-015-1..9); añadidos `evidence.d3_close_prep` y `closure_disposition_proposal` en `feature_list.json`. **Estado sin cambiar (IN_PROGRESS).**
+- **Evidencia QA-FINAL-R1:** `pytest tests/unit tests/security` → 1572 passed, 0 skipped, 0 failed (1059 s); validadores 0/0/0; registro real md5 `8af8e3e0…`, 4 registros.
+- **Cinco condiciones de CR-023 §L:** 1 cumplida (v1.11); 2–5 técnicamente cumplidas (implementación, QA-FINAL-R1, reapertura de FEAT-015 resuelta, mecanismo §D con D.3.3); **D3 sigue ABIERTA hasta la confirmación final del propietario.**
+- **Sin cambios:** D4 bloqueada; P5, O3/O4, CONF-010 OPEN, D6, SNAP-0001; FEAT-017 IN_PROGRESS; sin commit ni push.
+
+## 2026-11-27 — D3-CLOSE (cierre formal de FEAT-015 y D3, autorizado por el propietario)
+
+- **Autorización expresa del propietario (2026-11-27)** sobre la base de QA-FINAL-R1 y D3-CLOSE-PREP aceptados. Contrato v1.13 congelado; sin cambios de código de producción, sin reejecución de la suite completa.
+- **FEAT-015: DONE** (IN_PROGRESS → DONE). El DONE histórico bajo v1.10 (2026-11-24) y toda la evidencia anterior se conservan. **D3: CERRADA.**
+- **Cinco condiciones de CR-023 §L, todas cumplidas:** (1) CR-023 aprobada y aplicada (v1.11); (2) implementación de §H completada y aceptada; (3) verificación independiente QA-FINAL-R1 aceptada; (4) reapertura de FEAT-015 y su regresión resueltas (AC-015-1..9); (5) mecanismo §D verificado, con D.3.3 positivo.
+- **Resultados de pruebas, separados:** suite completa QA-FINAL-R1 `pytest tests/unit tests/security` → **1572 passed**, 0 skipped, 0 failed; posterior y focalizada `test_cr023_b4_independence.py` → **51 passed** (incluye D.3.3). La suite completa no se reejecutó tras añadir D.3.3.
+- **Alcance del cierre:** acredita I1 (método e implementación con datos sintéticos), no I5; no desbloquea D4; no cierra FEAT-017.
+- **Sin cambios:** D4 bloqueada; SNAP-0001 no creada; P5 PENDIENTE; O3/O4 abiertos; CONF-010 OPEN; D6 diferida. Sin commit ni push.

@@ -15,8 +15,10 @@ operaciones y se informan aparte) y su comprobación ET-7.
 - Nunca devuelve APPROVED y no autoriza ninguna evaluación real (O3/O4 siguen siendo del propietario; la
   grant y el consumo los gestiona `load_final`, no este módulo).
 """
+import hashlib
 import json
 import math
+import os
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Callable
@@ -29,7 +31,7 @@ from . import partitions as P
 from . import preregistration as PR
 from . import result_serialization as RS
 from . import result_store as RST
-from .experiments import PersistenceUncertainError
+from .experiments import ExperimentError, PersistenceUncertainError
 from . import snapshot as S
 from .backtest import ExecutionModel, InvalidFinalWindowCandle, run_backtest
 
@@ -189,6 +191,65 @@ def verify_provenance(data, manifest: dict, registry=None) -> tuple[pd.DataFrame
     return h4(data.data), h4(data.context)
 
 
+class EvaluationAlreadyStarted(ExperimentError):
+    """FIX-D (QA-C2-01): la evaluación confirmatoria única de este consumo ya se inició (o ya hay resultado
+    persistido). Se niega ANTES de ejecutar lógica de estrategia; no se interpreta como resultado."""
+
+
+def _claim_path(registry, rec: str) -> Path:
+    """Reserva duradera, junto al registro (no es un evento del registro ni toca el almacén de evidencia),
+    con nombre = SHA-256 del registro de consumo autoritativo emitido por `load_final`."""
+    reg = Path(registry.path)
+    return reg.with_name(reg.name + ".claims") / (hashlib.sha256(rec.encode("utf-8")).hexdigest() + ".claim")
+
+
+def _fsync_dir(directory: Path) -> None:
+    dfd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(dfd)
+    finally:
+        os.close(dfd)
+
+
+def _claim_single_evaluation(data, registry, experiment_id: str) -> None:
+    """FIX-D: UNA evaluación por consumo autorizado, atómica, duradera (entre procesos y reinicios) y previa a
+    `run_backtest`. `O_CREAT|O_EXCL` es la exclusión atómica; archivo y directorio se `fsync`. La reserva NO se
+    libera ni se restablece nunca (ni tras fallo, ni tras un cierre abrupto: la ventana queda en
+    CONSUMED_NO_RESULT/EVIDENCE_ONLY, de disposición manual; CR-024 B.5/B.6, sin reevaluación). Cualquier fallo
+    al reservar niega la evaluación (Fail-Closed). Además se niega si el registro ya tiene el resultado."""
+    path = _claim_path(registry, data.provenance.consumption)
+    tag = f"{experiment_id}/{data.partition}"
+    try:
+        path.parent.mkdir(mode=0o700, exist_ok=True)
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        raise EvaluationAlreadyStarted(f"{tag}: la evaluación única de este consumo ya se inició; no se admite "
+                                       "una segunda evaluación (sin reevaluación)") from None
+    except OSError as exc:
+        raise EvaluationAlreadyStarted(f"{tag}: no se pudo reservar la evaluación única ({exc!r})") from exc
+    try:
+        os.write(fd, f"{tag} pid={os.getpid()}\n".encode())
+        os.fsync(fd)
+    except OSError as exc:                             # reserva creada pero no confirmada: se conserva y se niega
+        raise EvaluationAlreadyStarted(f"{tag}: reserva sin confirmar en disco ({exc!r})") from exc
+    finally:
+        os.close(fd)                                   # el archivo se conserva siempre
+    try:                                               # D-1: el archivo en su directorio Y el directorio en su padre
+        _fsync_dir(path.parent)                        # (la creación inicial del directorio de reservas también
+        _fsync_dir(path.parent.parent)                 # debe ser duradera)
+    except OSError as exc:                             # reserva creada pero no confirmada: se conserva y se niega
+        raise EvaluationAlreadyStarted(f"{tag}: reserva sin confirmar en disco ({exc!r})") from exc
+    try:
+        _lines, records = registry._load()
+        if any(m["experiment_id"] == experiment_id and m["partition"] == data.partition
+               for m in registry.window_results(records)):
+            raise EvaluationAlreadyStarted(f"{experiment_id}/{data.partition}: ya existe un resultado persistido")
+    except EvaluationAlreadyStarted:
+        raise
+    except Exception as exc:                    # registro ilegible: Fail-Closed, la reserva se conserva
+        raise EvaluationAlreadyStarted(f"{experiment_id}/{data.partition}: estado no verificable ({exc!r})") from exc
+
+
 def _evaluate_outcome(data, logic, model: ExecutionModel, registry, store, experiment_id: str, *,
                     manifest: dict, preregistration=None, selection_inputs=None, **et7_ctx) -> WindowOutcome:
     """Evalúa UNA ventana ya cargada (`FinalEvaluationData`). No relee datos ni toca el consumo."""
@@ -198,6 +259,8 @@ def _evaluate_outcome(data, logic, model: ExecutionModel, registry, store, exper
     except ProvenanceError as exc:
         return _fail(part, [f"TECNICA (UNDETERMINABLE): procedencia de los datos: {exc}"], "TECHNICAL",
                      I.UNDETERMINABLE)
+    if registry is not None and type(getattr(data, "provenance", None)) is P.FinalWindowProvenance:
+        _claim_single_evaluation(data, registry, experiment_id)   # FIX-D: antes de cualquier lógica de estrategia
     try:
         res = run_backtest(window, logic, model, context=ctx4)
     except InvalidFinalWindowCandle as exc:

@@ -61,7 +61,10 @@ def loader_for(reg, tmp_path):
     loader = PartitionLoader.__new__(PartitionLoader)
     loader.registry, loader.access_log = reg, tmp_path / "access.jsonl"
     loader.prereg_store = store_for(reg)                           # CR-023 §C.3.3: el cargador exige el almacén
-    loader.manifest = {"snapshot_id": "SNAP-TEST", "kind": "development"}
+    # FIX-FINAL B1: la snapshot verificada es la preregistrada por cr023_fields (id, SHA-256 de train_val, d_dev)
+    snap = cr023_fields()["snapshot"]
+    loader.manifest = {"snapshot_id": snap["snapshot_id"], "kind": "development", "d_dev": snap["d_dev"],
+                       "files": {"train_val": {"sha256": snap["train_val_sha256"]}}}
     loader.reads = []
     loader._read = lambda part: loader.reads.append(part) or pd.DataFrame({"interval": ["1d"]})
     return loader

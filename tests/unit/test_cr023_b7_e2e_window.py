@@ -202,11 +202,12 @@ def test_inconsistent_frozen_statistics_fail_closed(tmp_path, gdev, key, bad, mo
 
 def test_unverified_or_foreign_preregistration_fails_closed(tmp_path, gdev):
     import dataclasses
-    res, reg, loader = ready(tmp_path, gdev, "oos")
-    fz = _GENUINE[str(reg.path)]
-    data = loader.load_final(ggrant(part="oos"), "oos")
-    tampered = dataclasses.replace(fz, content={**fz.content, "statistical_tests": {**STAT, "dsr_min_probability": 0.5}})
-    for bad in (tampered, None):
+    for n, kind in enumerate(("tampered", "none")):      # FIX-D: una evaluación por consumo → un consumo por caso
+        res, reg, loader = ready(tmp_path / f"c{n}", gdev, "oos")
+        fz = _GENUINE[str(reg.path)]
+        data = loader.load_final(ggrant(part="oos"), "oos")
+        bad = (dataclasses.replace(fz, content={**fz.content, "statistical_tests": {**STAT, "dsr_min_probability": 0.5}})
+               if kind == "tampered" else None)
         out = W.evaluate_window(data, Logic(), MODEL, reg, loader.prereg_store, EID, manifest=res.manifest,
                                 **{**ctx(reg, loader), "preregistration": bad})
         assert out.nature == "TECHNICAL" and out.metrics is None and out.verdict == "INCONCLUSIVE"

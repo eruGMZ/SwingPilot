@@ -1240,7 +1240,7 @@
         "tests/security/test_impl3_isolation.py",
         "tests/unit/test_snapshot.py"
       ],
-      "status": "IN_PROGRESS",
+      "status": "DONE",
       "evidence": {
         "command": ".venv/bin/pytest -q tests/unit/test_snapshot.py; RUN_BINANCE_PUBLIC_LIVE=1 .venv/bin/pytest -q tests/integration/test_binance_public_live.py",
         "executed_at": "2026-11-20T02:39Z",
@@ -1248,18 +1248,18 @@
         "live_public_smoke": "2 passed (REST real con paginación limit=1000; sin credenciales)",
         "suite": "pytest -q tests → 390 passed, 5 skipped (tras correcciones QA3-01..19)",
         "covered": [
-          "AC-015-1 (cliente y paginación; real en prueba de humo)",
-          "AC-015-2",
-          "AC-015-3",
-          "AC-015-4",
-          "AC-015-5",
-          "AC-015-6",
-          "AC-015-7",
-          "AC-015-8"
+          "AC-015-1 (redacción CR-023): tests/unit/test_snapshot.py (descarga, parámetros, FIX-FINAL D-2 injected_only solo con SyntheticTransport, FIX-B CLI con fuente autoritativa) + test_cr023_b5_evaluation_snapshot.py (una snapshot por ventana, tras el cierre)",
+          "AC-015-2 (regresión: test_snapshot.py, verde en QA-FINAL-R1)",
+          "AC-015-3 (redacción CR-023): tests/unit/test_snapshot.py (TC-ML-015, TC-ML-017) + test_cr023_b5_evaluation_snapshot.py (context + partición, sin train_val; contigüidad D1/H4/H1, FIX-FINAL D-3)",
+          "AC-015-4 (regresión: test_snapshot.py, huecos como NaN)",
+          "AC-015-5 (regresión: test_snapshot.py, manifiesto y Parquet fuera de Git)",
+          "AC-015-6 (regresión: test_snapshot.py, verificación de SHA-256)",
+          "AC-015-7 (redacción CR-023): tests/unit/test_snapshot.py (TC-ML-016; FIX-C sealing_lock) + test_cr023_b6_context_reading.py + test_cr023_b6_consumption_credential.py + test_cr023_b7_* (FIX-D evaluación única) + FIX-A (ligadura a la snapshot preregistrada)",
+          "AC-015-8 (regresión: pruebas locales sin red, test_snapshot.py)",
+          "AC-015-9 (CR-023): tests/unit/test_cr023_b5_evaluation_snapshot.py (manifiesto, sellado 0o000, contigüidad, LOCKBOX con OOS favorable autoritativo CR-024)"
         ],
         "pending": [
-          "Ninguno dentro del alcance técnico. Fuera del alcance: SNAP-0001 y la validación metodológica de la independencia histórica de las particiones (ver outside_closure_scope).",
-          "CR-023 (DEC-025, 2026-11-25; contrato v1.11): reapertura focalizada; AC-015-1, AC-015-3, AC-015-7 y AC-015-9 pendientes de implementación y verificación independiente; regresión pendiente de AC-015-2, AC-015-4, AC-015-5, AC-015-6 y AC-015-8 (ver reopening). Sin implementación ni pruebas nuevas en esta aplicación contractual"
+          "Ninguno dentro del alcance. Fuera del cierre: SNAP-0001, O3/O4, P5, CONF-010, D6."
         ],
         "traceability_review": {
           "date": "2026-11-24",
@@ -1387,11 +1387,32 @@
           "suite": "571 passed, 5 skipped (2026-11-24, usuario no root); no se volvió a ejecutar para el cierre, por indicación del propietario",
           "validators_at_closure": "python3 scripts/validate_{manifest,requirements,gates}.py → OK (2026-11-24)",
           "ac_matrix_ref": "evidence.traceability_review.ac_matrix (AC-015-1..8 CUMPLEN)"
+        },
+        "d3_close_prep": {
+          "date": "2026-11-27",
+          "baseline": "37eb08a + correcciones acumuladas sin commit; contrato v1.13 congelado",
+          "qa_final_r1": {
+            "result": "pytest tests/unit tests/security → 1572 passed, 0 skipped, 0 failed, código 0 (1059 s); validate_gates/manifest/requirements → 0/0/0; registro real md5 8af8e3e0eed4d07d847fd229362ef6a9 (4 registros) idéntico antes y después"
+          },
+          "owner_acceptance": {
+            "date": "2026-11-27",
+            "accepted": "QA-FINAL-R1, las seis correcciones y SyntheticTransport bajo el modelo de proceso confiable vigente (CR-024 §F; CR-025 §F)",
+            "not_accepted_or_not_authorized": "No es el cierre de FEAT-015 ni de D3; no autoriza D4, commit ni push"
+          },
+          "resolved_findings": {
+            "B1": "ligadura del acceso confirmatorio a snapshot_id/train_val_sha256/d_dev (FIX-A)",
+            "D-1": "fsync de archivo, directorio y padre de la reserva de evaluación",
+            "D-2": "injected_only solo con SyntheticTransport de tipo exacto",
+            "D-3": "contigüidad del contexto del LOCKBOX en D1/H4/H1",
+            "DOC-01": "trazabilidad real de TC-ML-030 en implementation/test_plan.md",
+            "D.3.3": "regresión positiva test_d33_unaffected_experiment_with_disjoint_windows_stays_independent (test_cr023_b4_independence.py; 51 passed en el archivo)"
+          },
+          "note": "Las seis correcciones se identifican por las etiquetas FIX-*/FIX-FINAL del código y las pruebas; el informe original de QA-FINAL no está en el repositorio."
         }
       },
       "inherited_from_impl2": [],
       "depends_on_later_phases": [],
-      "notes": "DEC-013/CR-013; DEC-017 Q46. CERRADA como DONE por el propietario (2026-11-24) con AC-015-1..8 definitivos; QA3R2-02/03/04/08 resueltos; riesgos residuales y controles de despliegue diferidos aceptados; condiciones de reapertura en reopening_conditions; SNAP-0001 y la validación metodológica de las particiones fuera del cierre técnico. REABIERTA de forma focalizada (DONE → IN_PROGRESS) el 2026-11-25 por CR-023/DEC-025 (contrato v1.11): AC-015-1, AC-015-3, AC-015-7 y el nuevo AC-015-9; la disposición DONE bajo v1.10 se conserva como histórica (ver reopening).",
+      "notes": "DEC-013/CR-013; DEC-017 Q46. CERRADA como DONE por el propietario (2026-11-24) con AC-015-1..8 definitivos; QA3R2-02/03/04/08 resueltos; riesgos residuales y controles de despliegue diferidos aceptados; condiciones de reapertura en reopening_conditions; SNAP-0001 y la validación metodológica de las particiones fuera del cierre técnico. REABIERTA de forma focalizada (DONE → IN_PROGRESS) el 2026-11-25 por CR-023/DEC-025 (contrato v1.11): AC-015-1, AC-015-3, AC-015-7 y el nuevo AC-015-9; la disposición DONE bajo v1.10 se conserva como histórica (ver reopening). CERRADA de nuevo como DONE el 2026-11-27 (D3-CLOSE; ver owner_approval_d3_close y closure_disposition) tras QA-FINAL-R1; D3 CERRADA; D4 sigue bloqueada.",
       "blocked_by": [],
       "acceptance_criteria_status": "AC-015-2, AC-015-4, AC-015-5, AC-015-6 y AC-015-8: DEFINITIVOS — aprobados formalmente por el propietario (2026-11-24), sin cambios. AC-015-1, AC-015-3 y AC-015-7 enmendados y AC-015-9 añadido por CR-023 (DEC-025, 2026-11-25; contrato v1.11): pendientes de implementación, verificación independiente y aprobación del propietario CR-024 (contrato v1.12): AC-015-7 y AC-015-9 enmendados (OOS favorable autoritativo para el LOCKBOX); implementación y verificación independiente PENDIENTES.",
       "authorization": {
@@ -1506,7 +1527,7 @@
         "date": "2026-11-25",
         "authority": "DEC-025 (aprobación de CR-023); contrato v1.11",
         "trigger": "reopening_conditions.conditions[0]: una CR futura aprobada que modifica los cortes de las particiones, REQ-G-109 y criterios AC-015-*",
-        "status_change": "DONE → IN_PROGRESS (reapertura focalizada)",
+        "status_change": "DONE → IN_PROGRESS (reapertura focalizada); RESTAURADO a DONE el 2026-11-27 (D3-CLOSE)",
         "historical_disposition": "DONE bajo el contrato v1.10, aprobado por el propietario el 2026-11-24 (owner_approval); se conserva como registro histórico junto con su evidencia, qa_reviews, accepted_residual_risks y deferred_deployment_controls",
         "reopened_criteria": [
           "AC-015-1",
@@ -1533,6 +1554,23 @@
         ],
         "restore_done_condition": "Implementación de CR-023 §H aplicable a FEAT-015, verificación independiente de los criterios reabiertos y de la regresión, y aprobación expresa del propietario",
         "source": "harness/change_requests/CR-023_particiones-prospectivas-frontera-independencia.md §G"
+      },
+      "closure_disposition": {
+        "status": "FINALIZADA: FEAT-015 DONE y D3 CERRADA por autorización expresa del propietario (2026-11-27)",
+        "feat_015": "IN_PROGRESS → DONE (reapertura CR-023 resuelta; AC-015-1..9 con evidencia; DONE histórico bajo v1.10 conservado en owner_approval)",
+        "d3": "D3 CLOSED: cinco condiciones de CR-023 §L cumplidas (1 CR-023 aplicada, v1.11; 2 implementación §H aceptada; 3 verificación independiente QA-FINAL-R1 aceptada; 4 reapertura de FEAT-015 resuelta; 5 mecanismo §D verificado con D.3.3 positivo). Acredita I1, no I5; no desbloquea D4; no cierra FEAT-017.",
+        "requires": "Cumplido. Sin commit ni push."
+      },
+      "owner_approval_d3_close": {
+        "approved_by": "propietario",
+        "approved_at": "2026-11-27",
+        "status_change": "IN_PROGRESS → DONE (FEAT-015); D3 ABIERTA → CERRADA",
+        "evidence": "Autorización expresa de D3-CLOSE basada en QA-FINAL-R1 y D3-CLOSE-PREP aceptados; las seis correcciones y SyntheticTransport (modelo de proceso confiable) aceptados.",
+        "test_results": {
+          "full_suite_QA_FINAL_R1": "pytest tests/unit tests/security → 1572 passed, 0 skipped, 0 failed, código 0",
+          "subsequent_focused": "tests/unit/test_cr023_b4_independence.py → 51 passed (incluye D.3.3); la suite completa no se reejecutó tras añadirla"
+        },
+        "not_authorized": "D4, SNAP-0001, FEAT-017 ni otros cierres; sin commit ni push"
       }
     },
     {

@@ -115,9 +115,12 @@ def freeze_in_registry(reg, fz, *, store=None):
                                     "trials_accounting": fz.content["trials_count"]})
 
 
-def register_confirmatory(reg, eid, planned=("A",), *, rule=None, store=None):
-    """Experimento en DESIGN → PREREGISTERED con un preregistro confirmatorio sintético almacenado."""
-    fz = freeze(base_content(eid, reg.trials_accounting(eid, list(planned)), planned, rule=rule))
+def register_confirmatory(reg, eid, planned=("A",), *, rule=None, store=None, manifest=None):
+    """Experimento en DESIGN → PREREGISTERED con un preregistro confirmatorio sintético almacenado.
+    `manifest`: liga el preregistro a la snapshot que usará el cargador (FIX-A)."""
+    kw = {} if manifest is None else dict(snapshot_id=manifest["snapshot_id"],
+                                           tv_sha=manifest["files"]["train_val"]["sha256"], d_dev=manifest["d_dev"])
+    fz = freeze(base_content(eid, reg.trials_accounting(eid, list(planned)), planned, rule=rule, **kw))
     freeze_in_registry(reg, fz, store=store)
     return fz
 
@@ -157,10 +160,10 @@ def _long_binance():
 @pytest.fixture(scope="module")
 def dev_snap(tmp_path_factory):
     """Snapshot de desarrollo sintética de ≈ 46 meses, construida una vez (Binance simulado)."""
-    from swingpilot.market_data import BinancePublicClient
+    from swingpilot.market_data import BinancePublicClient, SyntheticTransport
     from swingpilot.research.snapshot import build_snapshot
     tmp = tmp_path_factory.mktemp("devsnap")
-    res = build_snapshot(BinancePublicClient(transport=_long_binance()), "SNAP-TEST", tmp / "var" / "snapshots",
+    res = build_snapshot(BinancePublicClient(transport=SyntheticTransport(_long_binance())), "SNAP-TEST", tmp / "var" / "snapshots",
                          tmp / "research" / "snapshots", d_dev=_dev_days(LONG_DEV_DAYS), reserved_windows=[],
                          injected_only=True)
     return res, tmp / "var" / "snapshots"
@@ -1413,3 +1416,37 @@ def test_b3_02_additional_documented_exposure_is_accepted_by_et1_and_raises_the_
     _fail_et1(env, "EXP-0201", env.frozen("EXP-0201", mutate=add_extra, b="2027-01-01T00:00:00Z"), "b_not_before|B")
     env.prereg(env.frozen("EXP-0201", mutate=add_extra, b="2027-01-02T00:00:00Z"))
     assert env.reg.state("EXP-0201") == "PREREGISTERED"
+
+
+# ====================================================================================================
+# FIX-A (QA-C1-03): el acceso confirmatorio se liga a snapshot_id, train_val_sha256 y d_dev congelados
+# ====================================================================================================
+
+def _mismatch(manifest, key):
+    m = copy.deepcopy(manifest)
+    if key == "snapshot_id":
+        m["snapshot_id"] = "SNAP-OTHER"
+    elif key == "train_val_sha256":
+        m["files"]["train_val"]["sha256"] = "f" * 64
+    else:
+        m["d_dev"] = "2000-01-01"
+    return m
+
+
+@pytest.mark.parametrize("key", ["snapshot_id", "train_val_sha256", "d_dev"])
+def test_fixa_confirmatory_access_denied_on_snapshot_mismatch_before_data_access(env, key):
+    _evaluating(env, PILOT_ID, pilot=True)
+    _evaluating(env, "EXP-0201", pilot=False)
+    loader = _loader(env)
+    loader.manifest = _mismatch(loader.manifest, key)
+    reads = _spy(loader)
+    with pytest.raises(PartitionAccessError, match="distinta de la preregistrada"):
+        loader.load_train_val_for_configuration("EXP-0201", "A")
+    assert reads == [] and loader.access_history()[-1]["allowed"] is False
+
+
+def test_fixa_confirmatory_access_with_matching_snapshot_still_works(env):
+    _evaluating(env, PILOT_ID, pilot=True)
+    _evaluating(env, "EXP-0201", pilot=False)
+    df = _loader(env).load_train_val_for_configuration("EXP-0201", "A")
+    assert df["open_time"].max() >= env.manifest["cuts_ms"]["train_end"]

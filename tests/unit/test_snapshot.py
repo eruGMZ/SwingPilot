@@ -7,6 +7,7 @@ Sin red: Binance simulado con un histórico corto.
 """
 import hashlib
 import json
+import stat
 import os
 import struct
 import sys
@@ -20,7 +21,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from swingpilot.market_data import BinancePublicClient, interval_ms  # noqa: E402
+from swingpilot.market_data import BinancePublicClient, SyntheticTransport, interval_ms  # noqa: E402
 from swingpilot.research import partitions as P  # noqa: E402
 from swingpilot.research import preregistration as PR  # noqa: E402
 from swingpilot.research import snapshot as SN  # noqa: E402
@@ -70,7 +71,7 @@ class SmallBinance:
 
 
 def build(tmp, sid="SNAP-TEST", fb=None, d_dev=D_DEV, windows=()):
-    return build_snapshot(BinancePublicClient(transport=fb or SmallBinance()), sid, tmp / "var" / "snapshots",
+    return build_snapshot(BinancePublicClient(transport=SyntheticTransport(fb or SmallBinance())), sid, tmp / "var" / "snapshots",
                           tmp / "research" / "snapshots", d_dev=d_dev, reserved_windows=list(windows),
                           injected_only=True)
 
@@ -155,7 +156,7 @@ def gdev(tmp_path_factory):
     """Snapshot de desarrollo sintética (≈ 46 meses) con id propio; cada prueba la copia a su directorio."""
     from test_cr023_b3_preregistration import LONG_DEV_DAYS, _dev_days, _long_binance
     tmp = tmp_path_factory.mktemp("gdev")
-    res = build_snapshot(BinancePublicClient(transport=_long_binance()), "SNAP-TESTDEV", tmp / "var" / "snapshots",
+    res = build_snapshot(BinancePublicClient(transport=SyntheticTransport(_long_binance())), "SNAP-TESTDEV", tmp / "var" / "snapshots",
                          tmp / "research" / "snapshots", d_dev=_dev_days(LONG_DEV_DAYS), reserved_windows=[],
                          injected_only=True)
     return res, tmp
@@ -1082,7 +1083,7 @@ def test_tc_ml_023_loader_delivers_train_val_only_for_registered_pair(snap):
     reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
     reg.create("EXP-0900", "prueba", actor="orquestador")
     reg.transition("EXP-0900", "DESIGN", actor="orquestador")
-    register_confirmatory(reg, "EXP-0900", ("A",))        # CR-023: contenido en el almacén + clase CONFIRMATORY
+    register_confirmatory(reg, "EXP-0900", ("A",), manifest=res.manifest)        # CR-023: contenido en el almacén + clase CONFIRMATORY
     reg.transition("EXP-0900", "DATA_VALIDATION", actor="orquestador")
     reg.transition("EXP-0900", "DEVELOPMENT", actor="orquestador", evidence={"snapshot_verified": True})
     loader = _loader(res, tmp, reg)
@@ -1137,12 +1138,12 @@ def test_a2_only_the_guarded_loader_is_public():
     assert callable(getattr(PartitionLoader, _PRIVATE_LOADER))
 
 
-def _dev_registry(tmp, eids=("EXP-0900",)):
+def _dev_registry(tmp, eids=("EXP-0900",), manifest=None):
     reg = ExperimentRegistry(tmp / "registry.jsonl", _decisions(tmp))
     for eid in eids:
         reg.create(eid, "prueba", actor="orquestador")
         reg.transition(eid, "DESIGN", actor="orquestador")
-        register_confirmatory(reg, eid, ("A", "B"))       # CR-023: contenido en el almacén + clase CONFIRMATORY
+        register_confirmatory(reg, eid, ("A", "B"), manifest=manifest)       # CR-023: contenido en el almacén + clase CONFIRMATORY
         reg.transition(eid, "DATA_VALIDATION", actor="orquestador")
         reg.transition(eid, "DEVELOPMENT", actor="orquestador", evidence={"snapshot_verified": True})
     return reg
@@ -1156,7 +1157,7 @@ def _no_read(loader):
 
 def test_a2_malformed_evaluation_record_does_not_unlock_data(snap):
     res, tmp = snap
-    reg = _dev_registry(tmp)
+    reg = _dev_registry(tmp, manifest=res.manifest)
     reg._append({"kind": "CONFIGURATION_EVALUATED", "experiment_id": "EXP-0999", "config_id": "A",   # nunca creado
                  "preregistration_sha256": "a" * 64, "partition": "train_val", "actor": "manual"})
     loader = _loader(res, tmp, reg)
@@ -1168,7 +1169,7 @@ def test_a2_malformed_evaluation_record_does_not_unlock_data(snap):
 
 def test_a2_pair_must_match_exactly(snap):
     res, tmp = snap
-    reg = _dev_registry(tmp, ("EXP-0900", "EXP-0901"))
+    reg = _dev_registry(tmp, ("EXP-0900", "EXP-0901"), manifest=res.manifest)
     reg.begin_configuration_evaluation("EXP-0900", "A", actor="orquestador")
     loader = _loader(res, tmp, reg)
     reads = _no_read(loader)
@@ -1181,7 +1182,7 @@ def test_a2_pair_must_match_exactly(snap):
 @pytest.mark.parametrize("case", ["corrupt_json", "inconsistent_antecedent", "missing_file"])
 def test_a2_unreadable_or_inconsistent_registry_denies_and_logs(snap, case):
     res, tmp = snap
-    reg = _dev_registry(tmp)
+    reg = _dev_registry(tmp, manifest=res.manifest)
     reg.begin_configuration_evaluation("EXP-0900", "A", actor="orquestador")
     if case == "corrupt_json":
         with open(reg.path, "a") as fh:
@@ -1411,7 +1412,7 @@ def test_development_loaders_reject_evaluation_snapshot_logged_without_reading(e
 def test_development_loaders_reject_manifest_without_kind_fail_closed(snap):
     """Un manifiesto sin `kind` (p. ej. un doble que elude `load_manifest`) no es de desarrollo."""
     res, tmp = snap
-    reg = _dev_registry(tmp)
+    reg = _dev_registry(tmp, manifest=res.manifest)
     reg.begin_configuration_evaluation("EXP-0900", "A", actor="orquestador")
     loader = _loader(res, tmp, reg)
     loader.manifest = {k: v for k, v in loader.manifest.items() if k != "kind"}
@@ -1500,7 +1501,7 @@ def test_cli_build_fails_closed_before_download_when_window_source_is_unverifiab
     assert not (tmp_path / "var").exists() and not (tmp_path / "man").exists()
 
 
-def test_cli_build_passes_d_dev_and_injected_windows(monkeypatch, capsys):
+def test_cli_build_passes_d_dev_and_authoritative_windows(monkeypatch, capsys):
     from swingpilot.research import cli
     seen = {}
     win = [_w(D_DEV_MS + DAY_MS)]
@@ -1512,7 +1513,7 @@ def test_cli_build_passes_d_dev_and_injected_windows(monkeypatch, capsys):
         raise SnapshotError("ventana reservada simulada")
     monkeypatch.setattr(cli, "build_snapshot", fake_build)
     assert cli.main(["build-snapshot", "--id", "SNAP-0009", "--d-dev", D_DEV, "--confirm"]) == 1
-    assert seen["d_dev"] == D_DEV and seen["reserved_windows"] == win and seen["sid"] == "SNAP-0009"
+    assert seen["d_dev"] == D_DEV and seen["reserved_windows_source"]() == win and seen["sid"] == "SNAP-0009"
     assert "ventana reservada simulada" in capsys.readouterr().err
 
 
@@ -1534,3 +1535,116 @@ def test_cli_build_and_verify_development_end_to_end(monkeypatch, tmp_path, caps
     bad.write_text(json.dumps(m))
     assert cli.main(["verify-snapshot", "--id", "SNAP-0042"]) == 1               # heredado: Fail-Closed
     assert "kind" in capsys.readouterr().err
+
+
+# --- FIX-B (QA-C1-01/02): CLI con fuente autoritativa; sin bypass por importar pytest ------------------
+
+def test_fixb_import_pytest_does_not_enable_injected_only_with_default_transport(tmp_path):
+    from swingpilot.market_data import BinancePublicClient as C
+    assert "pytest" in sys.modules                                    # importar pytest no habilita nada
+    cl = C()                                                          # transporte por defecto (red): sin red real aquí
+    with pytest.raises(SnapshotError, match="solo es válido en pruebas"):
+        build_snapshot(cl, "SNAP-TESTFB", tmp_path / "v", tmp_path / "m", d_dev=D_DEV, reserved_windows=[],
+                       injected_only=True)
+    assert not (tmp_path / "v").exists()
+
+
+def test_fixb_cli_uses_authoritative_exclusion_without_injected_only(monkeypatch, tmp_path):
+    from swingpilot.research import cli
+    win = [_w(D_DEV_MS - DAY_MS)]                                     # ventana activa dentro del rango de desarrollo
+    monkeypatch.setattr(cli, "reserved_windows_provider", lambda: win)
+    monkeypatch.setattr(cli, "DATA_ROOT", tmp_path / "var")
+    monkeypatch.setattr(cli, "MANIFEST_DIR", tmp_path / "man")
+    monkeypatch.setattr(cli, "BinancePublicClient", lambda *a, **k: BinancePublicClient(transport=SmallBinance()))
+    seen = {}
+    real = cli.build_snapshot
+    monkeypatch.setattr(cli, "build_snapshot", lambda *a, **k: seen.update(k) or real(*a, **k))
+    assert cli.main(["build-snapshot", "--id", "SNAP-0009", "--d-dev", D_DEV, "--confirm"]) == 1
+    assert "injected_only" not in seen and seen["reserved_windows_source"]() == win
+    assert not (tmp_path / "man" / "SNAP-0009.json").exists()          # la exclusión obligatoria bloqueó
+
+
+def test_fixb_fresh_interpreter_cli_runs_offline_without_injected_only(tmp_path):
+    import subprocess
+    src = str(Path(__file__).resolve().parents[2] / "src")
+    code = ("import sys\n"
+            f"sys.path.insert(0, {src!r})\n"
+            "from swingpilot.research import cli\n"
+            f"cli.REGISTRY_PATH = __import__('pathlib').Path({str(tmp_path / 'absent.jsonl')!r})\n"
+            f"cli.DATA_ROOT = cli.MANIFEST_DIR = __import__('pathlib').Path({str(tmp_path / 'o')!r})\n"
+            "from swingpilot.market_data import BinancePublicClient as C\n"
+            "def tr(url):\n    print('REACHED_TRANSPORT'); raise RuntimeError('sin red')\n"
+            "cli.BinancePublicClient = lambda *a, **k: C(transport=tr)\n"
+            "try:\n    rc = cli.main(['build-snapshot','--id','SNAP-0009','--d-dev','2018-06-13','--confirm'])\n"
+            "except Exception as e:\n    rc = type(e).__name__\n"
+            "print('pytest' in sys.modules, rc)\n")
+    r = subprocess.run([sys.executable, "-I", "-c", code], capture_output=True, text=True, timeout=120)
+    # sin pytest importado y sin injected_only: la CLI llega a la descarga (transporte sintético, sin red)
+    assert r.stdout.split()[:1] == ["REACHED_TRANSPORT"] and r.stdout.split()[-2:] == ["False", "PublicApiError"], (r.stdout, r.stderr)
+    assert "injected_only" not in r.stderr
+
+
+# --- FIX-C (QA-C1-04): enforce_sealing concurrente no interrumpe una lectura autorizada --------------
+
+def _interleave(monkeypatch, loader, data_dir, files):
+    """Tras el chmod 0o400 de la lectura, lanza enforce_sealing en otro hilo (el entrelazado original)."""
+    import threading
+    real, box = os.chmod, {}
+
+    def chmod(path, mode, *a, **k):
+        real(path, mode, *a, **k)
+        if mode == stat.S_IRUSR and "t" not in box and str(path).endswith("lockbox.parquet"):
+            box["t"] = t = threading.Thread(target=lambda: box.setdefault("notes", SN.enforce_sealing(data_dir, files)))
+            t.start()
+            t.join(0.5)                       # sin la exclusión, el hilo re-sella aquí mismo
+    monkeypatch.setattr(os, "chmod", chmod)
+    return box
+
+
+def test_fixc_concurrent_enforce_sealing_does_not_interrupt_authorized_read(esnap, monkeypatch):
+    res, tmp = esnap
+    loader = PartitionLoader(res.manifest_path, tmp / "var" / "snapshots", tmp / "access.jsonl")
+    box = _interleave(monkeypatch, loader, res.data_dir, res.manifest["files"])
+    df = loader._read("lockbox")                                        # no PermissionError
+    box["t"].join(5)
+    assert not box["t"].is_alive() and len(df) > 0
+    monkeypatch.undo()
+    assert _mode(res.data_dir / "lockbox.parquet") == 0 and _mode(res.data_dir / "context.parquet") == 0
+
+
+def test_fixc_read_failure_restores_0o000_and_releases_lock(esnap, monkeypatch):
+    res, tmp = esnap
+    loader = PartitionLoader(res.manifest_path, tmp / "var" / "snapshots", tmp / "access.jsonl")
+    loader.manifest["files"]["lockbox"] = dict(loader.manifest["files"]["lockbox"], sha256="0" * 64)
+    with pytest.raises(PartitionAccessError, match="SHA-256"):
+        loader._read("lockbox")
+    assert _mode(res.data_dir / "lockbox.parquet") == 0
+
+    def boom(*a, **k):
+        raise OSError("fallo simulado")
+    monkeypatch.setattr("builtins.open", boom)
+    with pytest.raises(OSError):
+        loader._read("lockbox")
+    monkeypatch.undo()
+    assert _mode(res.data_dir / "lockbox.parquet") == 0
+    assert SN.enforce_sealing(res.data_dir, res.manifest["files"]) == []   # el bloqueo se liberó: no se cuelga
+
+
+# --- FIX-FINAL D-2: injected_only solo con SyntheticTransport explícito -------------------------------
+
+@pytest.mark.parametrize("make", [
+    lambda: BinancePublicClient(transport=lambda url: [1]),                     # función arbitraria
+    lambda: BinancePublicClient(transport=SmallBinance()),                      # objeto arbitrario (aunque sin red)
+    lambda: BinancePublicClient(transport=type("Sub", (SyntheticTransport,), {})(lambda url: [])),   # subclase
+    lambda: BinancePublicClient(),                                              # transporte de red por defecto
+], ids=["lambda", "arbitrary_object", "subclass", "default"])
+def test_fixfinal_d2_injected_only_denied_for_arbitrary_transports_before_any_io(tmp_path, make):
+    with pytest.raises(SnapshotError, match="solo es válido en pruebas"):
+        build_snapshot(make(), "SNAP-TESTD2", tmp_path / "v", tmp_path / "m", d_dev=D_DEV, reserved_windows=[],
+                       injected_only=True)
+    assert not (tmp_path / "v").exists() and not (tmp_path / "m").exists()
+
+
+def test_fixfinal_d2_synthetic_fixture_still_builds_isolated_snapshot(tmp_path):
+    res = build(tmp_path, "SNAP-TESTD2OK")
+    assert res.manifest["snapshot_id"] == "SNAP-TESTD2OK"

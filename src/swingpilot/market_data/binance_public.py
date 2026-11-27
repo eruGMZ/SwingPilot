@@ -29,6 +29,21 @@ def _urllib_transport(url: str, timeout: float = 30.0) -> object:
         return json.loads(resp.read().decode("utf-8"))
 
 
+class SyntheticTransport:
+    """FIX-FINAL D-2: transporte de fixtures sintéticos aislados (sin red), declarado de forma explícita. Es el
+    único tipo que `build_snapshot(injected_only=True)` acepta; un transporte arbitrario inyectado ya no
+    habilita la omisión de la exclusión de ventanas reservadas. Debe usarse con tipo exacto (sin subclases)."""
+    __slots__ = ("_fn",)
+
+    def __init__(self, fn: Callable):
+        if not callable(fn):
+            raise TypeError("SyntheticTransport requiere un invocable")
+        self._fn = fn
+
+    def __call__(self, url: str, *args, **kwargs) -> object:
+        return self._fn(url, *args, **kwargs)
+
+
 class BinancePublicClient:
     def __init__(self, base_url: str = DEFAULT_BASE_URL, transport: Transport | None = None):
         if not base_url.startswith("https://"):

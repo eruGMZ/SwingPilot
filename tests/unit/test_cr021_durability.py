@@ -113,7 +113,8 @@ def gate(reg, tmp, eid=X1, cfg="A"):
     loader = PartitionLoader.__new__(PartitionLoader)
     loader.registry, loader.access_log = reg, Path(tmp) / f"access-{eid}-{cfg}.jsonl"
     loader.prereg_store = store_for(reg)                           # CR-023 §C.3.3
-    loader.manifest = {"snapshot_id": "SNAP-TEST", "kind": "development"}
+    loader.manifest = {"snapshot_id": "SNAP-0001", "kind": "development", "d_dev": "2021-06-17",
+                       "files": {"train_val": {"sha256": "a" * 64}}}
     reads = []
     loader._read = lambda part: reads.append(part) or pd.DataFrame({"interval": ["1d"]})
     try:
@@ -132,7 +133,7 @@ def proc_gate(reg, eid=X1, cfg="A"):
             "from swingpilot.research.prereg_store import PreregistrationStore as S;"
             f"r=R(Path({str(reg.path)!r}),Path({str(reg.decisions_dir)!r}));l=L.__new__(L);l.registry=r;"
             f"l.prereg_store=S(Path({str(reg.path.parent / 'preregistrations')!r}));"
-            f"l.access_log=Path({str(reg.path.parent / 'proc-access.jsonl')!r});l.manifest={{'snapshot_id':'SNAP-TEST','kind':'development'}};"
+            f"l.access_log=Path({str(reg.path.parent / 'proc-access.jsonl')!r});l.manifest={{'snapshot_id':'SNAP-0001','kind':'development','d_dev':'2021-06-17','files':{{'train_val':{{'sha256':'a'*64}}}}}};"
             "l._read=lambda p: pd.DataFrame({'interval':['1d']})\n"
             f"try:\n l.load_train_val_for_configuration({eid!r},{cfg!r});print('DELIVERED')\n"
             "except Exception:\n print('DENIED')")

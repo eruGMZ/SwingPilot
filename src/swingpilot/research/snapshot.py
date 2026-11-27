@@ -54,6 +54,8 @@ Descarga y confirmación (sin cambios respecto a FEAT-015):
   `load_manifest` rechaza un manifiesto cuyo `snapshot_id` no sea válido, porque de él se
   deriva la ruta de los datos.
 """
+import contextlib
+import fcntl
 import hashlib
 import json
 import math
@@ -77,7 +79,7 @@ import pyarrow
 import pyarrow.parquet as pq
 
 from swingpilot.market_data import BinancePublicClient, Candle, interval_ms, last_closed_open_time
-from swingpilot.market_data.binance_public import KLINES_LIMIT
+from swingpilot.market_data.binance_public import KLINES_LIMIT, SyntheticTransport
 from swingpilot.market_data.candles import SYMBOL, closed_only, ms_to_iso
 
 START_DATE = "2017-08-17"                 # DEC-013: primer dato de BTC/USDT en Binance
@@ -165,6 +167,20 @@ def valid_snapshot_id(snapshot_id) -> bool:
     return isinstance(snapshot_id, str) and SNAPSHOT_ID.fullmatch(snapshot_id) is not None
 
 
+@contextlib.contextmanager
+def sealing_lock(data_dir: Path):
+    """FIX-C (QA-C1-04): exclusión mutua (flock exclusivo sobre el directorio de datos, sin crear archivos)
+    entre la lectura autorizada de un archivo sellado (chmod 0o400 + open) y `enforce_sealing` (re-sellado).
+    Sección crítica corta y hoja: no se toma ningún otro bloqueo dentro, así no hay interbloqueos. Si no
+    puede adquirirse, la excepción se propaga (Fail-Closed). El descriptor se cierra siempre."""
+    fd = os.open(data_dir, os.O_RDONLY)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)                    # cerrar libera el flock
+
+
 def enforce_sealing(data_dir: Path, files: dict) -> list[str]:
     """Vuelve a sellar los archivos sellados presentes en `files` (`context`, `oos`, `lockbox`; una
     snapshot de desarrollo no tiene ninguno) si su modo no es 0o000 (aviso SealingWarning) y
@@ -173,19 +189,20 @@ def enforce_sealing(data_dir: Path, files: dict) -> list[str]:
     if os.geteuid() == 0:
         raise SealingError(f"el proceso se ejecuta como root: el sellado no es efectivo; {_SEALING_REQUIREMENT}")
     notes, readable = [], []
-    for part in SEALED_FILES:
-        if part not in files:
-            continue
-        path = Path(data_dir) / files[part]["file"]
-        if not path.exists():
-            continue
-        mode = stat.S_IMODE(os.stat(path).st_mode)
-        if mode != MODE_SEALED:
-            os.chmod(path, MODE_SEALED)
-            notes.append(f"{part}: modo {oct(mode)} en lugar de 0o000; se volvió a sellar "
-                         "(posible lectura interrumpida)")
-        if os.access(path, os.R_OK):
-            readable.append(part)
+    with (sealing_lock(Path(data_dir)) if Path(data_dir).is_dir() else contextlib.nullcontext()):
+        for part in SEALED_FILES:
+            if part not in files:
+                continue
+            path = Path(data_dir) / files[part]["file"]
+            if not path.exists():
+                continue
+            mode = stat.S_IMODE(os.stat(path).st_mode)
+            if mode != MODE_SEALED:
+                os.chmod(path, MODE_SEALED)
+                notes.append(f"{part}: modo {oct(mode)} en lugar de 0o000; se volvió a sellar "
+                             "(posible lectura interrumpida)")
+            if os.access(path, os.R_OK):
+                readable.append(part)
     for note in notes:
         warnings.warn(note, SealingWarning, stacklevel=2)
     if readable:
@@ -332,7 +349,10 @@ def build_snapshot(client: BinancePublicClient, snapshot_id: str, data_root: Pat
         raise SnapshotError(f"identificador de snapshot no válido: {snapshot_id!r}")
     d_dev_ms = parse_d_dev(d_dev)
     windows = list(reserved_windows)
-    if injected_only and "pytest" not in sys.modules:   # no es un modo de producción
+    if injected_only and type(getattr(client, "_transport", None)) is not SyntheticTransport:
+        # FIX-B/D-2: no es un modo de producción. Solo se admite con un `SyntheticTransport` declarado
+        # explícitamente (tipo exacto); un transporte arbitrario inyectado o el de red no lo habilitan, e
+        # importar pytest tampoco.
         raise SnapshotError("injected_only solo es válido en pruebas: en producción se exige la fuente autoritativa")
     if reserved_windows_source is None and not injected_only:   # B5-01: sin fuente autoritativa no hay exclusión verificable
         raise SnapshotError("falta reserved_windows_source (fuente autoritativa de ventanas reservadas, C.6.5); "

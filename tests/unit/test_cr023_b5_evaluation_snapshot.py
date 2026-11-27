@@ -167,6 +167,29 @@ def test_lockbox_requires_consumed_oos_and_continuity(ready, monkeypatch):
     assert m["window"]["start_ms"] == OOS_END and m["window"]["end_exclusive_ms"] == LB_END
     assert m["files"]["context"]["rows"] == oos.manifest["files"]["context"]["rows"] + oos.manifest["files"]["oos"]["rows"]
     assert not (oos.data_dir / "oos.parquet").stat().st_mode & 0o777
+    # FIX-QA GAP-03 (AC-015-9, C.6.5): el contexto del LOCKBOX es contiguo desde D_dev hasta el inicio de la ventana
+    assert m["context_start_ms"] == m["d_dev_ms"] == oos.manifest["d_dev_ms"]
+    assert m["files"]["context"]["per_interval"]["1d"]["rows"] == (
+        oos.manifest["files"]["context"]["per_interval"]["1d"]["rows"]
+        + oos.manifest["files"]["oos"]["per_interval"]["1d"]["rows"])
+    # FIX-FINAL D-3: contigüedad del contexto en D1, H4 y H1 (filas = intervalos exactos desde D_dev hasta el inicio
+    # de la ventana, sin huecos; primer y último open_time coherentes; OOS concatenada sin solapes ni pérdidas)
+    d0, w0 = m["context_start_ms"], m["window"]["start_ms"]
+    for iv, name in (("1d", "D1"), ("4h", "H4"), ("1h", "H1")):
+        step = interval_ms(iv)
+        first = (d0 + step - 1) // step * step                     # primer open_time alineado al intervalo
+        n = (w0 - first) // step                                   # velas completas en [D_dev, inicio de ventana)
+        ctx = m["files"]["context"]["per_interval"][iv]
+        prev, oos_iv = (oos.manifest["files"]["context"]["per_interval"][iv],
+                        oos.manifest["files"]["oos"]["per_interval"][iv])
+        assert ctx["rows"] == n > 0, name
+        assert ctx["rows"] == prev["rows"] + oos_iv["rows"], name
+        assert ctx["gaps"] == 0 and prev["gaps"] == 0 and oos_iv["gaps"] == 0, name
+        assert ctx["first_open_time_utc"] == prev["first_open_time_utc"] == S.ms_to_iso(first), name
+        assert ctx["last_open_time_utc"] == S.ms_to_iso(w0 - step), name
+        assert oos_iv["first_open_time_utc"] == S.ms_to_iso(
+            (oos.manifest["window"]["start_ms"] + step - 1) // step * step), name
+    assert I.stage_checks(ready.reg, ready.store, EID, "ET-6", manifest=m)["V5"] == (I.OK, "")
 
 
 def test_lockbox_needs_single_valid_oos_manifest(ready):
@@ -311,9 +334,8 @@ def test_b5_03a_cli_build_evaluation(ready, monkeypatch, capsys):
 
 
 def test_injected_only_is_test_only(ready, monkeypatch):
-    cl, f = _client(OOS_END + 10**9)
-    monkeypatch.delitem(sys.modules, "pytest")
+    from swingpilot.market_data import BinancePublicClient
+    cl = BinancePublicClient()               # transporte por defecto (red): injected_only denegado aunque pytest esté importado
     with pytest.raises(SnapshotError, match="solo es válido en pruebas"):
         S.build_snapshot(cl, "SNAP-TESTD5", ready.data_root, ready.res.manifest_path.parent, d_dev="2018-01-01",
                          reserved_windows=[], injected_only=True)
-    assert f.calls == 0

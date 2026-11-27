@@ -182,9 +182,9 @@ def _run(a) -> int:
         if not a.confirm:
             print("build-snapshot fija las particiones de forma permanente: repetir con --confirm", file=sys.stderr)
             return 2
-        windows = reserved_windows_provider()                          # antes de cualquier descarga
+        windows = reserved_windows_provider()                          # fuente autoritativa; antes de cualquier descarga
         res = build_snapshot(BinancePublicClient(), a.id, DATA_ROOT, MANIFEST_DIR, d_dev=a.d_dev,
-                             reserved_windows=windows, injected_only=True)   # `windows` ya es autoritativa
+                             reserved_windows=[], reserved_windows_source=lambda: windows)
         print(f"snapshot {a.id}: manifiesto {res.manifest_path}")
         for part, info in res.manifest["files"].items():
             print(f"  {part}: {info['rows']} filas, sha256 {info['sha256']}")

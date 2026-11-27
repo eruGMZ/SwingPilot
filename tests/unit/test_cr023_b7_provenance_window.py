@@ -118,14 +118,13 @@ def test_genuine_oos_to_lockbox_end_to_end(tmp_path, gdev):
                    f"AUTORIZA: ATESTACION {EID}/LOCKBOX SNAP-0902 SHA256={sha} "
                    "V1=CONFIRMADA V6=CONFIRMADA V7=CONFIRMADA\n")
     odata = loader.load_final(ggrant(part="oos"), "oos")
-    oos = evaluate(res, reg, loader, odata)
+    oos, issued = W.evaluate_window_issued(odata, Logic(), MODEL, reg, loader.prereg_store, EID,   # FIX-D: una sola evaluación
+                                           manifest=res.manifest, **ctx(reg, loader))
     assert oos.verdict == W.FAVORABLE and oos.eligibility == I.ELIGIBLE and oos.trades >= 30
     assert oos.metrics["trials_count"] is not None and oos.metrics["trials_accounting"] is not None
     assert [r["partition"] for r in consumed(reg)] == ["oos"]               # LOCKBOX aún no existe/consumido
     # CR-024 B.7: el LOCKBOX exige el OOS favorable autoritativo persistido (no el veredicto en memoria)
     from swingpilot.research import result_store as RST
-    _, issued = W.evaluate_window_issued(odata, Logic(), MODEL, reg, loader.prereg_store, EID,
-                                         manifest=res.manifest, **ctx(reg, loader))
     reg.persist_window_result(RST.for_registry(reg), issued, manifest_dir=loader.manifest_dir, actor="propietario")
 
     lres, lloader = _build_lockbox(tmp_path, reg, loader)

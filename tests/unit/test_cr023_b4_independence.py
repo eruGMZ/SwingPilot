@@ -72,6 +72,19 @@ def test_contamination_by_other_experiment_period_intersection(env):
     assert I.independence_status(env.reg, env.store, EID) == I.CONTAMINATED
 
 
+def test_d33_unaffected_experiment_with_disjoint_windows_stays_independent(env):
+    """CR-023 D.3.3 (regresión positiva): un DEVIATION de EXP-0201 contamina solo a EXP-0201; EXP-0202, con
+    ventanas disjuntas y posteriores (C.4.2.3), permanece INDEPENDENT y sin cambios."""
+    fz1 = _confirmatory_in(env, "PREREGISTERED")
+    env.design("EXP-0202")
+    env.prereg(env.frozen("EXP-0202", b="2029-03-01T00:00:00Z"))       # [fin del LOCKBOX de EXP-0201, …)
+    assert I.independence_status(env.reg, env.store, "EXP-0202") == I.INDEPENDENT
+    _dev(env, fz1)                                                      # contamina OOS de EXP-0201 (dueño)
+    assert _status(env) == I.CONTAMINATED
+    assert I.independence_status(env.reg, env.store, "EXP-0202") == I.INDEPENDENT
+    assert PR.confirmatory_findings(env.reg, "EXP-0202")["hardened_deviations"] == []
+
+
 def test_hardened_rule_any_field_makes_it_non_confirmatory_without_consumption(env):
     fz = _confirmatory_in(env, "PREREGISTERED")
     assert PR.confirmatory_findings(env.reg, EID)["hardened_deviations"] == []
