@@ -73,6 +73,7 @@ import hashlib
 import json
 import os
 import re
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -322,6 +323,10 @@ class EvaluationRequestRejected(ExperimentError):
     evaluación no empieza (CR-020 §C.3.2, B.4.1)."""
 
 
+class RegistryLockTimeout(ExperimentError):
+    """CR-025 B.7: el bloqueo del registro no se obtuvo dentro del plazo de ET-10. El llamador lo mapea a TECH."""
+
+
 class RegistryCorruptError(ExperimentError):
     """Registro corrupto (CR-021 §F.2, P1–P5): línea no válida, vacía o que no es un objeto, cola
     sin salto de línea final, duplicado conflictivo o marcador no vinculable. Bloquea toda lectura
@@ -503,6 +508,10 @@ def authoritative_favorable(records: list[dict], store, experiment_id: str, part
 
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+ET10_LOCK_TIMEOUT_S = 2.0      # CR-025 B.7: plazo único de adquisición (no configurable por el llamador)
+ET10_LOCK_POLL_S = 0.01
 
 
 class ExperimentRegistry:
@@ -1037,6 +1046,27 @@ class ExperimentRegistry:
                 return f"referencia repetida: {ref!r}"
             seen.append(ref)
         return None
+
+    # --- ET-10 (CR-025 B.7): bloqueo exclusivo con plazo, solo para lecturas coherentes ------------
+    @contextlib.contextmanager
+    def _locked_et10(self):
+        """Variante exclusiva de ET-10: UNA sola ventana de `ET10_LOCK_TIMEOUT_S` s medida con `time.monotonic()`,
+        `flock(LOCK_NB)` consultado hasta vencer; sin reintentos tras el plazo. Vencimiento → `RegistryLockTimeout`.
+        No crea directorios; el descriptor se cierra y el bloqueo se libera en toda salida. `_locked` no cambia."""
+        deadline = time.monotonic() + ET10_LOCK_TIMEOUT_S
+        with open(self.path.with_name(self.path.name + ".lock"), "a") as lk:
+            while True:
+                try:
+                    fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.monotonic() >= deadline:
+                        raise RegistryLockTimeout("V9: bloqueo del registro no obtenido en 2 s") from None
+                    time.sleep(ET10_LOCK_POLL_S)
+            try:
+                yield
+            finally:
+                fcntl.flock(lk, fcntl.LOCK_UN)
 
     # --- escritura (append-only) -----------------------------------------------------------
     @contextlib.contextmanager

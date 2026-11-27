@@ -97,3 +97,6 @@ Modelo de proceso confiable (registro no tamper-evident); ventana de un ciclo en
 ## G. Aplicación contractual (2026-11-26)
 
 Contrato v1.12 → **v1.13**; `feature_list.json` v1.24.0 → **v1.25.0**. Sin cambios de código, pruebas, registro ni gates. **Pendientes:** implementación y pruebas (autorización separada; ET-10 en B9), verificación independiente, P5, O3/O4, D6; B8 permanece abierta hasta integrar CR-025.
+
+
+**[Nota de vigencia 2026-11-27, documental; texto original conservado]:** el cableado de ET-10 «diferido a B9» está implementado (B9.1–B9.4, sin commit) y verificado (`pytest tests/unit tests/security` → 1537 passed, 0 skipped, 0 failed; validadores 0/0/0). B8 y la integración de CR-025 en ET-8/ET-9 constan en `eb034dc`. Siguen PENDIENTES: verificación independiente, cableado de producción del `EvidenceProvider`, verificación del aislamiento RESEARCH, deuda de dependencia de `cli._approve_inputs`, CLI de promoción ML (diferida), P5, O3/O4, D3, D4, D6.

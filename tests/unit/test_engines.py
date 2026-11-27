@@ -59,6 +59,15 @@ def e1(mk=None):
                        payload={"market_context": {}, "macro_context": {}})
 
 
+@pytest.fixture(autouse=True)
+def _et10_not_under_test(monkeypatch):
+    """Estas pruebas cubren la lógica del motor, no ET-10: la elegibilidad operativa genuina (V9, bloqueo, tampering,
+    proveedor) se prueba en test_cr025_b9_4_et10_engine.py. Aquí toda APPROVED se trata como ELIGIBLE."""
+    from swingpilot.engines import strategy as _S
+    monkeypatch.setattr(_S.StrategyEngine, "_et10", lambda self, approved: {
+        (s.strategy_id, s.version): {"result": "ELIGIBLE", "nature": None, "causes": {}} for s in approved})
+
+
 @pytest.fixture
 def regs(tmp_path):
     dec = tmp_path / "dec"

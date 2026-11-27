@@ -2123,7 +2123,7 @@
         "preserved": "CR-020, CR-021 (Train+Val), CR-022; forma de PARTITION_CONSUMED; D3 ABIERTA; D4 bloqueada; ningún FEAT cerrado"
       },
       "cr025": {
-        "status": "APROBADA (propietario, 2026-11-26) y APLICADA contractualmente (contrato v1.13); implementación y verificación independiente PENDIENTES; ET-10 diferido a B9",
+        "status": "APROBADA (propietario, 2026-11-26) y APLICADA contractualmente (contrato v1.13); implementación funcional COMPLETA (B8 en eb034dc, ya commiteado y publicado; B9/ET-10 implementado y verificado, sin commit a 2026-11-27); verificación independiente PENDIENTE; cableado de producción del EvidenceProvider PENDIENTE",
         "change_request": "harness/change_requests/CR-025_integridad-autoritativa-continua.md",
         "acceptance_criteria_affected": [
           "AC-017-1",
@@ -2137,7 +2137,7 @@
           "TC-ML-028",
           "TC-ML-030"
         ],
-        "blocks": "B8 permanece abierta hasta integrar CR-025 (B8.1–B8.3 sin commit se conservan); ET-10 en el Strategy Engine diferido a B9",
+        "blocks": "Sin bloqueos de implementación: B8 integró CR-025 en eb034dc; ET-10 cableado en el Strategy Engine en B9 (sin commit). Bloquean el cierre: QA independiente, cableado de producción del EvidenceProvider, verificación del aislamiento RESEARCH y la deuda de dependencia cli._approve_inputs",
         "pending": [
           "Implementación (autorización separada)",
           "Verificación independiente",
@@ -2402,7 +2402,7 @@
       "blocked_by": [
         "AC-020-8: piloto TF H4 no definido (DEC-018 decisión 4, EXP-0001)"
       ],
-      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20) CR-025 (contrato v1.13): AC-020-2 ampliado (V9 en ET-10; cableado diferido a B9); implementación y verificación independiente PENDIENTES.",
+      "acceptance_criteria_status": "DEFINITIVOS PROPUESTOS — pendientes de revisión del propietario (2026-11-20) CR-025 (contrato v1.13): AC-020-2 ampliado (V9 en ET-10); implementación funcional completa (B8 en eb034dc; B9/ET-10 sin commit, 1537 pruebas unit/security OK a 2026-11-27) y verificación independiente PENDIENTE; el cableado de producción del EvidenceProvider sigue PENDIENTE.",
       "authorization": {
         "authorized_by": "Propietario, 2026-11-20: «Autorizo iniciar el código de FEAT-018 a FEAT-022»",
         "scope": "código conforme al contrato v1.6"

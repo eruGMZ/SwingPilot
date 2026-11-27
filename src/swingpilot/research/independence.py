@@ -42,7 +42,7 @@ STAGES = {
     "ET-7": ("V2", "V3", "V4post", "V5", "V8"),
     "ET-8": ("V1b", "V2", "V3", "V4post", "V5", "V6", "V7m", "V7d", "V8"),
     "ET-9": ("V2", "V3", "V4post", "V5", "V8", "V9"),
-    "ET-10": ("V2", "V3", "V4post", "V5", "V8"),
+    "ET-10": ("V2", "V3", "V4post", "V5", "V8", "V9"),
 }
 _LIBERACION = re.compile(rf"AUTORIZA: LIBERACION (EXP-[0-9]{{4}}/(?:OOS|LOCKBOX)) SHA256=({_HEX})", re.ASCII)
 _ATESTACION = re.compile(rf"AUTORIZA: ATESTACION (EXP-[0-9]{{4}}/(?:OOS|LOCKBOX)) (SNAP-[0-9]{{4}}) SHA256=({_HEX}) "

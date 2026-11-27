@@ -17,7 +17,14 @@ Cada estrategia debe declarar la misma temporalidad de señal que el motor.
 3. Señal de salida en el ciclo → NO_SETUP `EXIT_SIGNAL_PRIORITY` (DEC-011).
 4. Bloqueo previo a la Fase 3 → NO_SETUP `PRE_PHASE3_BLOCK` con el estado.
 5. E2/E3 en INSUFFICIENT_DATA → NO_SETUP `UPSTREAM_INSUFFICIENT_DATA`.
-6. Elegibilidad: Paper/Live solo APPROVED; Research admite RESEARCH. Ninguna → `NO_APPROVED_STRATEGY`.
+6. Elegibilidad: Paper/Live solo APPROVED; Research admite RESEARCH. Ninguna → `NO_APPROVED_STRATEGY`
+   (`NONE_APPROVED`). ET-10 (CR-023/CR-025, B9.4): en Paper/Live, tras las salidas, bloqueos e insuficiencia y ANTES de
+   evaluar entradas, las referencias de experimento únicas de las APPROVED se resuelven UNA vez por ciclo con
+   `resolve_et10` (una instantánea bajo `_locked_et10`, V9 incluida). Cualquier UNDETERMINABLE (o falta de proveedor
+   de evidencia) → STRATEGY_CANDIDATE ERROR `ELIGIBILITY_UNDETERMINED` (sobre FAILED, sin LLM; nunca NO_SETUP).
+   NOT_ELIGIBLE → estrategia excluida; si no queda ninguna → `NO_APPROVED_STRATEGY` /
+   `CONFIRMATORY_ELIGIBILITY_LOST`. Salidas, stops y gestión protectora ya se emitieron antes (§D.8). En Research no
+   se aplica (no es uso operativo).
    ML-Based sin `INFERENCE_AVAILABLE` y estrategias cuyo régimen requerido no se cumple → NOT_ELIGIBLE.
 7. Candidatos: 0 → `NO_CANDIDATE`; ≥ 2 (aunque coincidan) → `MULTIPLE_ENTRY_CANDIDATES`; 1 →
    STRATEGY_CANDIDATE. Excepción de una estrategia → ERROR `INTERNAL_ERROR`; candidato mal
@@ -30,6 +37,7 @@ from typing import Protocol
 from swingpilot.market_data.candles import ms_to_iso
 
 from .common import MarketInput, base_payload, engine_message
+from swingpilot.research.operational_eligibility import resolve_et10
 from .schemas import PRE_PHASE3_DETAILS, EnginePayloadError, validate_engine_payload
 
 ENGINE = "strategy_engine"
@@ -91,7 +99,9 @@ class StrategyDefinition(Protocol):
 
 
 class StrategyEngine:
-    def __init__(self, strategies: list[StrategyDefinition] | None = None, *, signal_timeframe: str = "H4"):
+    def __init__(self, strategies: list[StrategyDefinition] | None = None, *, signal_timeframe: str = "H4",
+                 evidence_provider=None):
+        self.evidence_provider = evidence_provider      # EvidenceProvider (rutas absolutas); None → ET-10 UNDETERMINABLE
         self.strategies = list(strategies or [])
         keys = [(s.strategy_id, s.version) for s in self.strategies]
         if len(keys) != len(set(keys)):
@@ -214,8 +224,24 @@ class StrategyEngine:
         allowed = ("APPROVED",) if mode in ("PAPER", "LIVE") else ("APPROVED", "RESEARCH")
         eligible = [s for s in self.strategies if s.status in allowed]
         if not eligible:
-            return out + [self._no_setup(cause, market, "NO_APPROVED_STRATEGY", detail=f"modo {mode}")]
+            return out + [self._no_setup(cause, market, "NO_APPROVED_STRATEGY", detail="NONE_APPROVED")]
         evaluated, proposals = [], []
+        if mode in ("PAPER", "LIVE"):                   # ET-10: completo antes de toda evaluación de entrada
+            res = self._et10([s for s in eligible if s.status == "APPROVED"])
+            bad = [s for s in eligible if res[(s.strategy_id, s.version)]["result"] == "UNDETERMINABLE"]
+            if bad:                                     # precedencia técnica (§D.8): nunca NO_SETUP
+                why = "; ".join(f"{k}: {w}" for k, w in res[(bad[0].strategy_id, bad[0].version)]["causes"].items())
+                return out + [self._error(cause, market, regime_msg, ml_msg, "ELIGIBILITY_UNDETERMINED",
+                                          f"elegibilidad ET-10 no determinable: {why}", "STRATEGY_EVALUATION",
+                                          strategy=bad[0])]
+            for s in list(eligible):
+                r = res[(s.strategy_id, s.version)]
+                if r["result"] != "ELIGIBLE":
+                    evaluated.append(_ev(s, "NOT_ELIGIBLE", [f"ET-10 {k}: {w}" for k, w in r["causes"].items()]))
+                    eligible.remove(s)
+            if not eligible:
+                return out + [self._no_setup(cause, market, "NO_APPROVED_STRATEGY",
+                                             detail="CONFIRMATORY_ELIGIBILITY_LOST", evaluated=evaluated)]
         for s in eligible:
             if s.family == "ML_BASED" and mp["inference_status"] != "INFERENCE_AVAILABLE":
                 evaluated.append(_ev(s, "NOT_ELIGIBLE", ["ml_engine: " + mp["inference_status"]]))
@@ -250,6 +276,22 @@ class StrategyEngine:
             return out + [self._no_setup(cause, market, "MULTIPLE_ENTRY_CANDIDATES", evaluated=evaluated,
                                          discarded=discarded)]
         return out + [self._msg(cause, market, "STRATEGY_CANDIDATE", proposals[0][1])]
+
+    def _et10(self, approved) -> dict:
+        """Elegibilidad ET-10 por estrategia APPROVED: referencias únicas resueltas una vez (una instantánea)."""
+        tech = {"result": "UNDETERMINABLE", "nature": "TECHNICAL", "causes": {}}
+        refs = list(dict.fromkeys(s.experiment_ref for s in approved))
+        if not approved:
+            return {}
+        if self.evidence_provider is None:
+            by_ref = {r: {**tech, "causes": {"ET-10": "sin proveedor de evidencia configurado"}} for r in refs}
+        else:
+            try:
+                by_ref = resolve_et10(self.evidence_provider, refs)
+            except Exception as exc:                    # noqa: BLE001  Fail-Closed
+                by_ref = {r: {**tech, "causes": {"ET-10": f"{type(exc).__name__}: {exc}"}} for r in refs}
+        miss = {**tech, "causes": {"ET-10": "sin resultado de elegibilidad para la referencia"}}
+        return {(s.strategy_id, s.version): by_ref.get(s.experiment_ref, miss) for s in approved}
 
     def _candidate_payload(self, s, prop: EntryProposal, regime_msg, ml_msg, market, mode) -> dict:
         return {**base_payload(ENGINE, ENGINE_VERSION, s.version, "COMPLETED", self._refs(market)),

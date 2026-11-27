@@ -1,6 +1,16 @@
 # session-handoff.md — SwingPilot Harness
 
-## PUNTO DE REANUDACIÓN (2026-11-26) — CR-025 aplicada contractualmente (contrato v1.13); B8.1–B8.3 sin commit conservados; ET-10 diferido a B9
+## PUNTO DE REANUDACIÓN (2026-11-27) — B9 (ET-10) implementada y verificada, sin commit; B8 y CR-025 parcial ya en `eb034dc`
+
+**Corrección:** B8 (ET-8, ET-9, V9, `approval_binding`, CLI `approve`) y la integración parcial de CR-025 están **commiteados y publicados en `eb034dc`**; las notas inferiores «B8.1–B8.3 sin commit» y «ET-10 diferido a B9» están **obsoletas** (texto original conservado). **Solo B9 está sin commit** (modificados: `engines/schemas.py`, `engines/strategy.py`, `research/experiments.py`, `research/independence.py`, `tests/unit/test_engines.py`; nuevos: `research/operational_eligibility.py` y cuatro `tests/unit/test_cr025_b9_{1..4}_*.py`) más estos documentos.
+**Evidencia:** `pytest tests/unit tests/security` → 1537 passed, 0 skipped, 0 failed, código 0; `validate_gates`/`validate_manifest`/`validate_requirements` → 0/0/0; registro real intacto (md5 `8af8e3e0…`, 4 registros). Ver `progress.md` (B9.0–B9.6).
+**Implementación funcional de CR-023/024/025:** completa (sintética). **Pendientes:** QA independiente (sesión distinta, solo lectura) de B8 y B9; cableado de producción del `EvidenceProvider` (sin él, Paper/Live con APPROVED falla cerrado); verificación del aislamiento RESEARCH; deuda técnica `cli._approve_inputs`; CLI de promoción ML diferida (no contractual); commit de B9 con autorización del propietario.
+**Sin cambios:** P5 de CR-021 PENDIENTE; O3/O4; D3 ABIERTA; D4 bloqueada; D6 diferida; CONF-010 OPEN; SNAP-0001 no creada; ningún FEAT cerrado.
+**Siguiente acción autorizada:** ninguna hasta la revisión del propietario. Sin commit ni push.
+
+---
+
+## PUNTO DE REANUDACIÓN (2026-11-26) — CR-025 aplicada contractualmente (contrato v1.13); B8.1–B8.3 sin commit conservados; ET-10 diferido a B9 **[superado el 2026-11-27: B8 en `eb034dc`; B9 implementado sin commit]**
 
 **Base:** `0f2185c` (CR-024 implementada y commiteada). **Cambios sin commit:** documentos de CR-025 (CR-025, CR-023/024 notas, `implementation/*`, `feature_list.json` v1.25.0, `progress.md`, este archivo) y el trabajo de B8.1–B8.3 (`independence.py`, `experiments.py`, `ml/registry.py` y pruebas: `test_cr024_b8_1_approval_attestation.py`, `test_cr024_b8_2_approval_transition.py`, `test_cr024_b8_3_promotion_eligibility.py`, `historical_approval.py` y ajustes en `test_engines.py`, `test_ml_registry.py`, `test_research.py`, `test_cr023_b3_preregistration.py`). Comprobar con `git status -sb`.
 **B8.4a/b (2026-11-26):** CLI `approve` implementada y probada; `pytest tests/unit tests/security` → 1500 passed, 0 skipped, 0 failed; validadores 0/0/0; registro real intacto. B8.1–B8.4 siguen sin commit; QA independiente pendiente; ET-10 y CLI de promoción ML diferidos a B9. Ver `progress.md` y `research/README.md`.
