@@ -116,7 +116,7 @@ class DiagnosticsRecorder:
     Rechaza ubicaciones dentro de las raíces prohibidas (snapshots, manifiestos, investigación). Un fallo de escritura
     no altera el resultado de la construcción."""
     FIELDS = ("run_id", "snapshot_id", "d_dev", "timestamp_utc", "event", "stage", "attempt", "classification",
-              "http_status", "elapsed_ms", "exit_code")
+              "http_status", "elapsed_ms", "exit_code", "interval", "error_type", "root_error_type", "reason_code")
 
     def __init__(self, diagnostics_dir: Path, run_id: str, snapshot_id: str, d_dev: str, *,
                  forbidden_roots: Sequence[Path] = (), clock: Callable[[], float] = time.monotonic,
@@ -133,15 +133,20 @@ class DiagnosticsRecorder:
         self.run_id, self.snapshot_id, self.d_dev = run_id, snapshot_id, d_dev
         self._clock, self._timestamp, self._t0 = clock, timestamp, clock()
         self.write_errors = 0
+        self.last_request_stage: str | None = None      # solo para derivar `interval` (D4-OBS-FIX); nunca se escribe tal cual
 
     def record(self, event: str, *, stage: str, attempt: int | None = None, classification: str | None = None,
-               http_status: int | None = None, exit_code: int | None = None) -> None:
+               http_status: int | None = None, exit_code: int | None = None, interval: str | None = None,
+               error_type: str | None = None, root_error_type: str | None = None,
+               reason_code: str | None = None) -> None:
         if classification is not None and classification not in CLASSIFICATIONS:
             classification = UNCLASSIFIED
         row = {"run_id": self.run_id, "snapshot_id": self.snapshot_id, "d_dev": self.d_dev,
                "timestamp_utc": self._timestamp(), "event": event, "stage": stage, "attempt": attempt,
                "classification": classification, "http_status": http_status,
-               "elapsed_ms": int((self._clock() - self._t0) * 1000), "exit_code": exit_code}
+               "elapsed_ms": int((self._clock() - self._t0) * 1000), "exit_code": exit_code,
+               "interval": interval, "error_type": error_type, "root_error_type": root_error_type,
+               "reason_code": reason_code}
         try:
             self._directory.mkdir(parents=True, exist_ok=True)
             with open(self.path, "a", encoding="utf-8") as fh:
@@ -164,6 +169,8 @@ class D4RetryTransport:
 
     def __call__(self, url: str, *args, **kwargs) -> object:
         stage = stage_from_url(url)
+        if self._recorder:
+            self._recorder.last_request_stage = stage
         for attempt in range(1, MAX_ATTEMPTS + 1):
             try:
                 return self._inner(url, *args, **kwargs)
@@ -180,6 +187,109 @@ class D4RetryTransport:
                     raise D4TransportError(RETRIES_EXHAUSTED, status, attempt) from exc
                 self._sleep(BACKOFF_SECONDS[attempt - 1])
         raise AssertionError("inalcanzable")  # pragma: no cover
+
+
+UNKNOWN = "UNKNOWN"
+
+
+def _allowed_types() -> tuple:
+    from swingpilot.market_data.candles import CandleError
+    from .snapshot import SealingError
+    return (D4TransportError, SealingError, SnapshotError, PublicApiError, CandleError, urllib.error.HTTPError,
+            urllib.error.URLError, ssl.SSLError, json.JSONDecodeError, UnicodeDecodeError, KeyboardInterrupt,
+            FileNotFoundError, PermissionError, FileExistsError, OSError, TimeoutError, ConnectionError, KeyError,
+            TypeError, ValueError, ArithmeticError, AssertionError, MemoryError, RuntimeError)
+
+
+def safe_type_name(exc: BaseException) -> str:
+    """Nombre del tipo permitido más cercano en el MRO (lista cerrada); UNKNOWN si no hay ninguno. Sin texto."""
+    allowed = _allowed_types()
+    for t in type(exc).__mro__:
+        if t in allowed:
+            return t.__name__
+    return UNKNOWN
+
+
+def _root(exc: BaseException) -> BaseException:
+    seen = 0
+    while exc.__cause__ is not None and seen < 20:
+        exc, seen = exc.__cause__, seen + 1
+    return exc
+
+
+def _origin(exc: BaseException) -> tuple[str, str] | None:
+    """(módulo, función) del frame más interno de SwingPilot en el traceback, excepto este módulo."""
+    found, tb = None, exc.__traceback__
+    mark = os.sep + "swingpilot" + os.sep
+    while tb is not None:
+        code = tb.tb_frame.f_code
+        stem = Path(code.co_filename).stem
+        if mark in code.co_filename and stem != "d4_build":
+            found = (stem, code.co_name)
+        tb = tb.tb_next
+    return found
+
+
+_PROVIDER_MODULES = frozenset({"evaluation_snapshot", "experiments", "prereg_store"})
+_ORIGIN_RULES = {   # (módulo, función) → (etapa, reason_code, aplica_intervalo)
+    ("binance_public", "server_time_ms"): ("server_time", "INVALID_SERVER_TIME", False),
+    ("binance_public", "klines_page"): ("download", "UNEXPECTED_KLINES_RESPONSE", True),
+    ("binance_public", "klines_range"): ("download", "KLINES_RANGE_INVALID_OR_INCOMPLETE", True),
+    ("binance_public", "_get"): ("download", "CLIENT_REQUEST_REJECTED", True),
+    ("candles", "candle_from_rest_row"): ("download", "CANDLE_CONVERSION_ERROR", True),
+    ("candles", "__post_init__"): ("download", "CANDLE_CONVERSION_ERROR", True),
+    ("candles", "closed_only"): ("prepare", "CANDLE_FILTER_ERROR", False),
+    ("snapshot", "check_reserved_windows"): ("prepare", "RESERVED_WINDOW_OVERLAP", False),
+    ("snapshot", "to_grid_frame"): ("prepare", "GRID_CONSTRUCTION_ERROR", False),
+    ("snapshot", "canonical_content_digest"): ("prepare", "CANONICAL_DIGEST_ERROR", False),
+    ("snapshot", "_pack_number"): ("prepare", "CANONICAL_DIGEST_ERROR", False),
+    ("snapshot", "_pack_timestamp"): ("prepare", "CANONICAL_DIGEST_ERROR", False),
+    ("snapshot", "compute_train_end"): ("prepare", "TRAIN_VALIDATION_CUT_ERROR", False),
+    ("snapshot", "parse_d_dev"): ("preflight", "INVALID_D_DEV", False),
+    ("snapshot", "_date_ms"): ("preflight", "INVALID_D_DEV", False),
+    ("snapshot", "_download_and_prepare"): ("prepare", "DOWNLOAD_PREPARE_CHECK_FAILED", False),
+    ("snapshot", "check_sealing_supported"): ("seal", "SEALING_FAILURE", False),
+    ("snapshot", "enforce_sealing"): ("seal", "SEALING_FAILURE", False),
+    ("snapshot", "sealing_lock"): ("seal", "SEALING_FAILURE", False),
+    ("snapshot", "sha256_file"): ("write", "WRITE_ERROR", False),
+}
+
+
+def classify_failure(exc: BaseException, last_request_stage: str | None = None) -> dict:
+    """Etapa, intervalo, tipos y reason_code de un fallo, SOLO por tipo y estructura (nunca por texto).
+    Cualquier causa no reconocible fiablemente queda como UNKNOWN."""
+    root = _root(exc)
+    out = {"stage": UNKNOWN, "interval": None, "error_type": safe_type_name(exc),
+           "root_error_type": safe_type_name(root), "reason_code": UNKNOWN}
+    top, ro = _origin(exc), _origin(root)
+    if top == ("snapshot", "build_snapshot") and isinstance(exc, SnapshotError) and exc.__cause__ is not None:
+        out.update(stage="reserved_windows", reason_code="RESERVED_WINDOW_SOURCE_FAILURE")   # único `from exc` ahí
+        return out
+    rule = None
+    if ro is not None:
+        if ro[0] in _PROVIDER_MODULES:
+            rule = ("reserved_windows", "RESERVED_WINDOW_SOURCE_FAILURE", False)
+        elif ro == ("snapshot", "build_snapshot"):
+            rule = (("preflight", "BUILD_PRECHECK_FAILED", False) if isinstance(root, SnapshotError) else
+                    ("write", "WRITE_ERROR", False) if isinstance(root, OSError) else None)
+        else:
+            rule = _ORIGIN_RULES.get(ro)
+    if rule is None and top == ("snapshot", "_download_and_prepare") and exc.__cause__ is not None:
+        out["stage"] = "download"           # envoltorio de la descarga por intervalo; la causa raíz no es reconocible
+        rule = None
+    if rule is not None:
+        out["stage"], out["reason_code"] = rule[0], rule[1]
+        if rule[2] and last_request_stage and last_request_stage.startswith("klines:"):
+            out["interval"] = last_request_stage.split(":", 1)[1]
+    elif out["stage"] == "download" and last_request_stage and last_request_stage.startswith("klines:"):
+        out["interval"] = last_request_stage.split(":", 1)[1]
+    return out
+
+
+def _stderr_summary(run_id: str, cls: str, info: dict, exit_code: int) -> None:
+    """Resumen saneado de una línea: solo campos de lista cerrada; nunca mensajes, URL ni datos."""
+    parts = [f"{k}={info.get(k) or '-'}" for k in ("stage", "interval", "reason_code", "error_type", "root_error_type")]
+    print(f"D4 BUILD_FAILED run_id={run_id} class={cls} " + " ".join(parts) + f" exit_code={exit_code}", file=sys.stderr)
 
 
 def _find_transport_error(exc: BaseException) -> D4TransportError | None:
@@ -211,12 +321,18 @@ def run_d4_build(*, snapshot_id: str, data_root: Path, manifest_dir: Path, diagn
     except Exception as exc:
         terr = _find_transport_error(exc)
         if terr is not None:
-            cls, status, stage = terr.classification, terr.http_status, "download"
+            cls, status = terr.classification, terr.http_status
+            info = {"stage": "download", "interval": None, "error_type": safe_type_name(terr),
+                    "root_error_type": safe_type_name(_root(terr)), "reason_code": terr.classification}
         else:
             from .snapshot import SealingError
             cls = SEALING_ERROR if isinstance(exc, SealingError) else BUILD_REJECTED
-            status, stage = None, "build"
-        rec.record("BUILD_FAILED", stage=stage, classification=cls, http_status=status, exit_code=EXIT_BUILD_FAILED)
+            status = None
+            info = classify_failure(exc, rec.last_request_stage)
+        rec.record("BUILD_FAILED", stage=info["stage"], classification=cls, http_status=status, exit_code=EXIT_BUILD_FAILED,
+                   interval=info["interval"], error_type=info["error_type"], root_error_type=info["root_error_type"],
+                   reason_code=info["reason_code"])
+        _stderr_summary(run_id, cls, info, EXIT_BUILD_FAILED)
         return EXIT_BUILD_FAILED
     rec.record("BUILD_OK", stage="build", exit_code=EXIT_OK)
     return EXIT_OK

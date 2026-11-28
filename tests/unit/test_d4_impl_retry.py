@@ -192,7 +192,7 @@ def test_permission_error_and_build_rejection_classified(tmp_path):
     code, _ = run(other, Scripted(), d_dev="2999-01-01")                  # fecha posterior a la hora del servidor
     assert code == 1
     last = diag(other)[-1]
-    assert (last["classification"], last["stage"], last["http_status"]) == (D4.BUILD_REJECTED, "build", None)
+    assert (last["classification"], last["stage"], last["http_status"]) == (D4.BUILD_REJECTED, "prepare", None)  # D4-OBS-FIX
 
 
 def test_reserved_window_failure_rolls_back(tmp_path):
