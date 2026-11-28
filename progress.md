@@ -2045,3 +2045,24 @@ Condiciones del propietario:
 - **Resultados de pruebas, separados:** suite completa QA-FINAL-R1 `pytest tests/unit tests/security` → **1572 passed**, 0 skipped, 0 failed; posterior y focalizada `test_cr023_b4_independence.py` → **51 passed** (incluye D.3.3). La suite completa no se reejecutó tras añadir D.3.3.
 - **Alcance del cierre:** acredita I1 (método e implementación con datos sintéticos), no I5; no desbloquea D4; no cierra FEAT-017.
 - **Sin cambios:** D4 bloqueada; SNAP-0001 no creada; P5 PENDIENTE; O3/O4 abiertos; CONF-010 OPEN; D6 diferida. Sin commit ni push.
+
+## 2026-11-27 | D4-IMPL | Capa de reintentos exclusiva de D4, diagnóstico aislado y DEC-026 | IMPLEMENTADO (sin commit)
+
+- **DEC-026** registra D_dev = 2026-11-01T00:00:00Z (exclusivo), la política de Scope Freeze y la capa de reintentos (bloques A, B y C aprobados por el propietario). Contrato v1.13 y decisiones históricas sin cambios.
+- **Código:** `src/swingpilot/research/d4_build.py` (nuevo; reintentos opt-in 3 intentos / 1 s, 2 s; diagnóstico en `var/diagnostics/d4/`); `tests/unit/test_d4_impl_retry.py` (nuevo, sintético). `binance_public.py`, `snapshot.py`, `evaluation_snapshot.py` y `cli.py` sin modificar.
+- **Procedimiento futuro (no ejecutado):** `implementation/d4_execution_procedure.md`.
+- **Sin cambios:** descarga real (D) BLOQUEADA; SNAP-0001 no creada; registro de experimentos, gates, FEAT, CONF-010, P5, O3/O4, D5–D7. Pendiente: D4-QA-SYNTHETIC independiente. Sin sub-agentes, commit ni push.
+
+## 2026-11-27 | D4-QA-CLOSE | Disposición de QA sintético de D4 (hallazgo M-1) | ACEPTADO (sin commit)
+
+- **Historial:** D4-QA-SYNTHETIC emitió veredicto **CONDITIONAL** con el hallazgo **M-1** (dos diagnósticos `BUILD_START` sin evento terminal en `var/diagnostics/d4/`). D4-INCIDENT-REVIEW (solo lectura) investigó la procedencia. Este registro conserva el hallazgo original y añade su resolución.
+- **Causa raíz (confirmada por transcripción de la sesión implementadora `265654aa`):** durante D4-IMPL, un parche por recorte de cadena eliminó junto con `os.environ` la compuerta `--confirm`/`--authorization-ref` de `main()`. La prueba `test_main_refuses_without_confirmation_or_authorization` ejecutó entonces `main(["--id","SNAP-0001"])` bajo pytest (22:16:24Z y 22:16:29Z); `run_d4_build` escribió `BUILD_START` y llamó al transporte. La compuerta se restauró a las 22:16:34Z. No hay más ejecuciones.
+- **Evidencia de transporte sintético:** `_urllib_transport` estaba sustituido por `pytest.fail("red prohibida")` (resuelto como global en el momento de la llamada); la función real nunca se ejecutó. `pytest.Failed` deriva de `BaseException`, no capturada por `except Exception`, de ahí la ausencia de evento terminal. Sin respuesta, sin datos de mercado, sin snapshot, sin credenciales; las líneas contienen solo campos cerrados.
+- **Incertidumbre residual aceptada:** no existe captura a nivel de red ni de sistema operativo; la ausencia de tráfico se sustenta en el recorrido del código y la transcripción.
+- **Aceptación del propietario (2026-11-27):** aprobó explícitamente las cinco resoluciones de aceptación del incidente D4: **M-1 RESUELTO** con evidencia de transcripción, incertidumbre residual aceptada, y **L-1** aceptada como limitación sin cambios de código (`except Exception` no captura excepciones derivadas de `BaseException`).
+- **Evidencia aislada** en `var/incident_evidence/D4-M1/` (movida, no copiada; SHA-256 verificado antes y después):
+  - `D4-20261127T221626Z-a48994f7.jsonl` — `1eb209f3594a7bd22696ddd26a4512920e8765188e627831bd97774d808490a8`
+  - `D4-20261127T221629Z-b0b6def7.jsonl` — `6181c4bfcf4c10b251e31cb73877097ecaeeead99154283d3bda69d02bda9f8a`
+  - `var/diagnostics/d4/` queda vacío.
+- **Disposición final de QA: ACEPTACIÓN SINTÉTICA.** Acredita únicamente la implementación y el comportamiento con transportes sintéticos. **No** valida datos reales ni cierra D4.
+- **Sin cambios:** DEC-026 y contrato v1.13; código, pruebas, gates, FEAT, CONF-010, P5, O3/O4, D5–D7; descarga real (D) **BLOQUEADA**; SNAP-0001 no creada. Sin sub-agentes, red, commit ni push.
